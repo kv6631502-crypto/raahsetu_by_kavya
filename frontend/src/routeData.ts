@@ -101,6 +101,72 @@ export const WEATHER_PROFILES: Record<WeatherCondition, WeatherProfile> = {
   },
 };
 
+export type CommodityType = "medical" | "agro" | "pds" | "fuel" | "construction";
+
+export interface CommodityProfile {
+  id: CommodityType;
+  name: string;
+  badge: string;
+  icon: string;
+  priority: "CRITICAL" | "HIGH" | "STANDARD";
+  riskToleranceMult: number; // multiplier for routing penalty
+  speedPenalty: number;
+  description: string;
+}
+
+export const COMMODITY_PROFILES: Record<CommodityType, CommodityProfile> = {
+  medical: {
+    id: "medical",
+    name: "Medicines & Vaccines",
+    badge: "Cold-Chain / Life Saving",
+    icon: "HeartPulse",
+    priority: "CRITICAL",
+    riskToleranceMult: 3.5, // Extremely high penalty for landslide/mud zones
+    speedPenalty: 0.05,
+    description: "Temperature-sensitive pharmaceuticals & blood bank units. Zero tolerance for multi-day road chokes.",
+  },
+  agro: {
+    id: "agro",
+    name: "Agricultural & Horticulture",
+    badge: "Perishable Produce",
+    icon: "Apple",
+    priority: "HIGH",
+    riskToleranceMult: 2.2,
+    speedPenalty: 0.0,
+    description: "Ginger, oranges, kiwi, and farm produce from hill farmers. Rapid delivery to prevent post-harvest rot.",
+  },
+  pds: {
+    id: "pds",
+    name: "PDS Food Supply / Grains",
+    badge: "Essential Commodities",
+    icon: "Wheat",
+    priority: "HIGH",
+    riskToleranceMult: 1.8,
+    speedPenalty: 0.1,
+    description: "FCI buffer grain stocks and pulses for remote sub-divisional godowns. Demands bridge-safe freight routes.",
+  },
+  fuel: {
+    id: "fuel",
+    name: "POL / Petroleum & LPG",
+    badge: "Hazardous Flammable",
+    icon: "Flame",
+    priority: "CRITICAL",
+    riskToleranceMult: 3.2,
+    speedPenalty: 0.15,
+    description: "Bulk road petroleum tankers and cylinders. Strictly restricted from severe hairpin ghat detours.",
+  },
+  construction: {
+    id: "construction",
+    name: "Infrastructure & Cement",
+    badge: "Heavy Capital Cargo",
+    icon: "Building2",
+    priority: "STANDARD",
+    riskToleranceMult: 1.0,
+    speedPenalty: 0.18,
+    description: "Steel rebars, bridge trusses, and aggregates for highway and border road engineering.",
+  },
+};
+
 export interface LiveWeatherReport {
   condition: WeatherCondition;
   tempC: number;
@@ -807,3 +873,168 @@ export function formatHours(hours: number): string {
 export function toPolylinePoints(path: string[]): string {
   return path.map((id) => `${CITY_MAP[id].x},${CITY_MAP[id].y}`).join(" ");
 }
+
+export interface RegionalAlert {
+  id: string;
+  corridor: string;
+  state: string;
+  severity: "CRITICAL" | "HIGH" | "ADVISORY";
+  category: "Landslide" | "Flood / Overflow" | "Snow / Ice" | "Bridge Structural" | "Ghat Slip";
+  headline: string;
+  detail: string;
+  affectedNodes: string[];
+  timestamp: string;
+}
+
+export const REGIONAL_ALERTS: RegionalAlert[] = [
+  {
+    id: "ALT-NH29-01",
+    corridor: "NH-29 Dimapur – Kohima Stretch",
+    state: "Nagaland",
+    severity: "CRITICAL",
+    category: "Landslide",
+    headline: "Active Mudslide at Pagla Pahar – Single Lane Convoy Only",
+    detail: "Heavy hill seepage triggered boulder displacement at km 124. Heavy multi-axle freight queued; light medical vehicles escorted on priority.",
+    affectedNodes: ["dimapur", "kohima"],
+    timestamp: "18 mins ago",
+  },
+  {
+    id: "ALT-NH13-02",
+    corridor: "NH-13 Bhalukpong – Bomdila – Sela Pass",
+    state: "Arunachal Pradesh",
+    severity: "HIGH",
+    category: "Snow / Ice",
+    headline: "Black Ice & Freezing Mist near Sela Pass (13,700 ft)",
+    detail: "Sub-zero temperatures causing black ice between Baisakhi and Sela top. Anti-skid chains mandatory for 16T+ freight vehicles.",
+    affectedNodes: ["bomdila", "dirang", "tawang"],
+    timestamp: "42 mins ago",
+  },
+  {
+    id: "ALT-NH10-03",
+    corridor: "NH-10 Sevoke – Teesta Bazaar – Gangtok",
+    state: "Sikkim",
+    severity: "CRITICAL",
+    category: "Ghat Slip",
+    headline: "Teesta River Swell & Road Sinking at 29th Mile",
+    detail: "Water levels breaching edge barrier. Freight transit redirected via Lava / Algarah alternate corridor.",
+    affectedNodes: ["siliguri", "rangpo", "gangtok"],
+    timestamp: "1 hour ago",
+  },
+  {
+    id: "ALT-NH6-04",
+    corridor: "NH-6 Jorabat – Nongpoh – Shillong",
+    state: "Meghalaya",
+    severity: "ADVISORY",
+    category: "Flood / Overflow",
+    headline: "Dense Monsoon Fog & Visibility Sub-50m at Umsning",
+    detail: "Reduced cruising speed across Khasi Hills descent. Fog beacons activated at toll plazas.",
+    affectedNodes: ["guwahati", "nongpoh", "shillong"],
+    timestamp: "2 hours ago",
+  },
+  {
+    id: "ALT-NH306-05",
+    corridor: "NH-306 Silchar – Vairengte – Aizawl",
+    state: "Mizoram",
+    severity: "HIGH",
+    category: "Ghat Slip",
+    headline: "Cachar-Kolasib Border Hairpin Subsidence",
+    detail: "Temporary Bailey bridge active with 18-tonne load ceiling. 28T heavy trucks instructed to stage at Dholai logistics depot.",
+    affectedNodes: ["silchar", "kolasib", "aizawl"],
+    timestamp: "3 hours ago",
+  },
+];
+
+export interface DistrictStatus {
+  district: string;
+  state: string;
+  status: "NORMAL" | "WATCH" | "RESTRICTED";
+  primaryHighway: string;
+  incidentCount: number;
+  delayAvgMinutes: number;
+  hubId: string;
+}
+
+export const DISTRICT_CONNECTIVITY: DistrictStatus[] = [
+  { district: "Kamrup Metropolitan", state: "Assam", status: "NORMAL", primaryHighway: "NH-27 / NH-6", incidentCount: 0, delayAvgMinutes: 0, hubId: "guwahati" },
+  { district: "Tawang & West Kameng", state: "Arunachal Pradesh", status: "RESTRICTED", primaryHighway: "NH-13 Trans-Arunachal", incidentCount: 2, delayAvgMinutes: 145, hubId: "tawang" },
+  { district: "East Khasi Hills", state: "Meghalaya", status: "WATCH", primaryHighway: "NH-6 Shillong Corridor", incidentCount: 1, delayAvgMinutes: 35, hubId: "shillong" },
+  { district: "Kohima & Dimapur", state: "Nagaland", status: "RESTRICTED", primaryHighway: "NH-29 Lifeline", incidentCount: 3, delayAvgMinutes: 210, hubId: "kohima" },
+  { district: "Imphal West", state: "Manipur", status: "WATCH", primaryHighway: "NH-2 / NH-37", incidentCount: 1, delayAvgMinutes: 50, hubId: "imphal" },
+  { district: "Aizawl & Kolasib", state: "Mizoram", status: "WATCH", primaryHighway: "NH-306", incidentCount: 1, delayAvgMinutes: 65, hubId: "aizawl" },
+  { district: "West Tripura", state: "Tripura", status: "NORMAL", primaryHighway: "NH-8", incidentCount: 0, delayAvgMinutes: 10, hubId: "agartala" },
+  { district: "East Sikkim", state: "Sikkim", status: "RESTRICTED", primaryHighway: "NH-10 Teesta Corridor", incidentCount: 2, delayAvgMinutes: 180, hubId: "gangtok" },
+];
+
+export type SupportedLanguage = "en" | "hi" | "as" | "bn";
+
+export const UI_TRANSLATIONS: Record<SupportedLanguage, {
+  tagline: string;
+  heroBadge: string;
+  plannerTitle: string;
+  cargoTitle: string;
+  vehicleTitle: string;
+  safeRoute: string;
+  fastestRoute: string;
+  whyRoute: string;
+  reportIncident: string;
+  districtMatrix: string;
+  earlyAlerts: string;
+  offlineReady: string;
+}> = {
+  en: {
+    tagline: "Explainable Logistics Routing for Northeast India",
+    heroBadge: "AI-Powered Regional Logistics Intelligence",
+    plannerTitle: "Northeast Multi-Modal Route Dispatch",
+    cargoTitle: "Essential Commodity Cargo Priority",
+    vehicleTitle: "Vehicle Dispatch Profile",
+    safeRoute: "Safe Risk-Aware Route",
+    fastestRoute: "Fastest Direct Corridor",
+    whyRoute: "Why this route was selected",
+    reportIncident: "Report Road Incident / Hazard",
+    districtMatrix: "District Connectivity Status",
+    earlyAlerts: "NER Early-Warning Disruption Feed",
+    offlineReady: "Offline Resilient Network",
+  },
+  hi: {
+    tagline: "पूर्वोत्तर भारत के लिए व्याख्यात्मक लॉजिस्टिक्स रूटिंग",
+    heroBadge: "एआई-संचालित क्षेत्रीय लॉजिस्टिक्स इंटेलिजेंस",
+    plannerTitle: "पूर्वोत्तर मल्टी-मॉडल रूट डिस्पैच",
+    cargoTitle: "आवश्यक वस्तु कार्गो प्राथमिकता",
+    vehicleTitle: "वाहन प्रेषण प्रोफ़ाइल",
+    safeRoute: "सुरक्षित जोखिम-जागरूक मार्ग",
+    fastestRoute: "सबसे तेज़ सीधा गलियारा",
+    whyRoute: "यह मार्ग क्यों चुना गया",
+    reportIncident: "सड़क दुर्घटना / भूस्खलन की रिपोर्ट करें",
+    districtMatrix: "जिला-वार कनेक्टिविटी स्थिति",
+    earlyAlerts: "पूर्वोत्तर पूर्व-चेतावनी व्यवधान फ़ीड",
+    offlineReady: "ऑफ़लाइन सुरक्षित नेटवर्क",
+  },
+  as: {
+    tagline: "উত্তৰ-পূব ভাৰতৰ বাবে ব্যাখ্যাযোগ্য লজিষ্টিক ৰুটিং ব্যৱস্থা",
+    heroBadge: "কৃটিম বুদ্ধিমত্তা চালিত আঞ্চলিক লজিষ্টিক বুদ্ধিমত্তা",
+    plannerTitle: "উত্তৰ-পূব মাল্টি-মডেল পথ পৰিকল্পনা",
+    cargoTitle: "অত্যাৱশ্যকীয় সামগ্ৰীৰ অগ্ৰাধিকাৰ",
+    vehicleTitle: "যান-বাহন প্রেৰণ প্ৰ’ফাইল",
+    safeRoute: "সুৰক্ষিত বিপদ-সচেতন পথ",
+    fastestRoute: "দ্ৰুততম পোনপটীয়া পথ",
+    whyRoute: "এই পথটো কিয় নিৰ্বাচন কৰা হ'ল",
+    reportIncident: "পথ অৱৰোধ / ভূমিস্খলন ৰিপৰ্ট কৰক",
+    districtMatrix: "জিলা-ভিত্তিক সংযোগ স্থিতি",
+    earlyAlerts: "উত্তৰ-পূব আগতীয়া সতৰ্কবাৰ্তা ফীড",
+    offlineReady: "অফলাইন সুৰক্ষিত নেটৱৰ্ক",
+  },
+  bn: {
+    tagline: "উত্তর-পূর্ব ভারতের জন্য ব্যাখ্যামূলক লজিস্টিক রাউটিং",
+    heroBadge: "এআই-চালিত আঞ্চলিক লজিস্টিক ইন্টেলিজেন্স",
+    plannerTitle: "উত্তর-পূর্ব মাল্টি-মোডাল রুট ডিসপ্যাচ",
+    cargoTitle: "প্রয়োজনীয় পণ্য কার্গো অগ্রাধিকার",
+    vehicleTitle: "যানবাহন ডিসপ্যাচ প্রোফাইল",
+    safeRoute: "নিরাপদ ঝুঁকি-সচেতন রুট",
+    fastestRoute: "দ্রুততম সরাসরি করিডোর",
+    whyRoute: "এই রুটটি কেন নির্বাচিত হলো",
+    reportIncident: "সড়ক দুর্ঘটনা / ধসের রিপোর্ট করুন",
+    districtMatrix: "জেলা-ভিত্তিক সংযোগ অবস্থা",
+    earlyAlerts: "উত্তর-পূর্ব প্রাথমিক সতর্কতা ফিড",
+    offlineReady: "অফলাইন নির্ভরযোগ্য নেটওয়ার্ক",
+  },
+};
