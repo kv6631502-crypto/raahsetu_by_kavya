@@ -25,6 +25,154 @@ export interface RouteStats {
   edges: Edge[];
 }
 
+export type VehicleType = "heavy" | "standard" | "light";
+
+export interface VehicleProfile {
+  id: VehicleType;
+  name: string;
+  badge: string;
+  speedMult: number;
+  riskPenalty: number;
+  description: string;
+}
+
+export const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
+  heavy: {
+    id: "heavy",
+    name: "Heavy Freight (28T)",
+    badge: "28T Multi-Axle",
+    speedMult: 0.85,
+    riskPenalty: 0.12,
+    description: "Multi-axle heavy transport. High caution on hairpin bends, steep ghats, and bridges.",
+  },
+  standard: {
+    id: "standard",
+    name: "Commercial Truck (16T)",
+    badge: "16T Cargo",
+    speedMult: 1.0,
+    riskPenalty: 0.0,
+    description: "Standard logistics carrier. Balanced hill speed and highway cruising efficiency.",
+  },
+  light: {
+    id: "light",
+    name: "Light 4x4 / Emergency",
+    badge: "4x4 Utility",
+    speedMult: 1.15,
+    riskPenalty: -0.08,
+    description: "Light cargo or emergency dispatch vehicle. Highly agile on unpaved hill tracks.",
+  },
+};
+
+export type WeatherCondition = "clear" | "monsoon" | "snow";
+
+export interface WeatherProfile {
+  id: WeatherCondition;
+  name: string;
+  badge: string;
+  speedMult: number;
+  riskMult: number;
+  description: string;
+}
+
+export const WEATHER_PROFILES: Record<WeatherCondition, WeatherProfile> = {
+  clear: {
+    id: "clear",
+    name: "Clear / Dry",
+    badge: "Optimal",
+    speedMult: 1.0,
+    riskMult: 1.0,
+    description: "Fair weather conditions with nominal transit speeds and baseline road safety.",
+  },
+  monsoon: {
+    id: "monsoon",
+    name: "Monsoon Downpour",
+    badge: "High Hazard",
+    speedMult: 0.8,
+    riskMult: 1.35,
+    description: "Active monsoon rainfall. Heightened landslide susceptibility and river overflow risk.",
+  },
+  snow: {
+    id: "snow",
+    name: "Winter Freeze",
+    badge: "Ice Warning",
+    speedMult: 0.65,
+    riskMult: 1.6,
+    description: "Sub-zero conditions on high-altitude passes with black ice and snowfall slowdowns.",
+  },
+};
+
+export interface StrategicCorridor {
+  id: string;
+  title: string;
+  origin: string;
+  destination: string;
+  tag: string;
+  description: string;
+}
+
+export const STRATEGIC_CORRIDORS: StrategicCorridor[] = [
+  {
+    id: "corridor-tawang",
+    title: "Guwahati ➔ Tawang",
+    origin: "guwahati",
+    destination: "tawang",
+    tag: "Defense & Border Lifeline",
+    description: "Climbs Bomdila & Sela Pass (13,700 ft) into western Arunachal frontier.",
+  },
+  {
+    id: "corridor-silchar",
+    title: "Shillong ➔ Silchar",
+    origin: "shillong",
+    destination: "silchar",
+    tag: "NH-6 Hill Lifeline",
+    description: "Vital freight corridor via Jowai & Sonapur tunnel to southern Assam.",
+  },
+  {
+    id: "corridor-imphal",
+    title: "Dimapur ➔ Imphal",
+    origin: "dimapur",
+    destination: "imphal",
+    tag: "NH-2 Mountain Ridge",
+    description: "Crucial interstate transit link through Kohima, Senapati & Kangpokpi.",
+  },
+  {
+    id: "corridor-agartala",
+    title: "Silchar ➔ Agartala",
+    origin: "silchar",
+    destination: "agartala",
+    tag: "Tripura Highway",
+    description: "Connects Barak Valley to Agartala via Dharmanagar & Ambassa passes.",
+  },
+  {
+    id: "corridor-sikkim",
+    title: "Gangtok ➔ Chungthang",
+    origin: "gangtok",
+    destination: "chungthang",
+    tag: "North Sikkim Frontier",
+    description: "Teesta river gorge route traversing Mangan to northern valleys.",
+  },
+  {
+    id: "corridor-moreh",
+    title: "Guwahati ➔ Moreh",
+    origin: "guwahati",
+    destination: "moreh",
+    tag: "Trans-Asian Trade",
+    description: "Full trans-regional trunk line through Assam, Nagaland & Manipur border.",
+  },
+];
+
+export interface RouteLeg {
+  fromId: string;
+  toId: string;
+  fromCity: City;
+  toCity: City;
+  dist: number;
+  hours: number;
+  risk: number;
+  note?: string;
+  terrainType: "Plains" | "Foothills" | "High Mountain Pass";
+}
+
 export const CITIES: City[] = [
   // --- Sikkim (8) ---
   { id: "gangtok", name: "Gangtok", state: "Sikkim", lat: 27.3389, lon: 88.6065, x: 152, y: 143, tier: "major" },
@@ -372,8 +520,37 @@ for (const edge of EDGES) {
   ADJACENCY[edge.b].push(edge);
 }
 
-export function speed(risk: number): number {
-  return 55 - 12 * risk;
+export function speed(
+  baseRisk: number,
+  vehicle: VehicleType = "standard",
+  weather: WeatherCondition = "clear"
+): number {
+  const vProfile = VEHICLE_PROFILES[vehicle];
+  const wProfile = WEATHER_PROFILES[weather];
+  const adjustedRisk = Math.min(0.98, Math.max(0.05, baseRisk * wProfile.riskMult + vProfile.riskPenalty));
+  const baseSpd = 55 - 14 * adjustedRisk;
+  return Math.max(18, baseSpd * vProfile.speedMult * wProfile.speedMult);
+}
+
+export function getAdjustedEdgeRisk(
+  edge: Edge,
+  vehicle: VehicleType = "standard",
+  weather: WeatherCondition = "clear"
+): number {
+  const vProfile = VEHICLE_PROFILES[vehicle];
+  const wProfile = WEATHER_PROFILES[weather];
+  let mult = wProfile.riskMult;
+
+  // Extra weather penalties on mountain passes
+  if (weather === "snow" && edge.note && (edge.note.includes("Sela Pass") || edge.note.includes("mountain"))) {
+    mult *= 1.4;
+  }
+  if (weather === "monsoon" && edge.note && (edge.note.includes("landslide") || edge.note.includes("slips") || edge.note.includes("gorge"))) {
+    mult *= 1.25;
+  }
+
+  const r = edge.risk * mult + vProfile.riskPenalty;
+  return Math.min(0.99, Math.max(0.05, r));
 }
 
 export function haversineDistanceKm(
@@ -469,7 +646,11 @@ export function solvePath(
   return path[0] === start ? path : null;
 }
 
-export function computeStats(path: string[]): RouteStats {
+export function computeStats(
+  path: string[],
+  vehicle: VehicleType = "standard",
+  weather: WeatherCondition = "clear"
+): RouteStats {
   let distance = 0;
   let hours = 0;
   let weightedRisk = 0;
@@ -483,12 +664,60 @@ export function computeStats(path: string[]): RouteStats {
     )!;
     edges.push(edge);
     distance += edge.dist;
-    hours += edge.dist / speed(edge.risk);
-    weightedRisk += edge.risk * edge.dist;
+    const effRisk = getAdjustedEdgeRisk(edge, vehicle, weather);
+    const effSpeed = speed(edge.risk, vehicle, weather);
+    hours += edge.dist / effSpeed;
+    weightedRisk += effRisk * edge.dist;
   }
 
   const riskIndex = distance ? Math.round((weightedRisk / distance) * 100) : 0;
   return { path, distance, hours, riskIndex, edges };
+}
+
+export function getRouteLegs(
+  path: string[],
+  vehicle: VehicleType = "standard",
+  weather: WeatherCondition = "clear"
+): RouteLeg[] {
+  const legs: RouteLeg[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const fromCity = CITY_MAP[a];
+    const toCity = CITY_MAP[b];
+    const edge = EDGES.find(
+      (e) => (e.a === a && e.b === b) || (e.a === b && e.b === a)
+    )!;
+    const effRisk = getAdjustedEdgeRisk(edge, vehicle, weather);
+    const effSpeed = speed(edge.risk, vehicle, weather);
+    const legHours = edge.dist / effSpeed;
+
+    let terrainType: "Plains" | "Foothills" | "High Mountain Pass" = "Plains";
+    if (edge.note && (edge.note.includes("Pass") || edge.note.includes("high mountain") || edge.note.includes("13,700"))) {
+      terrainType = "High Mountain Pass";
+    } else if (
+      edge.risk > 0.4 ||
+      fromCity.state !== "Assam" ||
+      toCity.state !== "Assam" ||
+      fromCity.id === "haflong" ||
+      toCity.id === "haflong"
+    ) {
+      terrainType = "Foothills";
+    }
+
+    legs.push({
+      fromId: a,
+      toId: b,
+      fromCity,
+      toCity,
+      dist: edge.dist,
+      hours: legHours,
+      risk: Math.round(effRisk * 100),
+      note: edge.note,
+      terrainType,
+    });
+  }
+  return legs;
 }
 
 export function formatHours(hours: number): string {

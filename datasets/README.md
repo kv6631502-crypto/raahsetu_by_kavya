@@ -1,6 +1,6 @@
 # Local data status
 
-Audited: 2026-09-08T14:30:08.209900+00:00
+Audited: 2026-09-08T15:29:48.675468+00:00
 
 - 8 state road extracts with referenced OSM nodes.
 - 273,497 road ways across extracts, including boundary overlap.
