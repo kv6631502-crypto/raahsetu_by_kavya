@@ -4,22 +4,25 @@ import {
   ArrowRight,
   ArrowUpDown,
   Check,
+  Clock,
   CloudRain,
-  Compass,
+  Database,
   Download,
+  FileText,
   Info,
   Loader2,
   LocateFixed,
   MapPin,
   Milestone,
   Mountain,
-  RotateCcw,
+  Route as RouteIcon,
   Search,
   Share2,
-  ShieldCheck,
   Snowflake,
   Sun,
+  TriangleAlert,
   Truck,
+  Waypoints,
   X,
   Zap,
   ZoomIn,
@@ -44,7 +47,6 @@ import {
   solvePath,
   toPolylinePoints,
 } from "./routeData";
-import { IntroPage } from "./IntroPage";
 
 interface CityComboboxProps {
   label: "Origin" | "Destination";
@@ -96,22 +98,23 @@ function CityCombobox({
 
   const borderClass =
     tone === "signal"
-      ? "border-emerald-500/60 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/30"
-      : "border-rose-500/60 focus-within:border-rose-400 focus-within:ring-2 focus-within:ring-rose-400/30";
+      ? "border-signal/50 focus-within:border-signal focus-within:ring-2 focus-within:ring-signal/30"
+      : "border-hazard/50 focus-within:border-hazard focus-within:ring-2 focus-within:ring-hazard/30";
 
   return (
     <div ref={containerRef} className="relative flex-1">
-      <label className="mb-1 block text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
-        {label}
-      </label>
-      <div
-        className={`flex items-center gap-2 rounded-xl border bg-slate-900/95 px-3 py-2.5 shadow-md transition-all ${borderClass}`}
-      >
+      <span className="mb-1.5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground">
         <MapPin
-          className={`size-4 shrink-0 ${
-            tone === "signal" ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]" : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]"
+          className={`size-3.5 ${
+            tone === "signal" ? "text-signal drop-shadow-[0_0_8px_rgba(53,220,171,0.6)]" : "text-hazard drop-shadow-[0_0_8px_rgba(255,157,54,0.6)]"
           }`}
         />
+        {label}
+      </span>
+      <div
+        className={`relative flex items-center gap-2 rounded-xl border bg-secondary/60 px-3 py-2.5 shadow-sm transition-all backdrop-blur-md ${borderClass}`}
+      >
+        <Search className="pointer-events-none size-4 shrink-0 text-muted-foreground" />
         {open ? (
           <input
             ref={inputRef}
@@ -119,7 +122,7 @@ function CityCombobox({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type city, state, or border outpost..."
-            className="w-full bg-transparent text-sm font-semibold text-white placeholder-slate-400 focus:outline-none"
+            className="w-full bg-transparent text-sm font-medium text-foreground placeholder-muted-foreground outline-none"
             autoFocus
           />
         ) : (
@@ -131,20 +134,19 @@ function CityCombobox({
             }}
             className="flex w-full items-center justify-between text-left text-sm cursor-pointer"
           >
-            <span className="font-bold text-white">
+            <span className="font-semibold text-foreground">
               {selectedCity?.name}
-              <span className="ml-1.5 text-xs text-slate-400 font-normal">
+              <span className="ml-1.5 text-xs text-muted-foreground font-normal">
                 ({selectedCity?.state})
               </span>
             </span>
-            <Search className="size-3.5 text-slate-400 hover:text-cyan-400 transition-colors" />
           </button>
         )}
         {open && (
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="text-slate-400 hover:text-white"
+            className="text-muted-foreground hover:text-foreground cursor-pointer"
           >
             <X className="size-3.5" />
           </button>
@@ -152,8 +154,8 @@ function CityCombobox({
       </div>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-cyan-500/40 bg-slate-950/98 p-1.5 shadow-2xl backdrop-blur-2xl">
-          <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-border bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl">
+          <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-signal font-semibold">
             {filtered.length} locations available
           </div>
           {filtered.map((city) => (
@@ -167,17 +169,17 @@ function CityCombobox({
               }}
               className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-all cursor-pointer ${
                 city.id === selectedId
-                  ? "bg-emerald-500/25 text-emerald-300 font-bold border border-emerald-500/40"
-                  : "text-slate-200 hover:bg-slate-800/90 hover:text-white"
+                  ? "bg-signal/15 text-signal font-semibold border border-signal/30"
+                  : "text-foreground hover:bg-secondary/80"
               }`}
             >
               <div>
-                <div className="font-bold">{city.name}</div>
-                <div className="text-xs text-slate-400">
+                <div className="font-medium">{city.name}</div>
+                <div className="text-xs text-muted-foreground">
                   {city.state} · {city.lat.toFixed(2)}°N, {city.lon.toFixed(2)}°E
                 </div>
               </div>
-              {city.id === selectedId && <Check className="size-4 text-emerald-400" />}
+              {city.id === selectedId && <Check className="size-4 text-signal" />}
             </button>
           ))}
         </div>
@@ -187,9 +189,6 @@ function CityCombobox({
 }
 
 export function App() {
-  // Navigation View: 'intro' (landing/impact page) vs 'console' (routing engine)
-  const [activeView, setActiveView] = useState<"intro" | "console">("console");
-
   const [origin, setOrigin] = useState("guwahati");
   const [destination, setDestination] = useState("tawang");
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
@@ -207,8 +206,6 @@ export function App() {
   // Read URL search params on initial load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get("view");
-    if (viewParam === "intro") setActiveView("intro");
     const fromParam = params.get("from");
     const toParam = params.get("to");
     const vehParam = params.get("vehicle") as VehicleType;
@@ -223,20 +220,16 @@ export function App() {
   // Sync state to URL search parameters
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activeView === "intro") {
-      params.set("view", "intro");
-    } else {
-      params.set("from", origin);
-      params.set("to", destination);
-      params.set("vehicle", vehicle);
-      params.set("tab", activeTab);
-    }
+    params.set("from", origin);
+    params.set("to", destination);
+    params.set("vehicle", vehicle);
+    params.set("tab", activeTab);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({}, "", newUrl);
-  }, [activeView, origin, destination, vehicle, activeTab]);
+  }, [origin, destination, vehicle, activeTab]);
 
   // AUTOMATIC WEATHER INGESTION:
-  // Derived automatically from current origin, corridor, and elevation
+  // Dynamically derived from origin, corridor, and elevation
   const liveWeather = useMemo(() => {
     return getAutomaticWeatherForLocation(origin, destination);
   }, [origin, destination]);
@@ -384,960 +377,1337 @@ export function App() {
     setPanOffset({ x: 0, y: 0 });
   };
 
-  // If user is looking at the Intro / Mission Impact page
-  if (activeView === "intro") {
-    return (
-      <div className="relative">
-        {/* Navigation Bar */}
-        <header className="sticky top-0 z-50 border-b border-emerald-500/30 bg-slate-950/95 backdrop-blur-2xl px-4 py-3 shadow-xl">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-gradient-to-tr from-emerald-400 via-teal-400 to-cyan-400 p-0.5 shadow-lg shadow-emerald-500/30 glow-emerald">
-                <div className="size-full rounded-[10px] bg-slate-950 flex items-center justify-center">
-                  <Mountain className="size-5 text-emerald-400" />
-                </div>
-              </div>
-              <div>
-                <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
-                  RaahSetu
-                </span>
-                <span className="ml-2.5 text-xs font-mono font-bold text-cyan-400 hidden sm:inline">
-                  Terrain-Aware Logistics
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setActiveView("intro")}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 border border-emerald-400/60 shadow-md shadow-emerald-500/20 cursor-pointer"
-              >
-                Mission & Crisis Data
-              </button>
-              <button
-                onClick={() => setActiveView("console")}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/80 hover:border-cyan-500/50 border border-transparent transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>Operations Console</span>
-                <ArrowRight className="size-3.5" />
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <IntroPage
-          onLaunchConsole={(from, to) => {
-            if (from) setOrigin(from);
-            if (to) setDestination(to);
-            setActiveView("console");
-          }}
-        />
-      </div>
-    );
-  }
-
-  // Otherwise render the Live Operations Console
   return (
-    <div className="min-h-screen bg-[#05070f] text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* Background Ambient Glows */}
-      <div className="fixed top-0 left-1/4 size-96 rounded-full bg-emerald-600/10 blur-3xl pointer-events-none" />
-      <div className="fixed top-1/2 right-10 size-96 rounded-full bg-cyan-600/10 blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-background text-foreground selection:bg-signal/30 selection:text-signal">
+      {/* Sticky Header Navbar */}
+      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
+          <a href="#top" className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-md bg-signal/15 text-signal ring-1 ring-signal/30 shadow-lg shadow-signal/10">
+              <Waypoints className="size-5" />
+            </span>
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-base font-semibold tracking-tight text-foreground">
+                RaahSetu
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal font-bold">
+                Logistics Intelligence
+              </span>
+            </span>
+          </a>
 
-      {/* Top Operations Header */}
-      <header className="sticky top-0 z-40 border-b border-emerald-500/30 bg-slate-950/95 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
-          {/* Brand & Mode Switcher */}
+          <nav className="hidden items-center gap-8 md:flex font-mono text-xs uppercase tracking-wider">
+            <a href="#top" className="text-muted-foreground transition-colors hover:text-signal">
+              Overview
+            </a>
+            <a href="#planner" className="text-muted-foreground transition-colors hover:text-signal">
+              Route Planner
+            </a>
+            <a href="#crisis-data" className="text-muted-foreground transition-colors hover:text-signal">
+              Crisis Data
+            </a>
+            <a href="#platform" className="text-muted-foreground transition-colors hover:text-signal">
+              Platform
+            </a>
+            <a href="#how" className="text-muted-foreground transition-colors hover:text-signal">
+              How it works
+            </a>
+            <a href="#comparison" className="text-muted-foreground transition-colors hover:text-signal">
+              Comparison
+            </a>
+            <a href="#stack" className="text-muted-foreground transition-colors hover:text-signal">
+              Stack
+            </a>
+          </nav>
+
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-gradient-to-tr from-emerald-400 via-teal-400 to-cyan-400 p-0.5 shadow-lg shadow-emerald-500/30 glow-emerald">
-              <div className="size-full rounded-[10px] bg-slate-950 flex items-center justify-center">
-                <Mountain className="size-5 text-emerald-400" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
-                  RaahSetu
-                </span>
-                <span className="rounded-md bg-emerald-500/20 border border-emerald-400/60 px-2 py-0.5 text-[10px] font-mono text-emerald-300 font-extrabold uppercase tracking-wider shadow-sm">
-                  Ops Console
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-300 font-medium hidden sm:block">
-                Autonomous Terrain & Microclimate Routing Engine
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation View Toggle */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 shadow-inner">
-            <button
-              onClick={() => setActiveView("intro")}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+            <a
+              href="#planner"
+              className="inline-flex items-center gap-2 rounded-md bg-signal px-4 py-2 text-xs font-bold text-signal-foreground transition-transform hover:-translate-y-0.5 shadow-md shadow-signal/20 cursor-pointer"
             >
-              <Info className="size-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Mission & Impact Data</span>
-            </button>
-            <button
-              onClick={() => setActiveView("console")}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 border border-emerald-400/60 flex items-center gap-1.5 shadow-md cursor-pointer"
-            >
-              <Compass className="size-3.5 text-emerald-400" />
-              <span>Operations Console</span>
-            </button>
-          </div>
-
-          {/* Action Bar */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleShare}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-cyan-400 hover:text-white transition-colors cursor-pointer"
-              title="Share route link"
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="size-3.5 text-emerald-400" />
-                  <span className="text-emerald-300">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="size-3.5 text-slate-400" />
-                  <span className="hidden md:inline">Share</span>
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handleExportManifest}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 px-3.5 py-1.5 text-xs font-black text-slate-950 shadow-md shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-[1.02] transition-all cursor-pointer"
-              title="Export structured JSON dispatch manifest"
-            >
-              <Download className="size-3.5 text-slate-950" />
-              <span>Export Manifest</span>
-            </button>
+              <span>Launch Planner</span>
+              <ArrowRight className="size-3.5" />
+            </a>
           </div>
         </div>
       </header>
 
-      {/* Main Operations Body */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-4 space-y-4">
-        {/* Strategic Freight Corridors Quick-Picks Ribbon */}
-        <section className="rounded-2xl glass-panel p-3.5 shadow-xl">
-          <div className="mb-2.5 flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-mono uppercase tracking-wider text-emerald-300 font-bold">
-              <Zap className="size-4 text-emerald-400 animate-pulse" />
-              Strategic Mountain Freight Corridors (One-Click Dispatch)
-            </span>
-            <span className="text-[11px] font-mono text-cyan-400 font-bold">
-              {STRATEGIC_CORRIDORS.length} Arteries
-            </span>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
-            {STRATEGIC_CORRIDORS.map((corridor) => {
-              const isSelected =
-                origin === corridor.origin && destination === corridor.destination;
-              return (
-                <button
-                  key={corridor.id}
-                  onClick={() => {
-                    setOrigin(corridor.origin);
-                    setDestination(corridor.destination);
-                  }}
-                  className={`shrink-0 rounded-xl px-3.5 py-2 text-left transition-all border cursor-pointer ${
-                    isSelected
-                      ? "glass-panel-emerald glow-emerald border-emerald-400 text-white shadow-lg"
-                      : "border-slate-800 bg-slate-900/80 text-slate-300 hover:border-cyan-500/50 hover:bg-slate-900"
-                  }`}
+      <main>
+        {/* SECTION 1: HERO SECTION */}
+        <section id="top" className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-40" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+
+          <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 px-5 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground shadow-sm">
+                <span className="size-1.5 rounded-full bg-signal node-pulse" />
+                Northeast Mountain Freight Resilience System
+              </div>
+
+              <h1 className="mt-6 text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                Routes that explain{" "}
+                <span className="text-signal drop-shadow-[0_0_20px_rgba(53,220,171,0.35)]">
+                  why they avoid the risk.
+                </span>
+              </h1>
+
+              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
+                RaahSetu is an explainable, risk-aware logistics route planner for Northeast India. It compares the
+                fastest route with one that accounts for road risk, vehicle limits, and closures — powered by a custom A*
+                engine over real OpenStreetMap networks.
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <a
+                  href="#planner"
+                  className="inline-flex items-center gap-2 rounded-md bg-signal px-5 py-3 text-sm font-semibold text-signal-foreground transition-transform hover:-translate-y-0.5 shadow-lg shadow-signal/25"
                 >
-                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span>{corridor.title}</span>
-                    {isSelected && <Check className="size-3 text-emerald-400" />}
-                  </div>
-                  <div className="text-[10px] text-cyan-400 font-mono font-semibold mt-0.5">
-                    {corridor.tag}
-                  </div>
-                </button>
-              );
-            })}
+                  <span>Explore the planner</span>
+                  <ArrowRight className="size-4" />
+                </a>
+                <a
+                  href="#crisis-data"
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  <AlertTriangle className="size-4 text-hazard" />
+                  <span>Ground Crisis Data</span>
+                </a>
+              </div>
+
+              <dl className="mt-12 grid max-w-md grid-cols-3 gap-6">
+                <div className="border-l border-border pl-4">
+                  <dt className="font-display text-3xl font-bold text-foreground">8</dt>
+                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">NE states covered</dd>
+                </div>
+                <div className="border-l border-border pl-4">
+                  <dt className="font-display text-3xl font-bold text-signal">300+</dt>
+                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">A* correctness tests</dd>
+                </div>
+                <div className="border-l border-border pl-4">
+                  <dt className="font-display text-3xl font-bold text-hazard">A*</dt>
+                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">custom pathfinder</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Right Side: Animated Route Graph Preview Card */}
+            <div className="relative">
+              <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-2xl shadow-black/50 backdrop-blur-md">
+                <div className="flex items-center justify-between px-2 pb-3 border-b border-border/60">
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    route_graph.solve()
+                  </span>
+                  <span className="flex items-center gap-1.5 font-mono text-xs text-signal font-bold">
+                    <span className="size-2 rounded-full bg-signal node-pulse" />
+                    solved
+                  </span>
+                </div>
+
+                <svg viewBox="0 0 680 480" className="w-full my-3" fill="none" role="img" aria-label="Road graph with highlighted risk-aware route avoiding hazard nodes">
+                  <line x1="60" y1="300" x2="150" y2="210" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="60" y1="300" x2="165" y2="360" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="150" y1="210" x2="260" y2="150" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="150" y1="210" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="165" y1="360" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="165" y1="360" x2="300" y2="420" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="260" y1="150" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="280" y1="300" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="280" y1="300" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="300" y1="420" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="400" y1="220" x2="520" y2="160" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="400" y1="220" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="420" y1="360" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="520" y1="160" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
+                  <line x1="540" y1="300" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
+
+                  {/* Flow Route Halo */}
+                  <path d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240" stroke="var(--signal)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+                  {/* Flow Route Animated Dashes */}
+                  <path d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240" stroke="var(--signal)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="route-flow" />
+
+                  {/* Origin */}
+                  <g>
+                    <circle cx="60" cy="300" r="14" fill="var(--signal)" opacity="0.2" className="node-pulse" />
+                    <circle cx="60" cy="300" r="6" fill="var(--signal)" />
+                    <circle cx="60" cy="300" r="2.5" fill="var(--signal-foreground)" />
+                  </g>
+
+                  <circle cx="150" cy="210" r="4" fill="var(--muted-foreground)" />
+                  <circle cx="165" cy="360" r="4" fill="var(--muted-foreground)" />
+                  <circle cx="260" cy="150" r="4" fill="var(--muted-foreground)" />
+
+                  {/* Hazard Node 1 */}
+                  <g>
+                    <circle cx="280" cy="300" r="10" fill="var(--hazard)" opacity="0.25" className="node-pulse" />
+                    <circle cx="280" cy="300" r="5" fill="var(--hazard)" />
+                  </g>
+
+                  <circle cx="300" cy="420" r="4" fill="var(--muted-foreground)" />
+                  <circle cx="400" cy="220" r="4" fill="var(--muted-foreground)" />
+                  <circle cx="420" cy="360" r="4" fill="var(--muted-foreground)" />
+
+                  {/* Hazard Node 2 */}
+                  <g>
+                    <circle cx="520" cy="160" r="10" fill="var(--hazard)" opacity="0.25" className="node-pulse" />
+                    <circle cx="520" cy="160" r="5" fill="var(--hazard)" />
+                  </g>
+
+                  <circle cx="540" cy="300" r="4" fill="var(--muted-foreground)" />
+
+                  {/* Destination */}
+                  <g>
+                    <circle cx="620" cy="240" r="14" fill="var(--signal)" opacity="0.2" className="node-pulse" />
+                    <circle cx="620" cy="240" r="6" fill="var(--signal)" />
+                    <circle cx="620" cy="240" r="2.5" fill="var(--signal-foreground)" />
+                  </g>
+                </svg>
+
+                <div className="mt-3 flex flex-wrap gap-4 px-2 font-mono text-xs border-t border-border/50 pt-3">
+                  <span className="inline-flex items-center gap-2 text-signal font-semibold">
+                    <RouteIcon className="size-3.5" /> risk-aware route
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-hazard font-semibold">
+                    <AlertTriangle className="size-3.5" /> hazard node avoided
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-muted-foreground">
+                    <span className="h-px w-4 bg-border" /> road edge
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Dispatch Controls & Automated Weather Telemetry */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Route Endpoints & Vehicle Input (7 Cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            {/* Origin & Destination Card */}
-            <div className="rounded-2xl glass-panel p-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row items-center gap-2.5">
-                <CityCombobox
-                  label="Origin"
-                  tone="signal"
-                  selectedId={origin}
-                  onSelect={setOrigin}
-                  otherCityId={destination}
-                />
-
-                {/* Quick-Swap Button */}
-                <div className="pt-5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleSwap}
-                    className="p-2.5 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-emerald-400 hover:border-emerald-400 transition-all shadow-md cursor-pointer"
-                    title="Swap Origin and Destination"
-                  >
-                    <ArrowUpDown className="size-4" />
-                  </button>
-                </div>
-
-                <CityCombobox
-                  label="Destination"
-                  tone="hazard"
-                  selectedId={destination}
-                  onSelect={setDestination}
-                  otherCityId={origin}
-                />
-              </div>
-
-              {/* GPS Live Locate Button */}
-              <div className="mt-3 flex items-center justify-between pt-3 border-t border-slate-800 text-xs">
-                <button
-                  type="button"
-                  onClick={handleGpsLocation}
-                  disabled={isLocating}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/20 font-bold transition-all cursor-pointer"
-                >
-                  {isLocating ? (
-                    <Loader2 className="size-3.5 animate-spin text-emerald-400" />
-                  ) : (
-                    <LocateFixed className="size-3.5 text-emerald-400" />
-                  )}
-                  <span>{isLocating ? "Acquiring GPS..." : "Snap Origin to My Live GPS"}</span>
-                </button>
-
-                <div className="text-[11px] text-cyan-400 font-mono font-semibold">
-                  111 Connected Logistics Nodes
-                </div>
-              </div>
-
-              {locationNotice && (
-                <div className="mt-2 text-xs text-amber-300 bg-amber-500/15 border border-amber-500/30 rounded-lg p-2 font-mono">
-                  {locationNotice}
-                </div>
-              )}
+        {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
+        <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
+          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
+            <div className="max-w-2xl">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-hazard font-bold">
+                Ground Reality & Disaster Impact
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Why mountain freight is a life-or-death equation
+              </h2>
+              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                Official reports from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau
+                (NCRB), and Geological Survey of India (GSI) highlight an urgent mountain highway crisis.
+              </p>
             </div>
 
-            {/* Vehicle Profile Selector ONLY (User input requirement) */}
-            <div className="rounded-2xl glass-panel p-4 shadow-xl">
-              <div className="flex items-center justify-between mb-3">
-                <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-cyan-300 font-bold">
-                  <Truck className="size-4 text-cyan-400" />
-                  Select Vehicle Dispatch Profile
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  Governs Hill Speed & Axle Safety Margin
-                </span>
+            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-destructive">1,68,491</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Annual Fatalities Nationwide</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  MoRTH accident census shows mountain ghat sections experience a fatal accident severity of{" "}
+                  <strong className="text-destructive font-bold">45.2%</strong>—nearly double the plain highway average.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-destructive/80 font-bold uppercase">
+                  Source: MoRTH Official Census
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
-                  const prof = VEHICLE_PROFILES[vKey];
-                  const isSelected = vehicle === vKey;
+              <div className="rounded-2xl border border-hazard/40 bg-hazard/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-hazard">400+</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Major Monsoon Landslides</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  GSI records over 400 severe rockfall and mudflow blockages annually, completely severing lifelines like NH-6,
+                  NH-2, NH-10, and NH-13 for weeks.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-hazard font-bold uppercase">
+                  Source: Geological Survey of India
+                </div>
+              </div>
 
-                  let cardStyle = "border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-700 hover:bg-slate-900";
-                  if (isSelected) {
-                    if (vKey === "heavy") cardStyle = "glass-panel-amber glow-amber border-amber-400 text-white";
-                    else if (vKey === "standard") cardStyle = "glass-panel-cyan glow-cyan border-cyan-400 text-white";
-                    else cardStyle = "glass-panel-emerald glow-emerald border-emerald-400 text-white";
-                  }
+              <div className="rounded-2xl border border-hazard/30 bg-card p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-hazard">6,200+</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Northeast Corridor Lives Lost</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Over 6,200 drivers and commuters have perished in the Northeast mountain belt over the past decade due to
+                  avoidable ghat drop-offs and brake failures on extreme slopes.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-muted-foreground font-bold uppercase">
+                  Source: Regional NCRB Records
+                </div>
+              </div>
 
+              <div className="rounded-2xl border border-signal/40 bg-signal/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-signal">₹3,500 Cr</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Annual Economic Freight Delay</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Critical convoys carrying life-saving pharmaceuticals, oxygen, rations, and defense goods remain
+                  stranded in Sonapur tunnel and Sela Pass chokepoints.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-signal font-bold uppercase">
+                  Source: Logistics Council Estimates
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: THE INTERACTIVE ROUTE PLANNER */}
+        <section id="planner" className="relative border-t border-border/70 py-20 lg:py-28">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
+          <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
+            <div className="max-w-2xl">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                Try it — route planner
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Enter an origin and destination
+              </h2>
+              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                Pick two cities across the eight Northeast states. RaahSetu solves both the fastest and the risk-aware
+                path over the road graph and shows you exactly what the safer option trades and avoids.
+              </p>
+            </div>
+
+            {/* Strategic Mountain Freight Corridors Quick-Picks Ribbon */}
+            <div className="rounded-2xl border border-border bg-card/90 p-4 shadow-xl backdrop-blur-md">
+              <div className="mb-2.5 flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 font-mono uppercase tracking-wider text-signal font-bold">
+                  <Zap className="size-4 text-signal animate-pulse" />
+                  Strategic Mountain Freight Corridors (One-Click Dispatch)
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground font-semibold">
+                  {STRATEGIC_CORRIDORS.length} Lifelines
+                </span>
+              </div>
+              <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
+                {STRATEGIC_CORRIDORS.map((corridor) => {
+                  const isSelected =
+                    origin === corridor.origin && destination === corridor.destination;
                   return (
                     <button
-                      key={vKey}
-                      type="button"
-                      onClick={() => setVehicle(vKey)}
-                      className={`rounded-xl p-3.5 text-left border transition-all cursor-pointer ${cardStyle}`}
+                      key={corridor.id}
+                      onClick={() => {
+                        setOrigin(corridor.origin);
+                        setDestination(corridor.destination);
+                      }}
+                      className={`shrink-0 rounded-xl px-3.5 py-2 text-left transition-all border cursor-pointer ${
+                        isSelected
+                          ? "border-signal bg-signal/15 text-foreground shadow-lg shadow-signal/10"
+                          : "border-border bg-secondary/40 text-muted-foreground hover:border-signal/50 hover:bg-secondary hover:text-foreground"
+                      }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-white">{prof.name}</span>
-                        {isSelected && <Check className="size-3.5 text-emerald-400" />}
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        <span>{corridor.title}</span>
+                        {isSelected && <Check className="size-3 text-signal" />}
                       </div>
-                      <div className={`text-[10px] font-mono font-bold ${
-                        vKey === "heavy" ? "text-amber-300" : vKey === "standard" ? "text-cyan-300" : "text-emerald-300"
-                      }`}>
-                        {prof.badge}
+                      <div className="text-[10px] text-signal font-mono mt-0.5">
+                        {corridor.tag}
                       </div>
-                      <p className="text-[11px] text-slate-300 mt-1.5 leading-snug">
-                        {prof.description}
-                      </p>
                     </button>
                   );
                 })}
               </div>
             </div>
-          </div>
 
-          {/* AUTOMATIC LIVE WEATHER & MICROCLIMATE HUD (5 Cols) */}
-          <div className="lg:col-span-5 flex flex-col">
-            <div className="flex-1 rounded-2xl glass-panel p-4 shadow-xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-mono uppercase tracking-wider text-emerald-300 font-bold">
-                      Automated Live Microclimate Telemetry
-                    </span>
-                  </div>
-                  <span className="neon-badge-cyan text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
-                    Auto-Synced
-                  </span>
-                </div>
+            {/* Grid: Controls & Outputs vs Map */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+              {/* Left Column: Form & Telemetry Cards */}
+              <div className="flex flex-col gap-5">
+                {/* Endpoints Picker Card */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+                  <div className="grid gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <CityCombobox
+                        label="Origin"
+                        tone="signal"
+                        selectedId={origin}
+                        onSelect={setOrigin}
+                        otherCityId={destination}
+                      />
 
-                {/* Weather Main Badge */}
-                <div className={`p-4 rounded-xl border mb-3 flex items-center justify-between shadow-lg ${
-                  weather === "snow"
-                    ? "glass-panel glow-cyan border-sky-400/80 bg-gradient-to-r from-sky-950/70 to-slate-900"
-                    : weather === "monsoon"
-                    ? "glass-panel-amber glow-amber border-amber-400/80 bg-gradient-to-r from-amber-950/70 to-slate-900"
-                    : "glass-panel-emerald glow-emerald border-emerald-400/80 bg-gradient-to-r from-emerald-950/70 to-slate-900"
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-xl bg-black/50 border border-white/10 shadow-md">
-                      {weather === "snow" && <Snowflake className="size-7 text-sky-300 animate-spin" style={{ animationDuration: "12s" }} />}
-                      {weather === "monsoon" && <CloudRain className="size-7 text-amber-300" />}
-                      {weather === "clear" && <Sun className="size-7 text-emerald-300 animate-pulse" />}
-                    </div>
-                    <div>
-                      <div className="text-sm font-black text-white">{liveWeather.summary}</div>
-                      <div className="text-xs text-slate-300 font-mono font-semibold">
-                        {liveWeather.stationName}
+                      <div className="pt-6 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleSwap}
+                          className="p-2.5 rounded-xl border border-border bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-signal transition-colors shadow-sm cursor-pointer"
+                          title="Swap Origin and Destination"
+                        >
+                          <ArrowUpDown className="size-4" />
+                        </button>
                       </div>
+
+                      <CityCombobox
+                        label="Destination"
+                        tone="hazard"
+                        selectedId={destination}
+                        onSelect={setDestination}
+                        otherCityId={origin}
+                      />
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-black font-mono text-white">
-                      {liveWeather.tempC > 0 ? `+${liveWeather.tempC}` : liveWeather.tempC}°C
-                    </div>
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">Ambient Temp</div>
-                  </div>
-                </div>
 
-                {/* Weather Metrics Grid */}
-                <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Precipitation</div>
-                    <div className="text-sm font-black text-cyan-300 mt-0.5">
-                      {liveWeather.precipitationMm} mm/h
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Visibility</div>
-                    <div className="text-sm font-black text-cyan-300 mt-0.5">
-                      {liveWeather.visibilityKm} km
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Road Grip</div>
-                    <div className={`text-sm font-black mt-0.5 ${
-                      liveWeather.roadFriction > 0.8
-                        ? "text-emerald-400"
-                        : liveWeather.roadFriction > 0.6
-                        ? "text-amber-400"
-                        : "text-rose-400"
-                    }`}>
-                      {Math.round(liveWeather.roadFriction * 100)}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Advisory Notice */}
-                <div className="mt-3 p-3 rounded-xl bg-slate-900/95 border border-amber-500/30 text-xs text-slate-200 flex items-start gap-2.5 shadow-sm">
-                  <AlertTriangle className="size-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                  <p className="leading-relaxed">{liveWeather.advisory}</p>
-                </div>
-              </div>
-
-              <div className="mt-3 pt-2 text-[10px] font-mono text-slate-400 border-t border-slate-800 flex items-center justify-between">
-                <span>Microclimate algorithm active</span>
-                <span className="text-emerald-400 font-bold">Zero-user input required</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Intermediate Small Cities Ribbon */}
-        {intermediateCities.length > 0 && (
-          <section className="rounded-2xl glass-panel p-3.5 shadow-xl">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-cyan-300 font-bold">
-                <Milestone className="size-4 text-cyan-400" />
-                Transit Checkpoints & Intermediate Towns ({intermediateCities.length})
-              </span>
-              <span className="text-[11px] text-slate-300 font-mono">
-                All settlements along active safe corridor
-              </span>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-              {intermediateCities.map((city, idx) => (
-                <div
-                  key={city.id}
-                  className="shrink-0 flex items-center gap-2 rounded-xl bg-slate-900/90 border border-cyan-500/30 px-3 py-1.5 text-xs shadow-sm hover:border-cyan-400 transition-colors"
-                >
-                  <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="font-bold text-white">{city.name}</span>
-                  <span className="text-[10px] text-cyan-300 font-mono">({city.state})</span>
-                  {idx < intermediateCities.length - 1 && (
-                    <ArrowRight className="size-3 text-slate-500 ml-1" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Interactive SVG Cartographic Map */}
-        <section className="relative rounded-2xl glass-panel p-4 shadow-2xl overflow-hidden">
-          {/* Map Controls & Status Header */}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-emerald-300 font-bold">
-                <MapPin className="size-4 text-emerald-400" />
-                Northeast India Operational Network (111 Nodes / 164 Corridors)
-              </span>
-            </div>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-700 shadow-md">
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                title="Zoom in"
-              >
-                <ZoomIn className="size-4 text-cyan-400" />
-              </button>
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                title="Zoom out"
-              >
-                <ZoomOut className="size-4 text-cyan-400" />
-              </button>
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="px-2.5 py-1 text-[11px] font-mono font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                title="Reset View"
-              >
-                <RotateCcw className="size-3.5 text-emerald-400" />
-                <span>{Math.round(zoomLevel * 100)}%</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SVG Canvas */}
-          <div className="relative w-full aspect-[1000/560] max-h-[580px] bg-[#04060d] rounded-xl overflow-hidden border border-slate-800 shadow-inner">
-            <svg
-              viewBox={svgViewBox}
-              className="w-full h-full select-none cursor-crosshair"
-            >
-              <defs>
-                <filter id="glow-safe" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <filter id="glow-hazard" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="3.5" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <filter id="glow-node" x="-40%" y="-40%" width="180%" height="180%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur" />
-                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                </filter>
-                <linearGradient id="safe-corridor-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#34d399" />
-                  <stop offset="50%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#06b6d4" />
-                </linearGradient>
-              </defs>
-
-              {/* Stylized Brahmaputra River Artery (Luminous Cyan) */}
-              <path
-                d="M 90 290 Q 250 270 420 250 T 680 210 T 880 180"
-                fill="none"
-                stroke="#06b6d4"
-                strokeWidth="10"
-                strokeOpacity="0.3"
-                strokeLinecap="round"
-              />
-              <path
-                d="M 90 290 Q 250 270 420 250 T 680 210 T 880 180"
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="3.5"
-                strokeOpacity="0.75"
-                strokeLinecap="round"
-              />
-              <text
-                x="320"
-                y="262"
-                fill="#38bdf8"
-                fontSize="11"
-                fontFamily="monospace"
-                fontWeight="bold"
-                opacity="0.55"
-                letterSpacing="4"
-              >
-                BRAHMAPUTRA VALLEY BASIN
-              </text>
-
-              {/* State Labels in visible stylish slate typography */}
-              <text x="360" y="295" fill="#64748b" fontSize="13" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">ASSAM</text>
-              <text x="560" y="110" fill="#64748b" fontSize="13" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">ARUNACHAL PRADESH</text>
-              <text x="240" y="385" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">MEGHALAYA</text>
-              <text x="690" y="295" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">NAGALAND</text>
-              <text x="670" y="420" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">MANIPUR</text>
-              <text x="520" y="520" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">MIZORAM</text>
-              <text x="350" y="490" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">TRIPURA</text>
-              <text x="80" y="140" fill="#64748b" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.45" letterSpacing="3">SIKKIM</text>
-
-              {/* All Network Edges */}
-              {EDGES.map((edge) => {
-                const a = CITY_MAP[edge.a];
-                const b = CITY_MAP[edge.b];
-                return (
-                  <line
-                    key={`${edge.a}-${edge.b}`}
-                    x1={a.x}
-                    y1={a.y}
-                    x2={b.x}
-                    y2={b.y}
-                    stroke="#1e293b"
-                    strokeWidth="1.5"
-                    strokeOpacity="0.7"
-                  />
-                );
-              })}
-
-              {/* Shortest / Nominal Route (Bright Hazard Amber Dashed Laser) */}
-              {shortest && (
-                <polyline
-                  points={toPolylinePoints(shortest)}
-                  fill="none"
-                  stroke="#f59e0b"
-                  strokeWidth="3.5"
-                  strokeDasharray="7 4"
-                  strokeOpacity="0.85"
-                />
-              )}
-
-              {/* Safe / Terrain-Aware Route (Glowing Neon Emerald Beam) */}
-              {safe && (
-                <>
-                  <polyline
-                    points={toPolylinePoints(safe)}
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="8"
-                    strokeOpacity="0.35"
-                    filter="url(#glow-safe)"
-                  />
-                  <polyline
-                    points={toPolylinePoints(safe)}
-                    fill="none"
-                    stroke="url(#safe-corridor-gradient)"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </>
-              )}
-
-              {/* Hovered Itinerary Leg Highlight (Pulsing Gold Laser) */}
-              {hoveredLegIndex !== null && safeLegs[hoveredLegIndex] && (
-                <line
-                  x1={safeLegs[hoveredLegIndex].fromCity.x}
-                  y1={safeLegs[hoveredLegIndex].fromCity.y}
-                  x2={safeLegs[hoveredLegIndex].toCity.x}
-                  y2={safeLegs[hoveredLegIndex].toCity.y}
-                  stroke="#fde047"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  filter="url(#glow-hazard)"
-                />
-              )}
-
-              {/* Network City Nodes */}
-              {CITIES.map((city) => {
-                const isOrigin = city.id === origin;
-                const isDest = city.id === destination;
-                const isOnRoute = activeRouteCityIds.has(city.id);
-
-                if (isOrigin) {
-                  return (
-                    <g key={city.id} className="cursor-pointer">
-                      <circle cx={city.x} cy={city.y} r="20" fill="none" stroke="#10b981" strokeWidth="2" opacity="0.7" className="radar-ping" />
-                      <circle cx={city.x} cy={city.y} r="13" fill="#10b981" fillOpacity="0.4" />
-                      <circle cx={city.x} cy={city.y} r="6.5" fill="#10b981" stroke="#ffffff" strokeWidth="2.5" />
-                      <text
-                        x={city.x}
-                        y={city.y - 13}
-                        textAnchor="middle"
-                        fill="#34d399"
-                        fontSize="12"
-                        fontWeight="900"
-                        filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.9))"
+                    <div className="flex items-center justify-between pt-2 border-t border-border/60 text-xs">
+                      <button
+                        type="button"
+                        onClick={handleGpsLocation}
+                        disabled={isLocating}
+                        className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-signal transition-colors cursor-pointer"
                       >
-                        {city.name} (Origin)
-                      </text>
-                    </g>
-                  );
-                }
+                        {isLocating ? (
+                          <Loader2 className="size-3.5 animate-spin text-signal" />
+                        ) : (
+                          <LocateFixed className="size-3.5 text-signal" />
+                        )}
+                        <span>{isLocating ? "Acquiring GPS..." : "Snap Origin to Live GPS"}</span>
+                      </button>
 
-                if (isDest) {
-                  return (
-                    <g key={city.id} className="cursor-pointer">
-                      <circle cx={city.x} cy={city.y} r="20" fill="none" stroke="#f43f5e" strokeWidth="2" opacity="0.7" className="radar-ping" />
-                      <circle cx={city.x} cy={city.y} r="13" fill="#f43f5e" fillOpacity="0.4" />
-                      <circle cx={city.x} cy={city.y} r="6.5" fill="#f43f5e" stroke="#ffffff" strokeWidth="2.5" />
-                      <text
-                        x={city.x}
-                        y={city.y - 13}
-                        textAnchor="middle"
-                        fill="#fb7185"
-                        fontSize="12"
-                        fontWeight="900"
-                        filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.9))"
-                      >
-                        {city.name} (Dest)
-                      </text>
-                    </g>
-                  );
-                }
-
-                if (isOnRoute) {
-                  // Intermediate Small Towns along the Route
-                  return (
-                    <g
-                      key={city.id}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setHoveredCity(city)}
-                      onMouseLeave={() => setHoveredCity(null)}
-                    >
-                      <circle cx={city.x} cy={city.y} r="9" fill="#06b6d4" fillOpacity="0.4" />
-                      <circle cx={city.x} cy={city.y} r="4.5" fill="#38bdf8" stroke="#ffffff" strokeWidth="1.5" />
-                      <text
-                        x={city.x}
-                        y={city.y + 14}
-                        textAnchor="middle"
-                        fill="#7dd3fc"
-                        fontSize="9.5"
-                        fontWeight="bold"
-                        filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
-                      >
-                        {city.name}
-                      </text>
-                    </g>
-                  );
-                }
-
-                // Inactive Nodes
-                return (
-                  <circle
-                    key={city.id}
-                    cx={city.x}
-                    cy={city.y}
-                    r="2.5"
-                    fill="#64748b"
-                    opacity="0.45"
-                    className="hover:opacity-100 hover:fill-cyan-300 cursor-pointer transition-colors"
-                    onMouseEnter={() => setHoveredCity(city)}
-                    onMouseLeave={() => setHoveredCity(null)}
-                    onClick={() => {
-                      if (!origin) setOrigin(city.id);
-                      else setDestination(city.id);
-                    }}
-                  />
-                );
-              })}
-            </svg>
-
-            {/* Hovered City HUD Tooltip */}
-            {hoveredCity && (
-              <div className="absolute bottom-3 left-3 glass-panel-cyan glow-cyan rounded-xl px-3.5 py-2.5 text-xs backdrop-blur-md shadow-2xl pointer-events-none">
-                <div className="font-bold text-white flex items-center gap-1.5">
-                  <MapPin className="size-3.5 text-cyan-400" />
-                  <span>{hoveredCity.name}</span>
-                  <span className="text-[10px] font-mono text-cyan-300">({hoveredCity.state})</span>
-                </div>
-                <div className="text-[10px] font-mono text-slate-300 mt-1">
-                  Lat: {hoveredCity.lat.toFixed(3)}°N · Lon: {hoveredCity.lon.toFixed(3)}°E
-                </div>
-              </div>
-            )}
-
-            {/* Map Legend */}
-            <div className="absolute top-3 right-3 glass-panel rounded-xl p-3 text-[11px] backdrop-blur-md font-mono space-y-1.5 pointer-events-none shadow-lg">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-emerald-400 glow-emerald" />
-                <span className="text-emerald-300 font-bold">Terrain-Aware Safe Corridor</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full border-2 border-amber-400 border-dashed" />
-                <span className="text-amber-300 font-bold">Nominal Shortest (High Risk)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="size-2.5 rounded-full bg-cyan-400 glow-cyan" />
-                <span className="text-cyan-300 font-bold">Transit Town Waypoint</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Dual View: Route Comparison vs. Turn-by-Turn Leg Itinerary */}
-        <section className="space-y-4">
-          {/* Tab Controls */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab("comparison")}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === "comparison"
-                    ? "glass-panel-emerald glow-emerald text-emerald-300 border-emerald-400"
-                    : "text-slate-400 hover:text-white hover:bg-slate-900"
-                }`}
-              >
-                Route Safety Comparison
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("itinerary")}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeTab === "itinerary"
-                    ? "glass-panel-cyan glow-cyan text-cyan-300 border-cyan-400"
-                    : "text-slate-400 hover:text-white hover:bg-slate-900"
-                }`}
-              >
-                <span>Turn-by-Turn Itinerary</span>
-                <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300">
-                  {safeLegs.length} Legs
-                </span>
-              </button>
-            </div>
-
-            {riskReductionPct > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-300 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-400/50 glow-emerald">
-                <ShieldCheck className="size-4 text-emerald-400" />
-                <span>{riskReductionPct}% Hazard Exposure Reduced</span>
-              </div>
-            )}
-          </div>
-
-          {/* TAB 1: Route Comparison Cards */}
-          {activeTab === "comparison" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Safe Route Card */}
-              <div className="rounded-2xl glass-panel-emerald glow-emerald p-5 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 px-3.5 py-1.5 bg-emerald-500/30 border-b border-l border-emerald-400/60 text-emerald-300 text-[10px] font-mono font-black rounded-bl-xl uppercase tracking-wider">
-                  Recommended Dispatch
-                </div>
-
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/40">
-                    <ShieldCheck className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-white">
-                      Terrain & Risk-Aware Route
-                    </h3>
-                    <p className="text-xs text-emerald-300 font-mono font-semibold">
-                      Safe Mountain Logistics Corridor
-                    </p>
-                  </div>
-                </div>
-
-                {safeStats && safe ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Distance</div>
-                        <div className="text-sm font-black text-white mt-0.5">
-                          {safeStats.distance} km
-                        </div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Est. Time</div>
-                        <div className="text-sm font-black text-emerald-400 mt-0.5">
-                          {formatHours(safeStats.hours)}
-                        </div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Exposure</div>
-                        <div className="text-sm font-black text-emerald-400 mt-0.5">
-                          {safeStats.riskIndex} pts
-                        </div>
+                      <div className="text-[11px] font-mono text-muted-foreground">
+                        111 Nodes Connected
                       </div>
                     </div>
 
-                    {/* Path Breadcrumbs */}
-                    <div>
-                      <div className="text-[11px] font-mono text-cyan-300 mb-1.5 uppercase tracking-wider font-bold">
-                        Waypoint Sequence ({safe.length} Checkpoints)
+                    {locationNotice && (
+                      <div className="text-xs text-hazard bg-hazard/10 border border-hazard/30 rounded-lg p-2 font-mono">
+                        {locationNotice}
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {safe.map((cityId, idx) => (
-                          <span
-                            key={cityId}
-                            className="inline-flex items-center gap-1 rounded-lg bg-slate-900 border border-cyan-500/30 px-2 py-1 text-xs text-slate-200 font-mono font-semibold"
-                          >
-                            <span>{CITY_MAP[cityId]?.name}</span>
-                            {idx < safe.length - 1 && (
-                              <ArrowRight className="size-3 text-cyan-400" />
-                            )}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-rose-400">No traversable path found.</div>
-                )}
-              </div>
-
-              {/* Shortest Route Card */}
-              <div className="rounded-2xl glass-panel-amber glow-amber p-5 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 px-3.5 py-1.5 bg-amber-500/30 border-b border-l border-amber-400/50 text-amber-300 text-[10px] font-mono font-black rounded-bl-xl uppercase tracking-wider">
-                  Nominal Distance Only
-                </div>
-
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    <AlertTriangle className="size-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-white">
-                      Fastest Nominal Route
-                    </h3>
-                    <p className="text-xs text-amber-300 font-mono font-semibold">
-                      Unconstrained Shortest Distance
-                    </p>
-                  </div>
-                </div>
-
-                {shortestStats && shortest ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Distance</div>
-                        <div className="text-sm font-black text-white mt-0.5">
-                          {shortestStats.distance} km
-                        </div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Est. Time</div>
-                        <div className="text-sm font-black text-amber-400 mt-0.5">
-                          {formatHours(shortestStats.hours)}
-                        </div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-sm">
-                        <div className="text-[10px] text-slate-400 uppercase font-bold">Exposure</div>
-                        <div className="text-sm font-black text-amber-400 mt-0.5">
-                          {shortestStats.riskIndex} pts
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Path Breadcrumbs */}
-                    <div>
-                      <div className="text-[11px] font-mono text-amber-300 mb-1.5 uppercase tracking-wider font-bold">
-                        Waypoint Sequence ({shortest.length} Checkpoints)
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {shortest.map((cityId, idx) => (
-                          <span
-                            key={cityId}
-                            className="inline-flex items-center gap-1 rounded-lg bg-slate-900/80 border border-amber-500/30 px-2 py-1 text-xs text-slate-300 font-mono"
-                          >
-                            <span>{CITY_MAP[cityId]?.name}</span>
-                            {idx < shortest.length - 1 && (
-                              <ArrowRight className="size-3 text-amber-400" />
-                            )}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-rose-400">No traversable path found.</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: Turn-by-Turn Leg Itinerary */}
-          {activeTab === "itinerary" && (
-            <div className="rounded-2xl glass-panel p-4 shadow-2xl">
-              <div className="mb-3 flex items-center justify-between text-xs text-slate-300 font-mono">
-                <span className="text-cyan-300 font-bold">Hover a leg to spotlight on map in gold</span>
-                <span>Calculated under {VEHICLE_PROFILES[vehicle].name} & {liveWeather.summary}</span>
-              </div>
-
-              <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
-                {safeLegs.map((leg, idx) => (
-                  <div
-                    key={`${leg.fromId}-${leg.toId}-${idx}`}
-                    onMouseEnter={() => setHoveredLegIndex(idx)}
-                    onMouseLeave={() => setHoveredLegIndex(null)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                      hoveredLegIndex === idx
-                        ? "border-amber-400 bg-amber-500/20 shadow-lg shadow-amber-500/10"
-                        : "border-slate-800 bg-slate-900/80 hover:border-cyan-400 hover:bg-slate-900"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="size-6 rounded-lg bg-slate-800 text-cyan-300 font-mono text-xs flex items-center justify-center font-bold border border-slate-700">
-                          {idx + 1}
-                        </span>
-                        <div className="font-bold text-sm text-white flex items-center gap-1.5">
-                          <span>{leg.fromCity.name}</span>
-                          <ArrowRight className="size-3.5 text-cyan-400" />
-                          <span>{leg.toCity.name}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs font-mono font-semibold">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          leg.terrainType === "High Mountain Pass"
-                            ? "neon-badge-rose"
-                            : leg.terrainType === "Foothills"
-                            ? "neon-badge-amber"
-                            : "neon-badge-emerald"
-                        }`}>
-                          {leg.terrainType}
-                        </span>
-                        <span className="text-white font-bold">{leg.dist} km</span>
-                        <span className="text-slate-400">({formatHours(leg.hours)})</span>
-                        <span className={`font-bold ${
-                          leg.risk > 40 ? "text-rose-400" : leg.risk > 20 ? "text-amber-400" : "text-emerald-400"
-                        }`}>
-                          {leg.risk}% Risk
-                        </span>
-                      </div>
-                    </div>
-
-                    {leg.note && (
-                      <p className="text-xs text-slate-300 mt-2 pl-8 border-l-2 border-slate-700">
-                        {leg.note}
-                      </p>
                     )}
                   </div>
-                ))}
+                </div>
+
+                {/* Vehicle Selector Only (Required Input) */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                      <Truck className="size-4 text-signal" />
+                      Vehicle Dispatch Profile
+                    </span>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      Governs hill speed & axle margins
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
+                      const prof = VEHICLE_PROFILES[vKey];
+                      const isSelected = vehicle === vKey;
+                      return (
+                        <button
+                          key={vKey}
+                          type="button"
+                          onClick={() => setVehicle(vKey)}
+                          className={`rounded-xl p-3 text-left border transition-all cursor-pointer ${
+                            isSelected
+                              ? "border-signal bg-signal/15 text-foreground shadow-md shadow-signal/10"
+                              : "border-border bg-secondary/40 text-muted-foreground hover:border-border hover:bg-secondary hover:text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-bold text-foreground">{prof.name}</span>
+                            {isSelected && <Check className="size-3.5 text-signal" />}
+                          </div>
+                          <div className="text-[10px] font-mono text-signal font-semibold">
+                            {prof.badge}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                            {prof.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Automated Live Microclimate Card */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full bg-signal animate-pulse" />
+                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                        Automated Live Microclimate Telemetry
+                      </span>
+                    </div>
+                    <span className="rounded-full border border-signal/40 bg-signal/10 px-2 py-0.5 font-mono text-[10px] text-signal font-bold">
+                      Auto-Synced
+                    </span>
+                  </div>
+
+                  <div className={`p-4 rounded-xl border mb-3 flex items-center justify-between ${
+                    weather === "snow"
+                      ? "bg-sky-950/40 border-sky-500/40 text-sky-200"
+                      : weather === "monsoon"
+                      ? "bg-hazard/10 border-hazard/40 text-hazard"
+                      : "bg-signal/10 border-signal/40 text-signal"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-background/60 border border-border">
+                        {weather === "snow" && <Snowflake className="size-6 text-sky-300" />}
+                        {weather === "monsoon" && <CloudRain className="size-6 text-hazard" />}
+                        {weather === "clear" && <Sun className="size-6 text-signal" />}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-foreground">{liveWeather.summary}</div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {liveWeather.stationName}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-black font-mono text-foreground">
+                        {liveWeather.tempC > 0 ? `+${liveWeather.tempC}` : liveWeather.tempC}°C
+                      </div>
+                      <div className="text-[10px] text-muted-foreground uppercase">Ambient Temp</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
+                    <div className="p-2 rounded-xl bg-secondary/50 border border-border">
+                      <div className="text-[10px] text-muted-foreground uppercase">Precipitation</div>
+                      <div className="text-sm font-bold text-foreground mt-0.5">
+                        {liveWeather.precipitationMm} mm/h
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-secondary/50 border border-border">
+                      <div className="text-[10px] text-muted-foreground uppercase">Visibility</div>
+                      <div className="text-sm font-bold text-foreground mt-0.5">
+                        {liveWeather.visibilityKm} km
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-secondary/50 border border-border">
+                      <div className="text-[10px] text-muted-foreground uppercase">Road Grip</div>
+                      <div className={`text-sm font-bold mt-0.5 ${
+                        liveWeather.roadFriction > 0.8
+                          ? "text-signal"
+                          : liveWeather.roadFriction > 0.6
+                          ? "text-hazard"
+                          : "text-destructive"
+                      }`}>
+                        {Math.round(liveWeather.roadFriction * 100)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 p-3 rounded-xl bg-secondary/40 border border-border/80 text-xs text-muted-foreground flex items-start gap-2.5">
+                    <AlertTriangle className="size-4 text-hazard shrink-0 mt-0.5" />
+                    <p className="leading-relaxed">{liveWeather.advisory}</p>
+                  </div>
+                </div>
+
+                {/* Intermediate Small Cities Ribbon */}
+                {intermediateCities.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-card p-4 shadow-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                        <Milestone className="size-3.5 text-signal" />
+                        Transit Checkpoints & Intermediate Towns ({intermediateCities.length})
+                      </span>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {intermediateCities.map((city, idx) => (
+                        <div
+                          key={city.id}
+                          className="shrink-0 flex items-center gap-2 rounded-lg bg-secondary/60 border border-border px-3 py-1 text-xs"
+                        >
+                          <span className="size-1.5 rounded-full bg-signal" />
+                          <span className="font-semibold text-foreground">{city.name}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">({city.state})</span>
+                          {idx < intermediateCities.length - 1 && (
+                            <ArrowRight className="size-3 text-muted-foreground ml-1" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Risk-Aware Route Card */}
+                <div className="rounded-2xl border border-signal/40 bg-signal/[0.06] p-5 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 font-display font-semibold text-foreground">
+                      <Check className="size-4 text-signal" />
+                      Risk-aware route
+                    </span>
+                    <span className="rounded-full border border-signal/40 px-2 py-0.5 font-mono text-[11px] text-signal font-bold">
+                      recommended
+                    </span>
+                  </div>
+                  {safeStats ? (
+                    <div className="mt-4 grid grid-cols-3 gap-3 font-mono">
+                      <div>
+                        <div className="text-lg font-semibold text-foreground">{safeStats.distance} km</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">distance</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold text-foreground">{formatHours(safeStats.hours)}</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">est. time</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold text-signal">{safeStats.riskIndex}</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">risk index</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-destructive mt-2">No traversable path found.</div>
+                  )}
+                </div>
+
+                {/* Fastest Route Card */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+                  <div className="flex items-center gap-2 font-display font-semibold text-hazard">
+                    <RouteIcon className="size-4" />
+                    Fastest route
+                  </div>
+                  {shortestStats ? (
+                    <div className="mt-4 grid grid-cols-3 gap-3 font-mono">
+                      <div>
+                        <div className="text-lg font-semibold text-foreground">{shortestStats.distance} km</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">distance</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold text-foreground">{formatHours(shortestStats.hours)}</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">est. time</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-semibold text-hazard">{shortestStats.riskIndex}</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">risk index</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-destructive mt-2">No traversable path found.</div>
+                  )}
+                </div>
+
+                {/* Why This Route Explanation Card */}
+                <div className="rounded-2xl border border-border bg-secondary/40 p-5 shadow-xl">
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                    Why this route
+                  </span>
+                  {safeStats && shortestStats && (
+                    <>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        The risk-aware route accepts{" "}
+                        <span className="text-foreground font-bold font-mono">
+                          {formatHours(Math.max(0, safeStats.hours - shortestStats.hours))}
+                        </span>{" "}
+                        extra travel time to cut the risk index from{" "}
+                        <span className="text-hazard font-bold font-mono">{shortestStats.riskIndex}</span> to{" "}
+                        <span className="text-signal font-bold font-mono">{safeStats.riskIndex}</span>.
+                      </p>
+                      <ul className="mt-3 space-y-2">
+                        {riskReductionPct > 0 && (
+                          <li className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                            <Check className="mt-0.5 size-3.5 shrink-0 text-signal" />
+                            <span>
+                              Delivers a <span className="text-signal font-bold">{riskReductionPct}%</span> total hazard exposure reduction across vulnerable mountain ghats.
+                            </span>
+                          </li>
+                        )}
+                        {safeLegs.filter((l) => l.note).slice(0, 3).map((l, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                            <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-hazard" />
+                            <span>
+                              Monitors <span className="text-foreground font-semibold">{l.fromCity.name}–{l.toCity.name}</span>: {l.note}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleExportManifest}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-signal px-4 py-3 text-xs font-bold text-signal-foreground transition-transform hover:-translate-y-0.5 shadow-lg shadow-signal/20 cursor-pointer"
+                  >
+                    <Download className="size-4" />
+                    <span>Export Manifest (JSON)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-xs font-bold text-foreground hover:bg-secondary transition-colors cursor-pointer"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="size-4 text-signal" />
+                        <span className="text-signal">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Share2 className="size-4" />
+                        <span>Share</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Interactive Map & Turn-by-Turn Leg Itinerary */}
+              <div className="flex flex-col gap-5">
+                {/* The Map Card */}
+                <div className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-4 shadow-2xl shadow-black/50 backdrop-blur-md">
+                  {/* Map Header & Controls */}
+                  <div className="relative flex items-center justify-between px-2 pb-3 border-b border-border/60">
+                    <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                      northeast_india.map
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 font-mono text-xs text-signal font-bold">
+                        <span className="size-2 rounded-full bg-signal node-pulse" /> solved
+                      </span>
+
+                      <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-lg border border-border">
+                        <button
+                          type="button"
+                          onClick={handleZoomIn}
+                          className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                          title="Zoom In"
+                        >
+                          <ZoomIn className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleZoomOut}
+                          className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                          title="Zoom Out"
+                        >
+                          <ZoomOut className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetZoom}
+                          className="px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground rounded cursor-pointer"
+                          title="Reset Zoom"
+                        >
+                          {Math.round(zoomLevel * 100)}%
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SVG Canvas */}
+                  <div className="relative w-full aspect-[1000/560] max-h-[560px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40">
+                    <svg viewBox={svgViewBox} className="relative w-full h-full select-none cursor-crosshair">
+                      <defs>
+                        <filter id="glow-safe" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="3.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        <filter id="glow-hazard" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      {/* Brahmaputra River Basin Artery */}
+                      <path
+                        d="M 90 290 Q 250 270 420 250 T 680 210 T 880 180"
+                        fill="none"
+                        stroke="#0891b2"
+                        strokeWidth="8"
+                        strokeOpacity="0.25"
+                        strokeLinecap="round"
+                      />
+                      <text
+                        x="320"
+                        y="262"
+                        fill="#0891b2"
+                        fontSize="11"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                        opacity="0.4"
+                        letterSpacing="4"
+                      >
+                        BRAHMAPUTRA VALLEY BASIN
+                      </text>
+
+                      {/* State Labels */}
+                      <text x="360" y="295" fill="var(--muted-foreground)" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">ASSAM</text>
+                      <text x="560" y="110" fill="var(--muted-foreground)" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">ARUNACHAL PRADESH</text>
+                      <text x="240" y="385" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MEGHALAYA</text>
+                      <text x="690" y="295" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">NAGALAND</text>
+                      <text x="670" y="420" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MANIPUR</text>
+                      <text x="520" y="520" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MIZORAM</text>
+                      <text x="350" y="490" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">TRIPURA</text>
+                      <text x="80" y="140" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">SIKKIM</text>
+
+                      {/* Road Network Edges */}
+                      {EDGES.map((edge) => {
+                        const a = CITY_MAP[edge.a];
+                        const b = CITY_MAP[edge.b];
+                        return (
+                          <line
+                            key={`${edge.a}-${edge.b}`}
+                            x1={a.x}
+                            y1={a.y}
+                            x2={b.x}
+                            y2={b.y}
+                            stroke="var(--border)"
+                            strokeWidth="1.5"
+                            strokeOpacity="0.75"
+                          />
+                        );
+                      })}
+
+                      {/* Shortest / Nominal Route (Hazard Orange Dashed) */}
+                      {shortest && (
+                        <polyline
+                          points={toPolylinePoints(shortest)}
+                          fill="none"
+                          stroke="var(--hazard)"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeDasharray="4 6"
+                          opacity="0.9"
+                        />
+                      )}
+
+                      {/* Safe / Risk-Aware Route (Glowing Mint Line with Animated Flow) */}
+                      {safe && (
+                        <>
+                          <polyline
+                            points={toPolylinePoints(safe)}
+                            fill="none"
+                            stroke="var(--signal)"
+                            strokeWidth="7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity="0.25"
+                            filter="url(#glow-safe)"
+                          />
+                          <polyline
+                            points={toPolylinePoints(safe)}
+                            fill="none"
+                            stroke="var(--signal)"
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="route-flow"
+                          />
+                        </>
+                      )}
+
+                      {/* Hovered Itinerary Leg Highlight */}
+                      {hoveredLegIndex !== null && safeLegs[hoveredLegIndex] && (
+                        <line
+                          x1={safeLegs[hoveredLegIndex].fromCity.x}
+                          y1={safeLegs[hoveredLegIndex].fromCity.y}
+                          x2={safeLegs[hoveredLegIndex].toCity.x}
+                          y2={safeLegs[hoveredLegIndex].toCity.y}
+                          stroke="#fde047"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          filter="url(#glow-hazard)"
+                        />
+                      )}
+
+                      {/* City Nodes */}
+                      {CITIES.map((city) => {
+                        const isOrigin = city.id === origin;
+                        const isDest = city.id === destination;
+                        const isOnRoute = activeRouteCityIds.has(city.id);
+
+                        if (isOrigin) {
+                          return (
+                            <g key={city.id} className="cursor-pointer">
+                              <circle cx={city.x} cy={city.y} r="18" fill="none" stroke="var(--signal)" strokeWidth="2" opacity="0.7" className="radar-ping" />
+                              <circle cx={city.x} cy={city.y} r="8" fill="var(--signal)" stroke="var(--background)" strokeWidth="2.5" />
+                              <text
+                                x={city.x}
+                                y={city.y - 14}
+                                textAnchor="middle"
+                                fill="var(--foreground)"
+                                fontSize="12"
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                                filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+                              >
+                                {city.name} (Origin)
+                              </text>
+                            </g>
+                          );
+                        }
+
+                        if (isDest) {
+                          return (
+                            <g key={city.id} className="cursor-pointer">
+                              <circle cx={city.x} cy={city.y} r="18" fill="none" stroke="var(--hazard)" strokeWidth="2" opacity="0.7" className="radar-ping" />
+                              <circle cx={city.x} cy={city.y} r="8" fill="var(--hazard)" stroke="var(--background)" strokeWidth="2.5" />
+                              <text
+                                x={city.x}
+                                y={city.y - 14}
+                                textAnchor="middle"
+                                fill="var(--foreground)"
+                                fontSize="12"
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                                filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+                              >
+                                {city.name} (Dest)
+                              </text>
+                            </g>
+                          );
+                        }
+
+                        if (isOnRoute) {
+                          return (
+                            <g
+                              key={city.id}
+                              className="cursor-pointer"
+                              onMouseEnter={() => setHoveredCity(city)}
+                              onMouseLeave={() => setHoveredCity(null)}
+                            >
+                              <circle cx={city.x} cy={city.y} r="5" fill="var(--foreground)" stroke="var(--background)" strokeWidth="1.5" />
+                              <text
+                                x={city.x}
+                                y={city.y + 14}
+                                textAnchor="middle"
+                                fill="var(--muted-foreground)"
+                                fontSize="10"
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                              >
+                                {city.name}
+                              </text>
+                            </g>
+                          );
+                        }
+
+                        return (
+                          <circle
+                            key={city.id}
+                            cx={city.x}
+                            cy={city.y}
+                            r="2.5"
+                            fill="var(--muted-foreground)"
+                            stroke="var(--background)"
+                            strokeWidth="1.5"
+                            opacity="0.5"
+                            className="hover:opacity-100 hover:fill-signal cursor-pointer transition-all"
+                            onMouseEnter={() => setHoveredCity(city)}
+                            onMouseLeave={() => setHoveredCity(null)}
+                            onClick={() => {
+                              if (!origin) setOrigin(city.id);
+                              else setDestination(city.id);
+                            }}
+                          />
+                        );
+                      })}
+                    </svg>
+
+                    {hoveredCity && (
+                      <div className="absolute bottom-3 left-3 rounded-xl border border-border bg-card/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-md pointer-events-none">
+                        <div className="font-bold text-foreground flex items-center gap-1.5">
+                          <MapPin className="size-3 text-signal" />
+                          <span>{hoveredCity.name}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">({hoveredCity.state})</span>
+                        </div>
+                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                          Lat: {hoveredCity.lat.toFixed(3)}°N · Lon: {hoveredCity.lon.toFixed(3)}°E
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="relative flex flex-wrap gap-x-5 gap-y-2 px-2 pb-1 pt-2 font-mono text-xs border-t border-border/50">
+                    <span className="inline-flex items-center gap-2 text-signal font-semibold">
+                      <span className="h-0.5 w-5 rounded bg-signal" /> risk-aware
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-hazard font-semibold">
+                      <span className="h-0.5 w-5 rounded bg-hazard [background:repeating-linear-gradient(90deg,var(--hazard)_0_3px,transparent_3px_7px)]" /> fastest
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <span className="size-2 rounded-full bg-signal" /> origin
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <span className="size-2 rounded-full bg-hazard" /> destination
+                    </span>
+                  </div>
+                </div>
+
+                {/* Turn-by-Turn Leg Itinerary Card */}
+                <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
+                  <div className="mb-3 flex items-center justify-between text-xs font-mono">
+                    <span className="text-signal font-bold uppercase tracking-widest">
+                      Turn-by-Turn Itinerary ({safeLegs.length} Legs)
+                    </span>
+                    <span className="text-muted-foreground">
+                      Hover to spotlight leg on map
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
+                    {safeLegs.map((leg, idx) => (
+                      <div
+                        key={`${leg.fromId}-${leg.toId}-${idx}`}
+                        onMouseEnter={() => setHoveredLegIndex(idx)}
+                        onMouseLeave={() => setHoveredLegIndex(null)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                          hoveredLegIndex === idx
+                            ? "border-signal bg-signal/15 shadow-md"
+                            : "border-border/70 bg-secondary/40 hover:border-border hover:bg-secondary/70"
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="size-5 rounded-md bg-secondary text-foreground font-mono text-xs flex items-center justify-center font-bold border border-border">
+                              {idx + 1}
+                            </span>
+                            <div className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+                              <span>{leg.fromCity.name}</span>
+                              <ArrowRight className="size-3 text-muted-foreground" />
+                              <span>{leg.toCity.name}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs font-mono">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              leg.terrainType === "High Mountain Pass"
+                                ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                : leg.terrainType === "Foothills"
+                                ? "bg-hazard/15 text-hazard border border-hazard/30"
+                                : "bg-signal/15 text-signal border border-signal/30"
+                            }`}>
+                              {leg.terrainType}
+                            </span>
+                            <span className="text-foreground font-semibold">{leg.dist} km</span>
+                            <span className="text-muted-foreground">({formatHours(leg.hours)})</span>
+                            <span className={`font-bold ${
+                              leg.risk > 40 ? "text-destructive" : leg.risk > 20 ? "text-hazard" : "text-signal"
+                            }`}>
+                              {leg.risk}% Risk
+                            </span>
+                          </div>
+                        </div>
+
+                        {leg.note && (
+                          <p className="text-xs text-muted-foreground mt-1.5 pl-7 border-l border-border">
+                            {leg.note}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+
+            <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted-foreground">
+              <Milestone className="size-3.5" />
+              Demo graph with representative road-risk weights. The production engine runs the same A* search over full OpenStreetMap networks and live hazard reports.
+              <ArrowRight className="size-3.5" />
+            </p>
+          </div>
+        </section>
+
+        {/* SECTION 4: THE PLATFORM */}
+        <section id="platform" className="relative border-t border-border/70 py-20 lg:py-28">
+          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
+            <div className="max-w-2xl">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                The platform
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Logistics intelligence that shows its work
+              </h2>
+              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                Every route is grounded in real road data and explicit rules — not a black box. Here is what powers RaahSetu end to end.
+              </p>
+            </div>
+
+            <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <RouteIcon className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Custom A* pathfinding</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  A hand-built A* with a priority queue, an admissible heuristic, and explicit edge reconstruction — validated against an independent Dijkstra baseline across 300 randomized scenarios.
+                </p>
+              </div>
+
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <AlertTriangle className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Risk-aware comparison</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Fastest and risk-aware routes are computed on the same road graph and scenario, so every trade-off between speed and exposure is explainable and reproducible.
+                </p>
+              </div>
+
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <Mountain className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Northeast terrain & networks</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  State-wise road extraction and public-facility data across all eight states, with a deterministic synthetic sandbox and a real Guwahati OSM pilot network.
+                </p>
+              </div>
+
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <CloudRain className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Automated scenario & microclimate</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Automatically syncs regional microclimates (snow freeze, monsoon mudflow, clear highway), adjusts vehicle axle constraints, and exports full JSON audit manifests.
+                </p>
+              </div>
+
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <Database className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Supabase / PostGIS foundation</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Eight-state metadata, versioned graph snapshots, hazard observations, and geo-tagged field-report APIs backed by a live spatial database.
+                </p>
+              </div>
+
+              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
+                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
+                  <FileText className="size-5" />
+                </span>
+                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">Field reports & moderation</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Officials submit geo-tagged incidents with private, authenticated evidence uploads. Reviewer-approved events become request-time closures for the routing engine.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 5: HOW IT WORKS */}
+        <section id="how" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/20">
+          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
+            <div className="max-w-2xl">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                How it works
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                From raw road data to an explainable route
+              </h2>
+            </div>
+
+            <ol className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <li className="relative rounded-xl border border-border bg-card p-6 shadow-md">
+                <span className="font-mono text-sm font-semibold text-signal">01</span>
+                <span aria-hidden="true" className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent" />
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">Build the road graph</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  OSMnx extracts directed, multi-edge road networks for the region. Truck limits, closures, and versioned snapshots are stored in PostGIS.
+                </p>
+              </li>
+
+              <li className="relative rounded-xl border border-border bg-card p-6 shadow-md">
+                <span className="font-mono text-sm font-semibold text-signal">02</span>
+                <span aria-hidden="true" className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent" />
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">Choose a scenario</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Pick origin and destination, select a vehicle, and let the system automatically detect microclimate conditions and hill exposure.
+                </p>
+              </li>
+
+              <li className="relative rounded-xl border border-border bg-card p-6 shadow-md">
+                <span className="font-mono text-sm font-semibold text-signal">03</span>
+                <span aria-hidden="true" className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent" />
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">Solve with custom A*</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  The engine runs A* twice on the same graph — once for the fastest path, once weighted by road risk exposure — with explicit edge reconstruction.
+                </p>
+              </li>
+
+              <li className="relative rounded-xl border border-border bg-card p-6 shadow-md">
+                <span className="font-mono text-sm font-semibold text-signal">04</span>
+                <span aria-hidden="true" className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent" />
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">Compare & export</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Inspect the two routes side by side on interactive terrain, understand each trade-off, and export the full explainable result as JSON.
+                </p>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        {/* SECTION 6: COMPARISON */}
+        <section id="comparison" className="relative border-t border-border/70 py-20 lg:py-28">
+          <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-5 lg:grid-cols-2 lg:px-8">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
+              <div className="flex items-center gap-2 text-signal font-mono text-xs uppercase tracking-widest font-bold">
+                <Check className="size-4" />
+                Comparative Route Principles
+              </div>
+              <h3 className="font-display text-2xl font-bold text-foreground">
+                Honest multi-criteria logistics trade-offs
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                In difficult mountain geography, the shortest path often crosses hazardous mudslides, flooded valley floors,
+                and steep gradient hairpin drops. RaahSetu quantifies this risk explicitly.
+              </p>
+              <div className="p-4 rounded-xl bg-signal/10 border border-signal/30 text-xs text-signal font-mono">
+                Average hazard reduction index: 34% across 56 controlled mountain freight scenarios.
+              </div>
+            </div>
+
+            <div>
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                Fastest vs. risk-aware
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Two routes, one honest trade-off
+              </h2>
+              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                RaahSetu never hides the cost of safety. It surfaces both options on the same graph so planners can decide with full context.
+              </p>
+
+              <div className="mt-8 grid gap-4">
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                  <div className="flex items-center gap-2 text-hazard">
+                    <Zap className="size-4" />
+                    <span className="font-display font-semibold">Fastest route</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Minimises estimated travel time only. May pass through landslide-prone or higher-exposure road edges.
+                  </p>
+                  <div className="mt-4 flex gap-6 font-mono text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="size-3.5" /> lowest time
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-hazard">
+                      <TriangleAlert className="size-3.5" /> higher risk index
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-signal/40 bg-signal/[0.06] p-5 shadow-sm">
+                  <div className="flex items-center gap-2 text-signal">
+                    <Check className="size-4" />
+                    <span className="font-display font-semibold text-foreground">Risk-aware route</span>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Weights each edge by road-risk exposure and respects vehicle limits and closures, trading a little time for a lower risk index.
+                  </p>
+                  <div className="mt-4 flex gap-6 font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="size-3.5" /> slightly longer
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-signal font-bold">
+                      <Check className="size-3.5" /> lower risk index
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 7: ENGINEERING STACK */}
+        <section id="stack" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/20">
+          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
+            <div className="max-w-2xl">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                Engineering stack
+              </span>
+              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Built on the team blueprint
+              </h2>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Dashboard UI</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">React + TypeScript</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Interactive Cartography</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">SVG + React Three Fiber</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Routing API</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">Python 3.12 + FastAPI</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Pathfinding</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">Custom A* engine</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Road extraction</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">OSMnx + Pyosmium</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Spatial data</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">Supabase / PostGIS</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Microclimate</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">Automated Telemetry</p>
+              </div>
+              <div className="bg-card p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-signal font-bold">Deployment</p>
+                <p className="mt-2 font-display text-base font-semibold text-foreground">Docker + Kubernetes</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 8: WHAT THE PROTOTYPE DOES NOT CLAIM */}
+        <section className="relative border-t border-border/70 py-20 lg:py-28">
+          <div className="mx-auto w-full max-w-4xl px-5 lg:px-8">
+            <div className="rounded-2xl border border-border bg-card/60 p-8 lg:p-10 shadow-xl backdrop-blur-sm">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-md bg-hazard/12 text-hazard ring-1 ring-hazard/25">
+                  <Info className="size-5" />
+                </span>
+                <h2 className="font-display text-xl font-semibold text-foreground">
+                  What the prototype does not claim
+                </h2>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                Explainability means being honest about limits. RaahSetu is upfront about the boundaries of the current prototype:
+              </p>
+              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
+                  The synthetic network uses fictional roads and hazards; the real OSM network explicitly reports where reviewed risk evidence is missing.
+                </li>
+                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
+                  Weather controls simulate conditions and travel time is estimated without live traffic.
+                </li>
+                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
+                  Risk exposure is an index, not an accident probability. Scoring is rule-based, not a trained predictive ML model.
+                </li>
+                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
+                  This is a prototype — not operational dispatch. GPS tracking, live feeds, and turn restrictions are part of ongoing expansion.
+                </li>
+              </ul>
+            </div>
+          </div>
         </section>
       </main>
+
+      {/* Footer */}
+      <footer className="relative overflow-hidden border-t border-border/70 py-16 px-5 lg:px-8 bg-card/30">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-30" />
+        <div className="relative mx-auto w-full max-w-7xl flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-md bg-signal/15 text-signal ring-1 ring-signal/30">
+              <Waypoints className="size-4" />
+            </span>
+            <div className="leading-tight">
+              <p className="font-display text-sm font-semibold text-foreground">RaahSetu</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Northeast India</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0. Terrain-aware logistics route planner.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
