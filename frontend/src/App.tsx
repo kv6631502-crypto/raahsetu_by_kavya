@@ -44,6 +44,7 @@ import {
   getAutomaticWeatherForLocation,
   getIntermediateCities,
   getRouteLegs,
+  projectGeoToSvg,
   solvePath,
   toPolylinePoints,
 } from "./routeData";
@@ -54,6 +55,7 @@ interface CityComboboxProps {
   selectedId: string;
   onSelect: (id: string) => void;
   otherCityId: string;
+  customOrigin?: { name: string; lat: number; lon: number } | null;
 }
 
 function CityCombobox({
@@ -62,6 +64,7 @@ function CityCombobox({
   selectedId,
   onSelect,
   otherCityId,
+  customOrigin,
 }: CityComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -135,10 +138,21 @@ function CityCombobox({
             className="flex w-full items-center justify-between text-left text-sm cursor-pointer"
           >
             <span className="font-semibold text-foreground">
-              {selectedCity?.name}
-              <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                ({selectedCity?.state})
-              </span>
+              {customOrigin && label === "Origin" ? (
+                <>
+                  <span className="text-signal font-bold">📍 {customOrigin.name}</span>
+                  <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-signal/15 text-signal border border-signal/30 font-mono">
+                    Live GPS
+                  </span>
+                </>
+              ) : (
+                <>
+                  {selectedCity?.name}
+                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                    ({selectedCity?.state})
+                  </span>
+                </>
+              )}
             </span>
           </button>
         )}
@@ -197,6 +211,13 @@ export function App() {
   const [hoveredCity, setHoveredCity] = useState<City | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [customOrigin, setCustomOrigin] = useState<{
+    name: string;
+    lat: number;
+    lon: number;
+    nearestHub: City;
+    distanceKm: number;
+  } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
   // SVG Map Zoom & Pan State
@@ -286,11 +307,12 @@ export function App() {
   // Origin / Destination Quick-Swap
   const handleSwap = () => {
     const oldOrigin = origin;
+    setCustomOrigin(null);
     setOrigin(destination);
     setDestination(oldOrigin);
   };
 
-  // GPS Live Location Snap
+  // GPS Live Location Detection (Displays Exact Current Location)
   const handleGpsLocation = () => {
     if (!navigator.geolocation) {
       setLocationNotice("Geolocation is not supported by your browser.");
@@ -300,20 +322,49 @@ export function App() {
     setLocationNotice(null);
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsLocating(false);
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
         const nearest = findNearestCity(latitude, longitude);
+
+        let placeTitle = `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+        try {
+          // Reverse geocode via OpenStreetMap Nominatim for exact local city/district name
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const localName = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district;
+            if (localName) {
+              placeTitle = `${localName}, ${addr.state || "Current GPS"}`;
+            }
+          }
+        } catch {
+          // Fallback to formatted coordinates
+        }
+
+        setIsLocating(false);
         if (nearest.city.id === destination) {
           setLocationNotice(
-            `Snapped to ${nearest.city.name} (${nearest.distanceKm} km away), but it is already your destination.`
+            `Current GPS position is at ${placeTitle}, but the highway entry hub (${nearest.city.name}) is already your destination.`
           );
-        } else {
-          setOrigin(nearest.city.id);
-          setLocationNotice(
-            `GPS locked: nearest logistics node is ${nearest.city.name} (${nearest.distanceKm} km away).`
-          );
+          return;
         }
+
+        setOrigin(nearest.city.id);
+        setCustomOrigin({
+          name: placeTitle,
+          lat: latitude,
+          lon: longitude,
+          nearestHub: nearest.city,
+          distanceKm: nearest.distanceKm,
+        });
+
+        setLocationNotice(
+          `GPS Active: Exact location detected at ${placeTitle} (${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E). Linked to highway corridor via ${nearest.city.name} (${nearest.distanceKm} km entry connection).`
+        );
       },
       (err) => {
         setIsLocating(false);
@@ -717,8 +768,12 @@ export function App() {
                         label="Origin"
                         tone="signal"
                         selectedId={origin}
-                        onSelect={setOrigin}
+                        onSelect={(id) => {
+                          setCustomOrigin(null);
+                          setOrigin(id);
+                        }}
                         otherCityId={destination}
+                        customOrigin={customOrigin}
                       />
 
                       <div className="pt-6 shrink-0">
@@ -1199,6 +1254,58 @@ export function App() {
                           filter="url(#glow-hazard)"
                         />
                       )}
+
+                      {/* Exact Live GPS Location Marker & Connector */}
+                      {customOrigin && (() => {
+                        const gpsSvg = projectGeoToSvg(customOrigin.lat, customOrigin.lon);
+                        return (
+                          <g className="cursor-pointer">
+                            {/* Connector line from exact GPS position to highway entry hub */}
+                            <line
+                              x1={gpsSvg.x}
+                              y1={gpsSvg.y}
+                              x2={customOrigin.nearestHub.x}
+                              y2={customOrigin.nearestHub.y}
+                              stroke="var(--signal)"
+                              strokeWidth="2.5"
+                              strokeDasharray="4 4"
+                              opacity="0.8"
+                            />
+                            {/* Live GPS Radar beacon */}
+                            <circle
+                              cx={gpsSvg.x}
+                              cy={gpsSvg.y}
+                              r="22"
+                              fill="none"
+                              stroke="#38bdf8"
+                              strokeWidth="2.5"
+                              className="radar-ping"
+                            />
+                            <circle
+                              cx={gpsSvg.x}
+                              cy={gpsSvg.y}
+                              r="8"
+                              fill="#38bdf8"
+                              stroke="#0f172a"
+                              strokeWidth="2.5"
+                              filter="drop-shadow(0 0 8px #38bdf8)"
+                            />
+                            <circle cx={gpsSvg.x} cy={gpsSvg.y} r="3" fill="#ffffff" />
+                            <text
+                              x={gpsSvg.x}
+                              y={gpsSvg.y - 16}
+                              textAnchor="middle"
+                              fill="#38bdf8"
+                              fontSize="12"
+                              fontFamily="monospace"
+                              fontWeight="bold"
+                              filter="drop-shadow(0px 1px 3px rgba(0,0,0,0.95))"
+                            >
+                              📍 {customOrigin.name} (Exact GPS)
+                            </text>
+                          </g>
+                        );
+                      })()}
 
                       {/* City Nodes */}
                       {CITIES.map((city) => {
