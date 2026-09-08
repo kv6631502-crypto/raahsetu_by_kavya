@@ -101,6 +101,83 @@ export const WEATHER_PROFILES: Record<WeatherCondition, WeatherProfile> = {
   },
 };
 
+export interface LiveWeatherReport {
+  condition: WeatherCondition;
+  tempC: number;
+  precipitationMm: number;
+  visibilityKm: number;
+  roadFriction: number;
+  summary: string;
+  advisory: string;
+  stationName: string;
+}
+
+export function getAutomaticWeatherForLocation(originId: string, destId?: string): LiveWeatherReport {
+  const o = CITY_MAP[originId];
+  const d = destId ? CITY_MAP[destId] : undefined;
+
+  const isSnowZone = (id?: string) => {
+    if (!id) return false;
+    return ["tawang", "dirang", "bomdila", "chungthang", "mangan", "lachung", "lachen"].includes(id);
+  };
+
+  const isRainZone = (id?: string) => {
+    if (!id) return false;
+    const c = CITY_MAP[id];
+    if (!c) return false;
+    return (
+      ["cherrapunji", "shillong", "jowai", "silchar", "karimganj", "haflong", "lunglei", "aizawl", "imphal", "kohima", "tuensang", "mokokchung", "mon", "churachandpur"].includes(id) ||
+      c.state === "Meghalaya" ||
+      c.state === "Mizoram" ||
+      c.state === "Nagaland" ||
+      c.state === "Manipur"
+    );
+  };
+
+  if (isSnowZone(originId) || isSnowZone(destId)) {
+    return {
+      condition: "snow",
+      tempC: -3,
+      precipitationMm: 4.5,
+      visibilityKm: 2.5,
+      roadFriction: 0.42,
+      summary: "High Altitude Sub-Zero Freeze",
+      advisory: "Black ice on mountain passes (Sela / Chungthang). Strict axle weight limits & snow chains advised.",
+      stationName: isSnowZone(destId) ? `${d?.name || "Pass"} Alpine Station` : `${o?.name || "Pass"} Alpine Station`,
+    };
+  }
+
+  if (isRainZone(originId) || isRainZone(destId)) {
+    return {
+      condition: "monsoon",
+      tempC: 22,
+      precipitationMm: 16.5,
+      visibilityKm: 6.0,
+      roadFriction: 0.64,
+      summary: "Monsoon Downpour & Saturated Slopes",
+      advisory: "Active rainfall in hill ghat sections (NH-6 / NH-2). Heightened mudslide and hydroplaning risk.",
+      stationName: `${o?.name || "Corridor"} Regional Radar`,
+    };
+  }
+
+  return {
+    condition: "clear",
+    tempC: 28,
+    precipitationMm: 0.0,
+    visibilityKm: 12.0,
+    roadFriction: 0.94,
+    summary: "Clear & Dry Corridor",
+    advisory: "Fair weather conditions with nominal highway cruising speeds and optimal braking traction.",
+    stationName: `${o?.name || "Valley"} Surface Met Post`,
+  };
+}
+
+export function getIntermediateCities(path: string[]): City[] {
+  if (path.length <= 2) return [];
+  return path.slice(1, -1).map((id) => CITY_MAP[id]).filter(Boolean);
+}
+
+
 export interface StrategicCorridor {
   id: string;
   title: string;

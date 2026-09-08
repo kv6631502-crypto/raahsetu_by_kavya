@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   ArrowUpDown,
   Check,
-  Clock,
   CloudRain,
-  Database,
+  Compass,
   Download,
-  FileWarning,
   Info,
   Loader2,
   LocateFixed,
@@ -15,17 +14,12 @@ import {
   Milestone,
   Mountain,
   RotateCcw,
-  Route as RouteIcon,
   Search,
   Share2,
-  ShieldAlert,
   ShieldCheck,
-  SlidersHorizontal,
   Snowflake,
   Sun,
-  TriangleAlert,
   Truck,
-  Waypoints,
   X,
   Zap,
   ZoomIn,
@@ -40,2042 +34,1270 @@ import {
   VEHICLE_PROFILES,
   VehicleType,
   WEATHER_PROFILES,
-  WeatherCondition,
   computeStats,
   findNearestCity,
   formatHours,
   getAdjustedEdgeRisk,
+  getAutomaticWeatherForLocation,
+  getIntermediateCities,
   getRouteLegs,
-  projectGeoToSvg,
   solvePath,
-  speed,
   toPolylinePoints,
 } from "./routeData";
+import { IntroPage } from "./IntroPage";
 
 interface CityComboboxProps {
   label: "Origin" | "Destination";
   tone: "signal" | "hazard";
-  value: string;
-  exclude: string;
-  onChange: (id: string) => void;
-  onGpsLocate?: () => void;
-  isLocating?: boolean;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  otherCityId: string;
 }
 
 function CityCombobox({
   label,
   tone,
-  value,
-  exclude,
-  onChange,
-  onGpsLocate,
-  isLocating,
+  selectedId,
+  onSelect,
+  otherCityId,
 }: CityComboboxProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectedCity = CITY_MAP[value] || CITIES[0];
+  const selectedCity = CITY_MAP[selectedId];
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return CITIES.filter(
-      (c) =>
-        c.id !== exclude &&
-        (!q ||
-          c.name.toLowerCase().startsWith(q) ||
-          c.name.toLowerCase().includes(q) ||
-          c.state.toLowerCase().includes(q))
-    ).sort((a, b) => {
-      const aStarts = a.name.toLowerCase().startsWith(q);
-      const bStarts = b.name.toLowerCase().startsWith(q);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return a.name.localeCompare(b.name);
+    return CITIES.filter((c) => {
+      if (c.id === otherCityId) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.state.toLowerCase().includes(q) ||
+        c.id.toLowerCase().includes(q)
+      );
     });
-  }, [query, exclude]);
-
-  function handleSelect(id: string) {
-    onChange(id);
-    setQuery("");
-    setIsOpen(false);
-  }
+  }, [query, otherCityId]);
 
   useEffect(() => {
-    if (!isOpen) return;
     function handleClickOutside(e: MouseEvent) {
       if (
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false);
+        setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  }, []);
 
-  useEffect(() => {
-    setHighlightedIndex(0);
-  }, [query]);
+  const borderClass =
+    tone === "signal"
+      ? "focus-within:border-emerald-400/80 focus-within:ring-emerald-400/20"
+      : "focus-within:border-amber-400/80 focus-within:ring-amber-400/20";
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          <MapPin
-            className={`size-3.5 ${
-              tone === "signal" ? "text-signal" : "text-hazard"
-            }`}
-          />{" "}
-          {label}
-        </span>
-        {onGpsLocate && (
+    <div ref={containerRef} className="relative flex-1">
+      <label className="mb-1 block text-xs font-mono uppercase tracking-wider text-slate-400">
+        {label}
+      </label>
+      <div
+        className={`flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-2.5 shadow-sm transition-all focus-within:ring-2 ${borderClass}`}
+      >
+        <MapPin
+          className={`size-4 shrink-0 ${
+            tone === "signal" ? "text-emerald-400" : "text-amber-400"
+          }`}
+        />
+        {open ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Type city, state, or border outpost..."
+            className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+            autoFocus
+          />
+        ) : (
           <button
             type="button"
-            onClick={onGpsLocate}
-            disabled={isLocating}
-            className="inline-flex items-center gap-1.5 rounded-full border border-signal/40 bg-signal/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-signal transition-all hover:border-signal hover:bg-signal/20 disabled:cursor-not-allowed disabled:opacity-60"
-            title="Detect live GPS coordinates and snap to closest city"
+            onClick={() => {
+              setOpen(true);
+              setQuery("");
+            }}
+            className="flex w-full items-center justify-between text-left text-sm"
           >
-            {isLocating ? (
-              <>
-                <Loader2 className="size-3 animate-spin text-signal" />
-                <span>Locating…</span>
-              </>
-            ) : (
-              <>
-                <LocateFixed className="size-3 text-signal" />
-                <span>Enable GPS</span>
-              </>
-            )}
+            <span className="font-medium text-slate-100">
+              {selectedCity?.name}
+              <span className="ml-1.5 text-xs text-slate-400">
+                ({selectedCity?.state})
+              </span>
+            </span>
+            <Search className="size-3.5 text-slate-400" />
           </button>
         )}
-      </div>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          role="combobox"
-          aria-expanded={isOpen}
-          aria-controls={`${label}-listbox`}
-          aria-label={`${label} city`}
-          autoComplete="off"
-          value={isOpen ? query : `${selectedCity.name} — ${selectedCity.state}`}
-          placeholder="Type a city…"
-          onFocus={() => {
-            setIsOpen(true);
-            setQuery("");
-          }}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return;
-            if (!isOpen && (e.key === "ArrowDown" || e.key === "Enter")) {
-              setIsOpen(true);
-              return;
-            }
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              setHighlightedIndex((prev) =>
-                Math.min(prev + 1, filtered.length - 1)
-              );
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-            } else if (e.key === "Enter") {
-              e.preventDefault();
-              if (filtered[highlightedIndex]) {
-                handleSelect(filtered[highlightedIndex].id);
-              }
-            } else if (e.key === "Escape") {
-              setIsOpen(false);
-            }
-          }}
-          className="w-full rounded-md border border-input bg-secondary/60 px-9 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-signal focus:ring-2 focus:ring-signal/30"
-        />
-        {isOpen && query && (
+        {open && (
           <button
             type="button"
-            aria-label="Clear"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setQuery("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setOpen(false)}
+            className="text-slate-400 hover:text-slate-200"
           >
             <X className="size-3.5" />
           </button>
         )}
       </div>
 
-      {isOpen && (
-        <ul
-          id={`${label}-listbox`}
-          role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-2xl shadow-black/50"
-        >
-          {onGpsLocate && (
-            <li role="presentation" className="border-b border-border/50 pb-1 mb-1">
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setIsOpen(false);
-                  onGpsLocate();
-                }}
-                disabled={isLocating}
-                className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-mono text-signal transition-colors hover:bg-signal/15"
-              >
-                {isLocating ? (
-                  <Loader2 className="size-3.5 animate-spin text-signal shrink-0" />
-                ) : (
-                  <LocateFixed className="size-3.5 text-signal shrink-0" />
-                )}
-                <span>
-                  {isLocating ? "Detecting GPS coordinates…" : "Use current live GPS location"}
-                </span>
-              </button>
-            </li>
-          )}
-          {filtered.length === 0 && (
-            <li className="px-3 py-2 text-sm text-muted-foreground">
-              No cities match “{query}”.
-            </li>
-          )}
-          {filtered.map((city, idx) => {
-            const isHighlighted = idx === highlightedIndex;
-            const isSelected = city.id === value;
-            return (
-              <li key={city.id} role="option" aria-selected={isSelected}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setHighlightedIndex(idx)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleSelect(city.id)}
-                  className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors ${
-                    isHighlighted
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">
-                      {city.name}
-                    </span>
-                    {city.tier === "small" && (
-                      <span className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                        town
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {city.state}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-slate-700/90 bg-slate-900/98 p-1 shadow-2xl backdrop-blur-xl">
+          <div className="px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-slate-400">
+            {filtered.length} locations available
+          </div>
+          {filtered.map((city) => (
+            <button
+              key={city.id}
+              type="button"
+              onClick={() => {
+                onSelect(city.id);
+                setOpen(false);
+                setQuery("");
+              }}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                city.id === selectedId
+                  ? "bg-emerald-500/20 text-emerald-300 font-medium"
+                  : "text-slate-200 hover:bg-slate-800/80"
+              }`}
+            >
+              <div>
+                <div className="font-medium">{city.name}</div>
+                <div className="text-xs text-slate-400">
+                  {city.state} · {city.lat.toFixed(2)}°N, {city.lon.toFixed(2)}°E
+                </div>
+              </div>
+              {city.id === selectedId && <Check className="size-4 text-emerald-400" />}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function StatDisplay({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "signal" | "hazard";
-}) {
-  return (
-    <div>
-      <div
-        className={
-          tone === "signal"
-            ? "text-lg font-semibold text-signal"
-            : tone === "hazard"
-            ? "text-lg font-semibold text-hazard"
-            : "text-lg font-semibold text-foreground"
-        }
-      >
-        {value}
-      </div>
-      <div className="mt-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </div>
-    </div>
-  );
-}
+export function App() {
+  // Navigation View: 'intro' (landing/impact page) vs 'console' (routing engine)
+  const [activeView, setActiveView] = useState<"intro" | "console">("console");
 
-
-interface GpsState {
-  lat: number;
-  lon: number;
-  accuracy: number;
-  snappedCity: City;
-  distanceKm: number;
-  timestamp: number;
-}
-
-function RoutePlannerSection() {
   const [origin, setOrigin] = useState("guwahati");
-  const [destination, setDestination] = useState("imphal");
+  const [destination, setDestination] = useState("tawang");
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
-  const [weather, setWeather] = useState<WeatherCondition>("clear");
-  const [gpsState, setGpsState] = useState<GpsState | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
-  const [gpsError, setGpsError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"summary" | "itinerary">("summary");
-  const [hoveredLeg, setHoveredLeg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"comparison" | "itinerary">("comparison");
+  const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [hoveredCity, setHoveredCity] = useState<City | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1.0);
-  const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
-  // Sync with URL parameters on mount
+  // SVG Map Zoom & Pan State
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Read URL search params on initial load
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const o = params.get("origin");
-      const d = params.get("dest");
-      const v = params.get("vehicle") as VehicleType;
-      const w = params.get("weather") as WeatherCondition;
-      if (o && CITY_MAP[o]) setOrigin(o);
-      if (d && CITY_MAP[d]) setDestination(d);
-      if (v && VEHICLE_PROFILES[v]) setVehicle(v);
-      if (w && WEATHER_PROFILES[w]) setWeather(w);
-    } catch {
-      // Ignore URL parse errors
-    }
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get("view");
+    if (viewParam === "intro") setActiveView("intro");
+    const fromParam = params.get("from");
+    const toParam = params.get("to");
+    const vehParam = params.get("vehicle") as VehicleType;
+    const tabParam = params.get("tab") as "comparison" | "itinerary";
+
+    if (fromParam && CITY_MAP[fromParam]) setOrigin(fromParam);
+    if (toParam && CITY_MAP[toParam] && toParam !== fromParam) setDestination(toParam);
+    if (vehParam && VEHICLE_PROFILES[vehParam]) setVehicle(vehParam);
+    if (tabParam) setActiveTab(tabParam);
   }, []);
 
-  function handleGpsLocate() {
+  // Sync state to URL search parameters
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeView === "intro") {
+      params.set("view", "intro");
+    } else {
+      params.set("from", origin);
+      params.set("to", destination);
+      params.set("vehicle", vehicle);
+      params.set("tab", activeTab);
+    }
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [activeView, origin, destination, vehicle, activeTab]);
+
+  // AUTOMATIC WEATHER INGESTION:
+  // Derived automatically from current origin, corridor, and elevation
+  const liveWeather = useMemo(() => {
+    return getAutomaticWeatherForLocation(origin, destination);
+  }, [origin, destination]);
+
+  const weather = liveWeather.condition;
+
+  // Shortest / Nominal route solver (minimizes pure physical distance)
+  const shortest = useMemo(() => {
+    return solvePath(origin, destination, (edge) => edge.dist);
+  }, [origin, destination]);
+
+  // Safe / Terrain & Hazard-Aware route solver (penalizes risk, grade, and weather)
+  const safe = useMemo(() => {
+    return solvePath(origin, destination, (edge) => {
+      const adjRisk = getAdjustedEdgeRisk(edge, vehicle, weather);
+      return edge.dist * (1 + adjRisk * 2.5);
+    });
+  }, [origin, destination, vehicle, weather]);
+
+  const shortestStats = useMemo(
+    () => (shortest ? computeStats(shortest, vehicle, weather) : null),
+    [shortest, vehicle, weather]
+  );
+  const safeStats = useMemo(
+    () => (safe ? computeStats(safe, vehicle, weather) : null),
+    [safe, vehicle, weather]
+  );
+
+  // Turn-by-turn legs for the active safe route
+  const safeLegs = useMemo(() => {
+    if (!safe) return [];
+    return getRouteLegs(safe, vehicle, weather);
+  }, [safe, vehicle, weather]);
+
+  // Intermediate small cities along the active route
+  const intermediateCities = useMemo(() => {
+    if (!safe) return [];
+    return getIntermediateCities(safe);
+  }, [safe]);
+
+  // Risk reduction percentage
+  const riskReductionPct = useMemo(() => {
+    if (!shortestStats || !safeStats) return 0;
+    if (shortestStats.riskIndex === 0) return 0;
+    const diff = ((shortestStats.riskIndex - safeStats.riskIndex) / shortestStats.riskIndex) * 100;
+    return Math.max(0, Math.round(diff));
+  }, [shortestStats, safeStats]);
+
+  // Set of all node IDs currently on the active safe route
+  const activeRouteCityIds = useMemo(() => {
+    return new Set(safe || []);
+  }, [safe]);
+
+  // Origin / Destination Quick-Swap
+  const handleSwap = () => {
+    const oldOrigin = origin;
+    setOrigin(destination);
+    setDestination(oldOrigin);
+  };
+
+  // GPS Live Location Snap
+  const handleGpsLocation = () => {
     if (!navigator.geolocation) {
-      setGpsError("Geolocation is not supported by your browser.");
+      setLocationNotice("Geolocation is not supported by your browser.");
       return;
     }
     setIsLocating(true);
-    setGpsError(null);
+    setLocationNotice(null);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setIsLocating(false);
-        const { latitude, longitude, accuracy } = pos.coords;
-        const { city, distanceKm } = findNearestCity(latitude, longitude);
-        setGpsState({
-          lat: latitude,
-          lon: longitude,
-          accuracy: Math.round(accuracy),
-          snappedCity: city,
-          distanceKm,
-          timestamp: Date.now(),
-        });
-        setOrigin(city.id);
+        const { latitude, longitude } = pos.coords;
+        const nearest = findNearestCity(latitude, longitude);
+        if (nearest.city.id === destination) {
+          setLocationNotice(
+            `Snapped to ${nearest.city.name} (${nearest.distanceKm} km away), but it is already your destination.`
+          );
+        } else {
+          setOrigin(nearest.city.id);
+          setLocationNotice(
+            `GPS locked: nearest logistics node is ${nearest.city.name} (${nearest.distanceKm} km away).`
+          );
+        }
       },
       (err) => {
         setIsLocating(false);
-        if (err.code === err.PERMISSION_DENIED) {
-          setGpsError(
-            "Location permission was denied. Please allow location access in your browser to use GPS."
-          );
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          setGpsError(
-            "GPS position unavailable. Please check that location services are enabled on your device."
-          );
-        } else if (err.code === err.TIMEOUT) {
-          setGpsError("GPS location request timed out. Please try again.");
-        } else {
-          setGpsError(`Could not detect location: ${err.message}`);
-        }
+        setLocationNotice(`Unable to retrieve GPS coordinates (${err.message}).`);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 30000,
-      }
+      { timeout: 10000, enableHighAccuracy: true }
     );
-  }
+  };
 
-  function handleSwap() {
-    const prevOrigin = origin;
-    setOrigin(destination);
-    setDestination(prevOrigin);
-    if (gpsState) setGpsState(null);
-  }
+  // Share Route Link
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
 
-  function handleExportManifest() {
-    if (!comparison) return;
+  // Export Manifest JSON
+  const handleExportManifest = () => {
     const manifest = {
+      manifestId: `RS-DISPATCH-${Date.now()}`,
       generatedAt: new Date().toISOString(),
-      system: "RaahSetu Logistics Intelligence Platform",
-      region: "Northeast India (8 States)",
       origin: CITY_MAP[origin],
       destination: CITY_MAP[destination],
       vehicleProfile: VEHICLE_PROFILES[vehicle],
-      weatherScenario: WEATHER_PROFILES[weather],
-      recommendedRiskAwareRoute: {
-        totalDistanceKm: comparison.safe.distance,
-        estimatedHours: Math.round(comparison.safe.hours * 100) / 100,
-        riskIndex: comparison.safe.riskIndex,
-        stopCount: comparison.safe.path.length,
-        path: comparison.safe.path.map((id) => ({
-          id,
-          name: CITY_MAP[id].name,
-          state: CITY_MAP[id].state,
-          lat: CITY_MAP[id].lat,
-          lon: CITY_MAP[id].lon,
-        })),
-        legs: routeLegs.map((l) => ({
-          from: l.fromCity.name,
-          to: l.toCity.name,
-          distanceKm: l.dist,
-          estimatedHours: Math.round(l.hours * 100) / 100,
-          riskScore: l.risk,
-          terrain: l.terrainType,
-          note: l.note || null,
-        })),
+      weatherProfile: WEATHER_PROFILES[weather],
+      liveMicroclimateTelemetry: liveWeather,
+      summary: {
+        safeRoute: safeStats,
+        nominalShortestRoute: shortestStats,
+        riskReductionPercent: riskReductionPct,
       },
-      fastestAlternative: {
-        totalDistanceKm: comparison.fastest.distance,
-        estimatedHours: Math.round(comparison.fastest.hours * 100) / 100,
-        riskIndex: comparison.fastest.riskIndex,
-        path: comparison.fastest.path.map((id) => CITY_MAP[id].name),
-      },
-      gpsFix: gpsState
-        ? {
-            latitude: gpsState.lat,
-            longitude: gpsState.lon,
-            accuracyMeters: gpsState.accuracy,
-            snappedHub: gpsState.snappedCity.name,
-            distanceToHubKm: gpsState.distanceKm,
-          }
-        : null,
+      intermediateTransitTowns: intermediateCities,
+      turnByTurnLegs: safeLegs,
     };
-
     const blob = new Blob([JSON.stringify(manifest, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `raahsetu-manifest-${origin}-to-${destination}.json`;
+    a.download = `manifest-${origin}-to-${destination}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }
+  };
 
-  function handleCopyShareLink() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("origin", origin);
-    url.searchParams.set("dest", destination);
-    url.searchParams.set("vehicle", vehicle);
-    url.searchParams.set("weather", weather);
-    navigator.clipboard.writeText(url.toString());
-    setCopiedShareLink(true);
-    setTimeout(() => setCopiedShareLink(false), 2200);
-  }
+  // Dynamic SVG viewBox calculation with zoom & pan
+  const svgViewBox = useMemo(() => {
+    const baseW = 1000;
+    const baseH = 560;
+    const w = baseW / zoomLevel;
+    const h = baseH / zoomLevel;
+    const x = (baseW - w) / 2 + panOffset.x;
+    const y = (baseH - h) / 2 + panOffset.y;
+    return `${x} ${y} ${w} ${h}`;
+  }, [zoomLevel, panOffset]);
 
-  function handleZoomIn() {
-    setZoomLevel((z) => Math.min(2.2, Math.round((z + 0.3) * 10) / 10));
-  }
-  function handleZoomOut() {
-    setZoomLevel((z) => Math.max(1.0, Math.round((z - 0.3) * 10) / 10));
-  }
-  function handleZoomReset() {
+  const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, z + 0.3));
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.8, z - 0.3));
+  const handleResetZoom = () => {
     setZoomLevel(1.0);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // If user is looking at the Intro / Mission Impact page
+  if (activeView === "intro") {
+    return (
+      <div className="relative">
+        {/* Navigation Bar */}
+        <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20">
+                <div className="size-full rounded-[10px] bg-slate-950 flex items-center justify-center">
+                  <Mountain className="size-5 text-emerald-400" />
+                </div>
+              </div>
+              <div>
+                <span className="text-lg font-black tracking-tight text-white">
+                  RaahSetu
+                </span>
+                <span className="ml-2 text-xs font-mono text-emerald-400/90 hidden sm:inline">
+                  Terrain-Aware Logistics
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveView("intro")}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-pointer"
+              >
+                Mission & Crisis Data
+              </button>
+              <button
+                onClick={() => setActiveView("console")}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Operations Console</span>
+                <ArrowRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <IntroPage
+          onLaunchConsole={(from, to) => {
+            if (from) setOrigin(from);
+            if (to) setDestination(to);
+            setActiveView("console");
+          }}
+        />
+      </div>
+    );
   }
 
-  const comparison = useMemo(() => {
-    if (origin === destination) return null;
-    const fastestPath = solvePath(
-      origin,
-      destination,
-      (e) => e.dist / speed(e.risk, vehicle, weather)
-    );
-    const safePath = solvePath(
-      origin,
-      destination,
-      (e) => {
-        const effRisk = getAdjustedEdgeRisk(e, vehicle, weather);
-        const effSpeed = speed(e.risk, vehicle, weather);
-        return e.dist / effSpeed + effRisk * e.dist * 0.055;
-      }
-    );
-    if (!fastestPath || !safePath) return null;
-    return {
-      fastest: computeStats(fastestPath, vehicle, weather),
-      safe: computeStats(safePath, vehicle, weather),
-    };
-  }, [origin, destination, vehicle, weather]);
-
-  const routeLegs = useMemo(() => {
-    if (!comparison) return [];
-    return getRouteLegs(comparison.safe.path, vehicle, weather);
-  }, [comparison, vehicle, weather]);
-
-  const activeEdges = useMemo(() => {
-    const set = new Set<string>();
-    if (!comparison) return set;
-    for (const r of [comparison.fastest, comparison.safe]) {
-      for (let i = 0; i < r.path.length - 1; i++) {
-        set.add([r.path[i], r.path[i + 1]].sort().join("-"));
-      }
-    }
-    return set;
-  }, [comparison]);
-
-  const activeNodes = useMemo(() => {
-    const set = new Set<string>();
-    if (comparison) {
-      for (const id of comparison.fastest.path) set.add(id);
-      for (const id of comparison.safe.path) set.add(id);
-    }
-    return set;
-  }, [comparison]);
-
-  const avoidedHazards = useMemo(() => {
-    if (!comparison) return [];
-    const safeEdgeSet = new Set(
-      comparison.safe.edges.map((e) => [e.a, e.b].sort().join("-"))
-    );
-    return comparison.fastest.edges.filter(
-      (e) => e.note && !safeEdgeSet.has([e.a, e.b].sort().join("-"))
-    );
-  }, [comparison]);
-
-  const isIdentical =
-    comparison &&
-    comparison.fastest.path.join(">") === comparison.safe.path.join(">");
-
-  // SVG Dynamic Zoom ViewBox Calculation
-  const baseW = 1000;
-  const baseH = 560;
-  const viewBoxW = baseW / zoomLevel;
-  const viewBoxH = baseH / zoomLevel;
-  const focusCity = CITY_MAP[origin] || { x: 530, y: 280 };
-  const targetCenterX = zoomLevel > 1.0 ? focusCity.x : 500;
-  const targetCenterY = zoomLevel > 1.0 ? focusCity.y : 280;
-  const minX = Math.max(0, Math.min(baseW - viewBoxW, targetCenterX - viewBoxW / 2));
-  const minY = Math.max(0, Math.min(baseH - viewBoxH, targetCenterY - viewBoxH / 2));
-  const currentViewBox = `${minX} ${minY} ${viewBoxW} ${viewBoxH}`;
-
+  // Otherwise render the Live Operations Console
   return (
-    <section id="planner" className="relative border-t border-border/70 py-20 lg:py-28">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]"
-      />
-      <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8">
-        
-        {/* Operations Telemetry Ribbon */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-card/60 px-4 py-2.5 shadow-sm backdrop-blur-md">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-xs">
-            <span className="inline-flex items-center gap-1.5 text-signal font-medium">
-              <span className="size-2 rounded-full bg-signal node-pulse" />
-              <span>111 Active Nodes</span>
-            </span>
-            <span className="text-border">•</span>
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              <Waypoints className="size-3.5 text-muted-foreground" />
-              <span>189 Highway Arcs</span>
-            </span>
-            <span className="text-border">•</span>
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <Mountain className="size-3.5 text-muted-foreground" />
-              <span>8 Northeast States</span>
-            </span>
-            <span className="text-border">•</span>
-            <span className="inline-flex items-center gap-1.5 text-signal">
-              <Zap className="size-3.5 text-signal" />
-              <span>A* Solver Latency: &lt;4ms</span>
-            </span>
+    <div className="min-h-screen bg-[#06080e] text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+      {/* Top Operations Header */}
+      <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/95 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+          {/* Brand & Mode Switcher */}
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20">
+              <div className="size-full rounded-[10px] bg-slate-950 flex items-center justify-center">
+                <Mountain className="size-5 text-emerald-400" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-black tracking-tight text-white">
+                  RaahSetu
+                </span>
+                <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">
+                  Ops Console
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Autonomous Terrain & Microclimate Routing System
+              </p>
+            </div>
           </div>
-          <div className="hidden font-mono text-[11px] text-muted-foreground md:block">
-            <span>Projection: </span>
-            <span className="text-foreground">22.0°N–28.5°N, 88.0°E–96.5°E</span>
+
+          {/* Navigation View Toggle */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => setActiveView("intro")}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Info className="size-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">Mission & Impact Data</span>
+            </button>
+            <button
+              onClick={() => setActiveView("console")}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <Compass className="size-3.5 text-emerald-400" />
+              <span>Operations Console</span>
+            </button>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
+              title="Share route link"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="size-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="size-3.5 text-slate-400" />
+                  <span className="hidden md:inline">Share</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleExportManifest}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition-colors shadow-sm cursor-pointer"
+              title="Export structured JSON dispatch manifest"
+            >
+              <Download className="size-3.5 text-emerald-400" />
+              <span>Export Manifest</span>
+            </button>
           </div>
         </div>
+      </header>
 
-        <div className="max-w-2xl">
-          <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal">
-            Live Dispatch Operations
-          </span>
-          <h2 className="mt-3 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Interactive Route Command Center
-          </h2>
-          <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Select origin and destination, toggle commercial payload profiles, and simulate
-            weather impacts. RaahSetu computes both fastest and risk-aware trajectories
-            across all 111 interconnected cities and border lifelines.
-          </p>
-        </div>
-
-        {/* Strategic Corridors Quick-Picks */}
-        <div className="mt-8">
-          <div className="mb-2.5 flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              Strategic Freight Corridors
+      {/* Main Operations Body */}
+      <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-4 space-y-4">
+        {/* Strategic Freight Corridors Quick-Picks Ribbon */}
+        <section className="rounded-2xl border border-slate-800/90 bg-slate-950/60 p-3 backdrop-blur-sm">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-mono uppercase tracking-wider text-slate-400">
+              <Zap className="size-3.5 text-emerald-400" />
+              Strategic Mountain Freight Corridors (One-Click Dispatch)
             </span>
-            <span className="font-mono text-[11px] text-signal">
-              Instant Corridor Simulation
+            <span className="text-[11px] text-slate-400">
+              {STRATEGIC_CORRIDORS.length} Arteries
             </span>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
             {STRATEGIC_CORRIDORS.map((corridor) => {
-              const isActive = origin === corridor.origin && destination === corridor.destination;
+              const isSelected =
+                origin === corridor.origin && destination === corridor.destination;
               return (
                 <button
                   key={corridor.id}
-                  type="button"
                   onClick={() => {
                     setOrigin(corridor.origin);
                     setDestination(corridor.destination);
-                    if (gpsState) setGpsState(null);
                   }}
-                  className={`group shrink-0 rounded-xl border p-3 text-left transition-all ${
-                    isActive
-                      ? "border-signal bg-signal/15 text-foreground shadow-sm shadow-signal/20 ring-1 ring-signal/30"
-                      : "border-border/80 bg-card/80 text-muted-foreground hover:border-signal/50 hover:bg-secondary/70 hover:text-foreground"
+                  className={`shrink-0 rounded-xl px-3 py-2 text-left transition-all border cursor-pointer ${
+                    isSelected
+                      ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10"
+                      : "border-slate-800/80 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className={`font-display text-xs font-semibold ${isActive ? "text-signal" : "text-foreground"}`}>
-                      {corridor.title}
-                    </span>
-                    <span className="rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground group-hover:text-foreground">
-                      {corridor.tag}
-                    </span>
+                  <div className="text-xs font-bold">{corridor.title}</div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {corridor.tag}
                   </div>
-                  <p className="mt-1 max-w-[220px] truncate text-[10px] text-muted-foreground">
-                    {corridor.description}
-                  </p>
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="flex flex-col gap-5">
-            {/* Origin & Destination Card with Quick Swap */}
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-lg shadow-black/20">
-              <div className="relative grid gap-3">
+        {/* Dispatch Controls & Automated Weather Telemetry */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Route Endpoints & Vehicle Input (7 Cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Origin & Destination Card */}
+            <div className="rounded-2xl border border-slate-800/90 bg-slate-950/80 p-4 shadow-xl backdrop-blur-md">
+              <div className="flex flex-col sm:flex-row items-center gap-2">
                 <CityCombobox
                   label="Origin"
                   tone="signal"
-                  value={origin}
-                  exclude={destination}
-                  onChange={(id) => {
-                    setOrigin(id);
-                    if (gpsState && id !== gpsState.snappedCity.id) {
-                      setGpsState(null);
-                    }
-                  }}
-                  onGpsLocate={handleGpsLocate}
-                  isLocating={isLocating}
+                  selectedId={origin}
+                  onSelect={setOrigin}
+                  otherCityId={destination}
                 />
 
-                {/* Swap Origin / Destination Button */}
-                <div className="relative my-1 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                    <div className="w-full border-t border-border/70" />
-                  </div>
+                {/* Quick-Swap Button */}
+                <div className="pt-5 shrink-0">
                   <button
                     type="button"
                     onClick={handleSwap}
-                    className="relative inline-flex size-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all hover:border-signal hover:bg-secondary hover:text-signal hover:scale-110 active:scale-95"
+                    className="p-2.5 rounded-xl border border-slate-700/80 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 transition-colors shadow-sm cursor-pointer"
                     title="Swap Origin and Destination"
-                    aria-label="Swap Origin and Destination"
                   >
-                    <ArrowUpDown className="size-3.5" />
+                    <ArrowUpDown className="size-4" />
                   </button>
                 </div>
 
                 <CityCombobox
                   label="Destination"
                   tone="hazard"
-                  value={destination}
-                  exclude={origin}
-                  onChange={setDestination}
+                  selectedId={destination}
+                  onSelect={setDestination}
+                  otherCityId={origin}
                 />
               </div>
 
-              {gpsState && (
-                <div className="mt-4 flex items-center justify-between rounded-xl border border-signal/30 bg-signal/[0.08] p-3 text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <span className="relative flex size-2.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-75" />
-                      <span className="relative inline-flex size-2.5 rounded-full bg-signal" />
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-1.5 font-mono text-signal">
-                        <LocateFixed className="size-3.5" />
-                        <span className="font-semibold">Live GPS Active:</span>
-                        <span className="text-foreground">
-                          {gpsState.lat.toFixed(4)}°N, {gpsState.lon.toFixed(4)}°E
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          (±{gpsState.accuracy}m)
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-muted-foreground">
-                        Snapped to closest network hub:{" "}
-                        <strong className="text-foreground">
-                          {gpsState.snappedCity.name}
-                        </strong>{" "}
-                        ({gpsState.distanceKm} km away)
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setGpsState(null)}
-                    className="ml-2 rounded px-2 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
+              {/* GPS Live Locate Button */}
+              <div className="mt-3 flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+                <button
+                  type="button"
+                  onClick={handleGpsLocation}
+                  disabled={isLocating}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                >
+                  {isLocating ? (
+                    <Loader2 className="size-3.5 animate-spin text-emerald-400" />
+                  ) : (
+                    <LocateFixed className="size-3.5 text-emerald-400" />
+                  )}
+                  <span>{isLocating ? "Acquiring GPS..." : "Snap Origin to My Live GPS"}</span>
+                </button>
 
-              {gpsError && (
-                <div className="mt-4 flex items-start gap-2 rounded-xl border border-hazard/40 bg-hazard/10 p-3 text-xs text-hazard">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                  <div className="flex-1">
-                    <span>{gpsError}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setGpsError(null)}
-                    className="ml-1 font-mono text-[11px] text-hazard/70 hover:text-hazard"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {origin === destination && (
-                <p className="mt-4 flex items-center gap-2 rounded-md border border-hazard/40 bg-hazard/10 px-3 py-2 text-xs text-hazard">
-                  <TriangleAlert className="size-3.5" />
-                  Choose two different cities to solve a route.
-                </p>
-              )}
-
-              {/* Operational Dispatch Simulation Profiles */}
-              <div className="mt-4 rounded-xl border border-border/70 bg-secondary/30 p-3.5">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <SlidersHorizontal className="size-3.5 text-signal" />
-                    Operational Dispatch Parameters
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    Reactive A* weights
-                  </span>
-                </div>
-
-                {/* Vehicle Payload Class */}
-                <div className="mb-3">
-                  <span className="mb-1.5 block font-mono text-[10px] uppercase text-muted-foreground">
-                    Vehicle Class
-                  </span>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
-                      const vp = VEHICLE_PROFILES[vKey];
-                      const isSelected = vehicle === vKey;
-                      return (
-                        <button
-                          key={vKey}
-                          type="button"
-                          onClick={() => setVehicle(vKey)}
-                          className={`flex flex-col items-start rounded-lg border p-2 text-left transition-colors ${
-                            isSelected
-                              ? "border-signal bg-signal/15 text-foreground ring-1 ring-signal/30"
-                              : "border-border/60 bg-card/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          }`}
-                        >
-                          <span className="flex items-center gap-1 font-mono text-[11px] font-semibold text-foreground">
-                            <Truck className="size-3 text-signal" />
-                            {vp.badge}
-                          </span>
-                          <span className="mt-0.5 w-full truncate font-mono text-[9px] text-muted-foreground">
-                            {vp.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Weather Scenario Toggle */}
-                <div>
-                  <span className="mb-1.5 block font-mono text-[10px] uppercase text-muted-foreground">
-                    Weather Condition
-                  </span>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(Object.keys(WEATHER_PROFILES) as WeatherCondition[]).map((wKey) => {
-                      const wp = WEATHER_PROFILES[wKey];
-                      const isSelected = weather === wKey;
-                      return (
-                        <button
-                          key={wKey}
-                          type="button"
-                          onClick={() => setWeather(wKey)}
-                          className={`flex flex-col items-start rounded-lg border p-2 text-left transition-colors ${
-                            isSelected
-                              ? wKey === "clear"
-                                ? "border-signal bg-signal/15 text-foreground ring-1 ring-signal/30"
-                                : "border-hazard bg-hazard/15 text-foreground ring-1 ring-hazard/30"
-                              : "border-border/60 bg-card/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                          }`}
-                        >
-                          <span className="flex items-center gap-1 font-mono text-[11px] font-semibold text-foreground">
-                            {wKey === "clear" && <Sun className="size-3 text-amber-400" />}
-                            {wKey === "monsoon" && <CloudRain className="size-3 text-sky-400" />}
-                            {wKey === "snow" && <Snowflake className="size-3 text-cyan-300" />}
-                            {wp.name}
-                          </span>
-                          <span className="mt-0.5 w-full truncate font-mono text-[9px] text-muted-foreground">
-                            {wp.badge}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  111 Connected Logistics Nodes
                 </div>
               </div>
 
-              {/* Action Buttons: Export Manifest & Share Route */}
-              {comparison && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
-                  <button
-                    type="button"
-                    onClick={handleExportManifest}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 font-mono text-xs text-foreground transition-colors hover:border-signal hover:bg-secondary"
-                  >
-                    <Download className="size-3.5 text-signal" />
-                    <span>Export Manifest (JSON)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyShareLink}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-1.5 font-mono text-xs text-foreground transition-colors hover:border-signal hover:bg-secondary"
-                  >
-                    {copiedShareLink ? (
-                      <>
-                        <Check className="size-3.5 text-signal" />
-                        <span className="text-signal font-medium">Link Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="size-3.5 text-muted-foreground" />
-                        <span>Share Route Link</span>
-                      </>
-                    )}
-                  </button>
+              {locationNotice && (
+                <div className="mt-2 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 font-mono">
+                  {locationNotice}
                 </div>
               )}
             </div>
 
-            {/* Results Navigation Tabs (Comparison vs Turn-by-Turn Manifest) */}
-            {comparison && (
-              <div className="flex border-b border-border/80 font-mono text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("summary")}
-                  className={`border-b-2 px-4 py-2 font-medium transition-colors ${
-                    activeTab === "summary"
-                      ? "border-signal text-signal"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Route Comparison
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("itinerary")}
-                  className={`border-b-2 px-4 py-2 font-medium transition-colors ${
-                    activeTab === "itinerary"
-                      ? "border-signal text-signal"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Turn-by-Turn Itinerary ({routeLegs.length} legs)
-                </button>
+            {/* Vehicle Profile Selector ONLY (User input requirement) */}
+            <div className="rounded-2xl border border-slate-800/90 bg-slate-950/80 p-4 shadow-xl backdrop-blur-md">
+              <div className="flex items-center justify-between mb-3">
+                <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
+                  <Truck className="size-3.5 text-cyan-400" />
+                  Select Vehicle Dispatch Profile
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Governs Hill Speed & Axle Safety Margin
+                </span>
               </div>
-            )}
 
-            {comparison && activeTab === "summary" && (
-              <>
-                <div className="rounded-2xl border border-signal/40 bg-signal/[0.06] p-5 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 font-display font-semibold text-foreground">
-                      <ShieldCheck className="size-4 text-signal" />
-                      Risk-aware route
-                    </span>
-                    <span className="rounded-full border border-signal/40 px-2.5 py-0.5 font-mono text-[11px] text-signal font-medium">
-                      recommended
-                    </span>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-3 font-mono">
-                    <StatDisplay
-                      label="distance"
-                      value={`${comparison.safe.distance} km`}
-                    />
-                    <StatDisplay
-                      label="est. time"
-                      value={formatHours(comparison.safe.hours)}
-                    />
-                    <StatDisplay
-                      label="risk index"
-                      value={`${comparison.safe.riskIndex}`}
-                      tone="signal"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                  <div className="flex items-center gap-2 font-display font-semibold text-hazard">
-                    <RouteIcon className="size-4" />
-                    Fastest route
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-3 font-mono">
-                    <StatDisplay
-                      label="distance"
-                      value={`${comparison.fastest.distance} km`}
-                    />
-                    <StatDisplay
-                      label="est. time"
-                      value={formatHours(comparison.fastest.hours)}
-                    />
-                    <StatDisplay
-                      label="risk index"
-                      value={`${comparison.fastest.riskIndex}`}
-                      tone="hazard"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-secondary/40 p-5">
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    Why this route
-                  </span>
-                  {isIdentical ? (
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      On this pair the fastest path is already the lowest-risk
-                      option, so RaahSetu recommends it directly — no trade-off
-                      needed.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        The risk-aware route accepts{" "}
-                        <span className="text-foreground font-medium">
-                          {formatHours(
-                            Math.max(
-                              0,
-                              comparison.safe.hours - comparison.fastest.hours
-                            )
-                          )}
-                        </span>{" "}
-                        extra travel time to cut the risk index from{" "}
-                        <span className="text-hazard font-semibold">
-                          {comparison.fastest.riskIndex}
-                        </span>{" "}
-                        to{" "}
-                        <span className="text-signal font-semibold">
-                          {comparison.safe.riskIndex}
-                        </span>
-                        .
-                      </p>
-                      {avoidedHazards.length > 0 && (
-                        <ul className="mt-3 space-y-2">
-                          {avoidedHazards.map((edge) => (
-                            <li
-                              key={`${edge.a}-${edge.b}`}
-                              className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"
-                            >
-                              <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-hazard" />
-                              <span>
-                                Avoids{" "}
-                                <span className="text-foreground font-medium">
-                                  {CITY_MAP[edge.a].name}–{CITY_MAP[edge.b].name}
-                                </span>
-                                : {edge.note}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-
-            {comparison && activeTab === "itinerary" && (
-              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    Turn-by-Turn Leg Manifest
-                  </span>
-                  <span className="font-mono text-[11px] text-signal">
-                    Hover leg to highlight on map
-                  </span>
-                </div>
-                <div className="max-h-[380px] space-y-2 overflow-y-auto pr-1 scrollbar-thin">
-                  {routeLegs.map((leg, idx) => {
-                    const key = [leg.fromId, leg.toId].sort().join("-");
-                    const isHovered = hoveredLeg === key;
-                    return (
-                      <div
-                        key={key}
-                        onMouseEnter={() => setHoveredLeg(key)}
-                        onMouseLeave={() => setHoveredLeg(null)}
-                        className={`rounded-xl border p-3 text-xs transition-all ${
-                          isHovered
-                            ? "border-signal bg-signal/10 ring-1 ring-signal/40"
-                            : "border-border/70 bg-secondary/30 hover:bg-secondary/60"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between font-mono">
-                          <div className="flex items-center gap-2">
-                            <span className="flex size-5 items-center justify-center rounded-full bg-signal/20 font-mono text-[10px] font-bold text-signal">
-                              {idx + 1}
-                            </span>
-                            <span className="font-medium text-foreground">
-                              {leg.fromCity.name} ➔ {leg.toCity.name}
-                            </span>
-                          </div>
-                          <span className="text-muted-foreground">
-                            {leg.dist} km • {formatHours(leg.hours)}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[10px]">
-                          <span className={`rounded px-1.5 py-0.5 font-medium ${
-                            leg.risk > 50
-                              ? "bg-hazard/20 text-hazard"
-                              : "bg-signal/20 text-signal"
-                          }`}>
-                            Exposure: {leg.risk}/100
-                          </span>
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
-                            {leg.terrainType}
-                          </span>
-                          {leg.note && (
-                            <span className="flex items-center gap-1 text-hazard truncate max-w-[260px]">
-                              <TriangleAlert className="size-3" />
-                              {leg.note}
-                            </span>
-                          )}
-                        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
+                  const prof = VEHICLE_PROFILES[vKey];
+                  const isSelected = vehicle === vKey;
+                  return (
+                    <button
+                      key={vKey}
+                      type="button"
+                      onClick={() => setVehicle(vKey)}
+                      className={`rounded-xl p-3 text-left border transition-all cursor-pointer ${
+                        isSelected
+                          ? "border-cyan-500/80 bg-cyan-500/15 text-white shadow-md shadow-cyan-500/10"
+                          : "border-slate-800/80 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold">{prof.name}</span>
+                        {isSelected && <Check className="size-3.5 text-cyan-400" />}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="text-[10px] text-cyan-400 font-mono font-medium">
+                        {prof.badge}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                        {prof.description}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Right Column: Interactive Map */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card/70 p-3 shadow-2xl shadow-black/40 backdrop-blur-sm">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-20"
-              style={{ backgroundImage: "url(/topographic-terrain.png)" }}
-            />
-            
-            {/* Map Header with Zoom Controls */}
-            <div className="relative flex items-center justify-between px-2 pb-2 pt-1">
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  northeast_india.map
-                </span>
-                <span className="rounded bg-muted/80 px-1.5 py-0.2 font-mono text-[10px] text-muted-foreground">
-                  Zoom {Math.round(zoomLevel * 100)}%
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center rounded-lg border border-border bg-secondary/80 p-0.5">
-                  <button
-                    type="button"
-                    onClick={handleZoomIn}
-                    disabled={zoomLevel >= 2.2}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleZoomOut}
-                    disabled={zoomLevel <= 1.0}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleZoomReset}
-                    className="rounded p-1 text-muted-foreground hover:text-foreground"
-                    title="Reset View"
-                  >
-                    <RotateCcw className="size-3.5" />
-                  </button>
+          {/* AUTOMATIC LIVE WEATHER & MICROCLIMATE HUD (5 Cols) */}
+          <div className="lg:col-span-5 flex flex-col">
+            <div className="flex-1 rounded-2xl border border-slate-800/90 bg-slate-950/80 p-4 shadow-xl backdrop-blur-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                      Automated Live Microclimate Telemetry
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+                    Auto-Synced
+                  </span>
                 </div>
-                <span className="inline-flex items-center gap-1.5 font-mono text-xs text-signal">
-                  <span className="size-1.5 rounded-full bg-signal" /> solved
-                </span>
+
+                {/* Weather Main Badge */}
+                <div className={`p-4 rounded-xl border mb-3 flex items-center justify-between ${
+                  weather === "snow"
+                    ? "bg-sky-950/40 border-sky-500/40 text-sky-200"
+                    : weather === "monsoon"
+                    ? "bg-amber-950/40 border-amber-500/40 text-amber-200"
+                    : "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-black/40">
+                      {weather === "snow" && <Snowflake className="size-6 text-sky-300" />}
+                      {weather === "monsoon" && <CloudRain className="size-6 text-amber-300" />}
+                      {weather === "clear" && <Sun className="size-6 text-emerald-300" />}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold">{liveWeather.summary}</div>
+                      <div className="text-xs text-slate-400 font-mono">
+                        {liveWeather.stationName}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black font-mono">
+                      {liveWeather.tempC > 0 ? `+${liveWeather.tempC}` : liveWeather.tempC}°C
+                    </div>
+                    <div className="text-[10px] text-slate-400">Ambient Temp</div>
+                  </div>
+                </div>
+
+                {/* Weather Metrics Grid */}
+                <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Precipitation</div>
+                    <div className="text-sm font-bold text-white mt-0.5">
+                      {liveWeather.precipitationMm} mm/h
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Visibility</div>
+                    <div className="text-sm font-bold text-white mt-0.5">
+                      {liveWeather.visibilityKm} km
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Road Grip</div>
+                    <div className={`text-sm font-bold mt-0.5 ${
+                      liveWeather.roadFriction > 0.8
+                        ? "text-emerald-400"
+                        : liveWeather.roadFriction > 0.6
+                        ? "text-amber-400"
+                        : "text-rose-400"
+                    }`}>
+                      {Math.round(liveWeather.roadFriction * 100)}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advisory Notice */}
+                <div className="mt-3 p-3 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs text-slate-300 flex items-start gap-2.5">
+                  <AlertTriangle className="size-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">{liveWeather.advisory}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-2 text-[10px] font-mono text-slate-400 border-t border-slate-800/80 flex items-center justify-between">
+                <span>Microclimate algorithm active</span>
+                <span className="text-emerald-400">Zero-user input required</span>
               </div>
             </div>
+          </div>
+        </div>
 
+        {/* Intermediate Small Cities Ribbon */}
+        {intermediateCities.length > 0 && (
+          <section className="rounded-2xl border border-slate-800/80 bg-slate-950/70 p-3 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-400">
+                <Milestone className="size-3.5 text-cyan-400" />
+                Transit Checkpoints & Intermediate Towns ({intermediateCities.length})
+              </span>
+              <span className="text-[11px] text-slate-400">
+                All settlements along active safe corridor
+              </span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              {intermediateCities.map((city, idx) => (
+                <div
+                  key={city.id}
+                  className="shrink-0 flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-1.5 text-xs"
+                >
+                  <span className="size-1.5 rounded-full bg-cyan-400" />
+                  <span className="font-semibold text-slate-200">{city.name}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">({city.state})</span>
+                  {idx < intermediateCities.length - 1 && (
+                    <ArrowRight className="size-3 text-slate-400 ml-1" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Interactive SVG Cartographic Map */}
+        <section className="relative rounded-2xl border border-slate-800/90 bg-slate-950/90 p-4 shadow-2xl backdrop-blur-md overflow-hidden">
+          {/* Map Controls & Status Header */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-slate-300">
+                <MapPin className="size-3.5 text-emerald-400" />
+                Northeast India Operational Network (111 Nodes / 164 Corridors)
+              </span>
+            </div>
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Zoom in"
+              >
+                <ZoomIn className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                title="Zoom out"
+              >
+                <ZoomOut className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="px-2 py-1 text-[11px] font-mono text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                title="Reset View"
+              >
+                <RotateCcw className="size-3" />
+                <span>{Math.round(zoomLevel * 100)}%</span>
+              </button>
+            </div>
+          </div>
+
+          {/* SVG Canvas */}
+          <div className="relative w-full aspect-[1000/560] max-h-[580px] bg-[#070b14] rounded-xl overflow-hidden border border-slate-900">
             <svg
-              viewBox={currentViewBox}
-              className="relative w-full transition-all duration-300"
-              role="img"
-              aria-label={
-                comparison
-                  ? `Map of Northeast India showing the risk-aware and fastest routes from ${CITY_MAP[origin].name} to ${CITY_MAP[destination].name}`
-                  : "Map of Northeast India"
-              }
+              viewBox={svgViewBox}
+              className="w-full h-full select-none cursor-crosshair"
             >
-              {/* Background Cartography: Brahmaputra River Corridor */}
+              <defs>
+                <filter id="glow-safe" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="glow-hazard" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* Stylized Brahmaputra River Artery */}
               <path
-                d="M 940 115 Q 860 145 780 185 T 620 220 T 500 248 T 400 255 T 320 280"
+                d="M 90 290 Q 250 270 420 250 T 680 210 T 880 180"
                 fill="none"
-                stroke="#0284c7"
-                strokeWidth={3}
-                strokeOpacity={0.25}
+                stroke="#0891b2"
+                strokeWidth="7"
+                strokeOpacity="0.22"
                 strokeLinecap="round"
-                className="pointer-events-none"
               />
               <text
-                x="680"
-                y="196"
-                className="fill-sky-400/20 font-mono text-[9px] uppercase tracking-widest pointer-events-none select-none"
+                x="320"
+                y="262"
+                fill="#0891b2"
+                fontSize="11"
+                fontFamily="monospace"
+                opacity="0.35"
+                letterSpacing="4"
               >
-                Brahmaputra Valley
+                BRAHMAPUTRA VALLEY BASIN
               </text>
 
-              {/* State Labels in Background */}
-              <g className="pointer-events-none select-none font-mono text-[10px] font-bold uppercase tracking-[0.2em] fill-muted-foreground/15">
-                <text x="135" y="90">Sikkim</text>
-                <text x="680" y="100">Arunachal Pradesh</text>
-                <text x="620" y="240">Assam</text>
-                <text x="460" y="325">Meghalaya</text>
-                <text x="830" y="235">Nagaland</text>
-                <text x="800" y="420">Manipur</text>
-                <text x="655" y="480">Mizoram</text>
-                <text x="465" y="490">Tripura</text>
-              </g>
+              {/* State Labels */}
+              <text x="360" y="295" fill="#475569" fontSize="13" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">ASSAM</text>
+              <text x="560" y="110" fill="#475569" fontSize="13" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">ARUNACHAL PRADESH</text>
+              <text x="240" y="385" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">MEGHALAYA</text>
+              <text x="690" y="295" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">NAGALAND</text>
+              <text x="670" y="420" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">MANIPUR</text>
+              <text x="520" y="520" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">MIZORAM</text>
+              <text x="350" y="490" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">TRIPURA</text>
+              <text x="80" y="140" fill="#475569" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.3">SIKKIM</text>
 
-              {/* Road Network Edges */}
+              {/* All Network Edges */}
               {EDGES.map((edge) => {
-                const u = CITY_MAP[edge.a];
-                const v = CITY_MAP[edge.b];
-                const key = [edge.a, edge.b].sort().join("-");
-                const isActive = activeEdges.has(key);
-                const isHovered = hoveredLeg === key;
+                const a = CITY_MAP[edge.a];
+                const b = CITY_MAP[edge.b];
                 return (
                   <line
-                    key={key}
-                    x1={u.x}
-                    y1={u.y}
-                    x2={v.x}
-                    y2={v.y}
-                    stroke={isHovered ? "var(--signal)" : "currentColor"}
-                    strokeWidth={isHovered ? 4.5 : isActive ? 1.5 : 1}
-                    className={
-                      isHovered
-                        ? "text-signal filter drop-shadow-[0_0_6px_var(--signal)]"
-                        : isActive
-                        ? "text-border"
-                        : "text-border/40"
-                    }
+                    key={`${edge.a}-${edge.b}`}
+                    x1={a.x}
+                    y1={a.y}
+                    x2={b.x}
+                    y2={b.y}
+                    stroke="#1e293b"
+                    strokeWidth="1.5"
+                    strokeOpacity="0.8"
                   />
                 );
               })}
 
-              {/* Fastest Route Polyline */}
-              {comparison && !isIdentical && (
+              {/* Shortest / Nominal Route (Amber dashed line) */}
+              {shortest && (
                 <polyline
-                  points={toPolylinePoints(comparison.fastest.path)}
+                  points={toPolylinePoints(shortest)}
                   fill="none"
-                  stroke="var(--hazard)"
-                  strokeWidth={3.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeDasharray="2 9"
-                  opacity={0.88}
+                  stroke="#f59e0b"
+                  strokeWidth="3"
+                  strokeDasharray="6 4"
+                  strokeOpacity="0.75"
                 />
               )}
 
-              {/* Safe Route Polyline */}
-              {comparison && (
+              {/* Safe / Terrain-Aware Route (Glowing Emerald Line) */}
+              {safe && (
                 <polyline
-                  points={toPolylinePoints(comparison.safe.path)}
+                  points={toPolylinePoints(safe)}
                   fill="none"
-                  stroke="var(--signal)"
-                  strokeWidth={4.2}
+                  stroke="#10b981"
+                  strokeWidth="4.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="route-flow"
+                  filter="url(#glow-safe)"
                 />
               )}
 
-              {/* Live GPS Beacon Marker */}
-              {gpsState && (() => {
-                const gpsSvg = projectGeoToSvg(gpsState.lat, gpsState.lon);
-                const snapped = CITY_MAP[origin];
-                return (
-                  <g className="gps-live-beacon pointer-events-none">
-                    {snapped && (
-                      <line
-                        x1={gpsSvg.x}
-                        y1={gpsSvg.y}
-                        x2={snapped.x}
-                        y2={snapped.y}
-                        stroke="#38bdf8"
-                        strokeWidth={1.5}
-                        strokeDasharray="4 4"
-                        opacity={0.85}
-                      />
-                    )}
-                    <circle
-                      cx={gpsSvg.x}
-                      cy={gpsSvg.y}
-                      r={18}
-                      fill="#38bdf8"
-                      opacity={0.2}
-                      className="animate-ping"
-                    />
-                    <circle
-                      cx={gpsSvg.x}
-                      cy={gpsSvg.y}
-                      r={8}
-                      fill="#38bdf8"
-                      opacity={0.35}
-                    />
-                    <circle
-                      cx={gpsSvg.x}
-                      cy={gpsSvg.y}
-                      r={4.5}
-                      fill="#38bdf8"
-                      stroke="var(--background)"
-                      strokeWidth={2}
-                    />
-                    <text
-                      x={gpsSvg.x}
-                      y={gpsSvg.y - 12}
-                      textAnchor="middle"
-                      className="fill-cyan-400 font-mono text-[11px] font-semibold"
-                    >
-                      YOU (GPS) • {gpsState.distanceKm} km
-                    </text>
-                  </g>
-                );
-              })()}
+              {/* Hovered Itinerary Leg Highlight (Pulsing Gold) */}
+              {hoveredLegIndex !== null && safeLegs[hoveredLegIndex] && (
+                <line
+                  x1={safeLegs[hoveredLegIndex].fromCity.x}
+                  y1={safeLegs[hoveredLegIndex].fromCity.y}
+                  x2={safeLegs[hoveredLegIndex].toCity.x}
+                  y2={safeLegs[hoveredLegIndex].toCity.y}
+                  stroke="#fde047"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  filter="url(#glow-hazard)"
+                />
+              )}
 
-              {/* City and Town Nodes */}
+              {/* Network City Nodes */}
               {CITIES.map((city) => {
                 const isOrigin = city.id === origin;
                 const isDest = city.id === destination;
-                const isEndpoint = isOrigin || isDest;
-                const isInRoute = activeNodes.has(city.id);
-                const showLabel = isEndpoint || isInRoute;
+                const isOnRoute = activeRouteCityIds.has(city.id);
 
-                return (
-                  <g
-                    key={city.id}
-                    className="cursor-pointer transition-transform hover:scale-125"
-                    onMouseEnter={() => setHoveredCity(city)}
-                    onMouseLeave={() => setHoveredCity(null)}
-                    onClick={() => {
-                      if (city.id !== origin) {
-                        setDestination(city.id);
-                      } else {
-                        setOrigin(city.id);
-                      }
-                    }}
-                  >
-                    <circle
-                      cx={city.x}
-                      cy={city.y}
-                      r={isEndpoint ? 7.5 : isInRoute ? 4.5 : city.tier === "major" ? 3.2 : 2.2}
-                      fill={
-                        isOrigin
-                          ? "var(--signal)"
-                          : isDest
-                          ? "var(--hazard)"
-                          : isInRoute
-                          ? "var(--foreground)"
-                          : "var(--muted-foreground)"
-                      }
-                      stroke="var(--background)"
-                      strokeWidth={isEndpoint ? 2.5 : 1.5}
-                      opacity={showLabel ? 1 : city.tier === "major" ? 0.7 : 0.4}
-                    />
-                    {showLabel && (
+                if (isOrigin) {
+                  return (
+                    <g key={city.id} className="cursor-pointer">
+                      <circle cx={city.x} cy={city.y} r="13" fill="#10b981" fillOpacity="0.25" />
+                      <circle cx={city.x} cy={city.y} r="6" fill="#10b981" stroke="#ffffff" strokeWidth="2" />
                       <text
                         x={city.x}
                         y={city.y - 12}
                         textAnchor="middle"
-                        className={
-                          isEndpoint
-                            ? "fill-foreground font-mono text-[13px] font-bold filter drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
-                            : "fill-muted-foreground font-mono text-[11px] font-medium"
-                        }
+                        fill="#ffffff"
+                        fontSize="11"
+                        fontWeight="bold"
+                        filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+                      >
+                        {city.name} (Origin)
+                      </text>
+                    </g>
+                  );
+                }
+
+                if (isDest) {
+                  return (
+                    <g key={city.id} className="cursor-pointer">
+                      <circle cx={city.x} cy={city.y} r="13" fill="#ef4444" fillOpacity="0.25" />
+                      <circle cx={city.x} cy={city.y} r="6" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
+                      <text
+                        x={city.x}
+                        y={city.y - 12}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize="11"
+                        fontWeight="bold"
+                        filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
+                      >
+                        {city.name} (Dest)
+                      </text>
+                    </g>
+                  );
+                }
+
+                if (isOnRoute) {
+                  // Intermediate Small Towns along the Route
+                  return (
+                    <g
+                      key={city.id}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHoveredCity(city)}
+                      onMouseLeave={() => setHoveredCity(null)}
+                    >
+                      <circle cx={city.x} cy={city.y} r="8" fill="#06b6d4" fillOpacity="0.3" />
+                      <circle cx={city.x} cy={city.y} r="4" fill="#06b6d4" stroke="#ffffff" strokeWidth="1.5" />
+                      <text
+                        x={city.x}
+                        y={city.y + 13}
+                        textAnchor="middle"
+                        fill="#38bdf8"
+                        fontSize="9"
+                        fontWeight="bold"
+                        filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
                       >
                         {city.name}
                       </text>
-                    )}
-                  </g>
+                    </g>
+                  );
+                }
+
+                // Inactive Nodes
+                return (
+                  <circle
+                    key={city.id}
+                    cx={city.x}
+                    cy={city.y}
+                    r="2.5"
+                    fill="#475569"
+                    opacity="0.5"
+                    className="hover:opacity-100 hover:fill-slate-200 cursor-pointer"
+                    onMouseEnter={() => setHoveredCity(city)}
+                    onMouseLeave={() => setHoveredCity(null)}
+                    onClick={() => {
+                      if (!origin) setOrigin(city.id);
+                      else setDestination(city.id);
+                    }}
+                  />
                 );
               })}
-
-              {/* Floating City Hover HUD Tooltip */}
-              {hoveredCity && (
-                <g className="pointer-events-none transition-opacity">
-                  <rect
-                    x={hoveredCity.x - 70}
-                    y={hoveredCity.y - 48}
-                    width={140}
-                    height={34}
-                    rx={6}
-                    fill="#0b0f17"
-                    stroke="var(--signal)"
-                    strokeWidth={1}
-                    opacity={0.95}
-                  />
-                  <text
-                    x={hoveredCity.x}
-                    y={hoveredCity.y - 32}
-                    textAnchor="middle"
-                    className="fill-foreground font-mono text-[11px] font-semibold"
-                  >
-                    {hoveredCity.name}
-                  </text>
-                  <text
-                    x={hoveredCity.x}
-                    y={hoveredCity.y - 20}
-                    textAnchor="middle"
-                    className="fill-muted-foreground font-mono text-[9px]"
-                  >
-                    {hoveredCity.state} • {hoveredCity.tier || "town"}
-                  </text>
-                </g>
-              )}
             </svg>
 
+            {/* Hovered City HUD Tooltip */}
+            {hoveredCity && (
+              <div className="absolute bottom-3 left-3 bg-slate-900/95 border border-slate-700/90 rounded-xl px-3 py-2 text-xs backdrop-blur-md shadow-2xl pointer-events-none">
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <MapPin className="size-3 text-emerald-400" />
+                  <span>{hoveredCity.name}</span>
+                  <span className="text-[10px] font-mono text-slate-400">({hoveredCity.state})</span>
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                  Lat: {hoveredCity.lat.toFixed(3)}°N · Lon: {hoveredCity.lon.toFixed(3)}°E
+                </div>
+              </div>
+            )}
+
             {/* Map Legend */}
-            <div className="relative flex flex-wrap gap-x-5 gap-y-2 px-2 pb-1 pt-2 font-mono text-xs border-t border-border/50">
-              <span className="inline-flex items-center gap-2 text-signal">
-                <span className="h-0.5 w-5 rounded bg-signal" /> risk-aware
-              </span>
-              <span className="inline-flex items-center gap-2 text-hazard">
-                <span className="h-0.5 w-5 rounded bg-hazard [background:repeating-linear-gradient(90deg,var(--hazard)_0_3px,transparent_3px_7px)]" />{" "}
-                fastest
-              </span>
-              <span className="inline-flex items-center gap-2 text-muted-foreground">
-                <span className="size-2 rounded-full bg-signal" /> origin
-              </span>
-              <span className="inline-flex items-center gap-2 text-muted-foreground">
-                <span className="size-2 rounded-full bg-hazard" /> destination
-              </span>
-              {gpsState && (
-                <span className="inline-flex items-center gap-2 text-cyan-400">
-                  <span className="size-2 rounded-full bg-cyan-400 animate-pulse" /> live GPS fix
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted-foreground">
-          <Milestone className="size-3.5 text-signal" />
-          Production A* engine evaluates real multi-edge OpenStreetMap topology, elevation gradients, and
-          monitored road vulnerability factors.
-          <ArrowRight className="size-3.5" />
-        </p>
-      </div>
-    </section>
-  );
-}
-
-export default function App() {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
-          <a href="#top" className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-md bg-signal/15 text-signal ring-1 ring-signal/30">
-              <Waypoints className="size-5" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-base font-semibold tracking-tight text-foreground">
-                RaahSetu
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Northeast India
-              </span>
-            </span>
-          </a>
-          <nav className="hidden items-center gap-8 md:flex">
-            <a
-              href="#platform"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Platform
-            </a>
-            <a
-              href="#how"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              How it works
-            </a>
-            <a
-              href="#comparison"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Comparison
-            </a>
-            <a
-              href="#stack"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Stack
-            </a>
-          </nav>
-          <a
-            href="#planner"
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/60 px-3.5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-          >
-            <RouteIcon className="size-4" />
-            <span className="hidden sm:inline">Try Planner</span>
-          </a>
-        </div>
-      </header>
-
-      <main>
-        {/* Hero Section */}
-        <section id="top" className="relative overflow-hidden">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-25"
-            style={{ backgroundImage: "url(/topographic-terrain.png)" }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 grid-lines opacity-40"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background"
-          />
-
-          <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 px-5 pb-20 pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-28 lg:pt-24">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-signal node-pulse" />
-                Logistics Intelligence Platform
+            <div className="absolute top-3 right-3 bg-slate-950/80 border border-slate-800/80 rounded-xl p-2.5 text-[11px] backdrop-blur-md font-mono space-y-1.5 pointer-events-none">
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-emerald-400" />
+                <span className="text-emerald-300">Terrain-Aware Safe Corridor</span>
               </div>
-              <h1 className="mt-6 text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                Routes that explain
-                <span className="text-signal"> why they avoid the risk.</span>
-              </h1>
-              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-                RaahSetu is an explainable, risk-aware logistics route planner for
-                Northeast India. It compares the fastest route with one that
-                accounts for road risk, vehicle limits, and closures — powered by
-                a custom A* engine over real OpenStreetMap networks.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a
-                  href="#platform"
-                  className="inline-flex items-center gap-2 rounded-md bg-signal px-5 py-3 text-sm font-semibold text-signal-foreground transition-transform hover:-translate-y-0.5"
-                >
-                  Explore the platform
-                  <ArrowRight className="size-4" />
-                </a>
-                <a
-                  href="#planner"
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-                >
-                  Launch planner
-                  <ArrowRight className="size-4" />
-                </a>
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full border border-amber-400 border-dashed" />
+                <span className="text-amber-300">Nominal Shortest (High Risk)</span>
               </div>
-              <dl className="mt-12 grid max-w-md grid-cols-3 gap-6">
-                <div>
-                  <dt className="font-display text-3xl font-semibold text-foreground">
-                    8
-                  </dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">
-                    NE states covered
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-display text-3xl font-semibold text-foreground">
-                    300+
-                  </dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">
-                    A* correctness tests
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-display text-3xl font-semibold text-foreground">
-                    A*
-                  </dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">
-                    custom pathfinder
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="relative">
-              <div className="rounded-2xl border border-border bg-card/70 p-4 shadow-2xl shadow-black/40 backdrop-blur-sm">
-                <div className="flex items-center justify-between px-2 pb-3">
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    route_graph.solve()
-                  </span>
-                  <span className="flex items-center gap-1.5 font-mono text-xs text-signal">
-                    <span className="size-1.5 rounded-full bg-signal" />
-                    solved
-                  </span>
-                </div>
-                <svg
-                  viewBox="0 0 680 480"
-                  className="w-full"
-                  fill="none"
-                  role="img"
-                  aria-label="Illustration of a road graph with a highlighted risk-aware route avoiding hazard nodes"
-                >
-                  <line x1="60" y1="300" x2="150" y2="210" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="60" y1="300" x2="165" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="150" y1="210" x2="260" y2="150" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="150" y1="210" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="165" y1="360" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="165" y1="360" x2="300" y2="420" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="260" y1="150" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="280" y1="300" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="280" y1="300" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="300" y1="420" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="400" y1="220" x2="520" y2="160" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="400" y1="220" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="420" y1="360" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="520" y1="160" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="540" y1="300" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
-
-                  <path
-                    d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240"
-                    stroke="var(--signal)"
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity="0.18"
-                  />
-                  <path
-                    d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240"
-                    stroke="var(--signal)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="route-flow"
-                  />
-
-                  {/* Origin */}
-                  <g>
-                    <circle cx="60" cy="300" r="12" fill="var(--signal)" opacity="0.16" />
-                    <circle cx="60" cy="300" r="5.5" fill="var(--signal)" />
-                    <circle cx="60" cy="300" r="2" fill="var(--signal-foreground)" />
-                  </g>
-
-                  {/* Nodes */}
-                  <circle cx="150" cy="210" r="3.5" fill="var(--muted-foreground)" />
-                  <circle cx="165" cy="360" r="3.5" fill="var(--muted-foreground)" />
-                  <circle cx="260" cy="150" r="3.5" fill="var(--muted-foreground)" />
-
-                  {/* Hazard Node d */}
-                  <g>
-                    <circle cx="280" cy="300" r="9" fill="var(--hazard)" opacity="0.18" className="node-pulse" />
-                    <circle cx="280" cy="300" r="4" fill="var(--hazard)" />
-                  </g>
-
-                  <circle cx="300" cy="420" r="3.5" fill="var(--muted-foreground)" />
-                  <circle cx="400" cy="220" r="3.5" fill="var(--muted-foreground)" />
-                  <circle cx="420" cy="360" r="3.5" fill="var(--muted-foreground)" />
-
-                  {/* Hazard Node h */}
-                  <g>
-                    <circle cx="520" cy="160" r="9" fill="var(--hazard)" opacity="0.18" className="node-pulse" />
-                    <circle cx="520" cy="160" r="4" fill="var(--hazard)" />
-                  </g>
-
-                  <circle cx="540" cy="300" r="3.5" fill="var(--muted-foreground)" />
-
-                  {/* Destination */}
-                  <g>
-                    <circle cx="620" cy="240" r="12" fill="var(--signal)" opacity="0.16" />
-                    <circle cx="620" cy="240" r="5.5" fill="var(--signal)" />
-                    <circle cx="620" cy="240" r="2" fill="var(--signal-foreground)" />
-                  </g>
-                </svg>
-
-                <div className="mt-3 flex flex-wrap gap-4 px-2 font-mono text-xs">
-                  <span className="inline-flex items-center gap-2 text-signal">
-                    <RouteIcon className="size-3.5" /> risk-aware route
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-hazard">
-                    <ShieldAlert className="size-3.5" /> hazard node avoided
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    <span className="h-px w-4 bg-border" /> road edge
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-cyan-400" />
+                <span className="text-cyan-300">Transit Town Waypoint</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Interactive Route Planner Section */}
-        <RoutePlannerSection />
-
-        {/* Platform Features Section */}
-        <section id="platform" className="relative border-t border-border/70 py-20 lg:py-28">
-          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-            <div className="max-w-2xl">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal">
-                The platform
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Logistics intelligence that shows its work
-              </h2>
-              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                Every route is grounded in real road data and explicit rules — not a
-                black box. Here is what powers RaahSetu end to end.
-              </p>
+        {/* Dual View: Route Comparison vs. Turn-by-Turn Leg Itinerary */}
+        <section className="space-y-4">
+          {/* Tab Controls */}
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("comparison")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === "comparison"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60"
+                }`}
+              >
+                Route Safety Comparison
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("itinerary")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "itinerary"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60"
+                }`}
+              >
+                <span>Turn-by-Turn Itinerary</span>
+                <span className="rounded bg-slate-800 px-1.5 py-0.2 text-[10px] font-mono">
+                  {safeLegs.length} Legs
+                </span>
+              </button>
             </div>
 
-            <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <RouteIcon className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Custom A* pathfinding
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  A hand-built A* with a priority queue, an admissible heuristic,
-                  and explicit edge reconstruction — validated against an
-                  independent Dijkstra baseline across 300 randomized scenarios.
-                </p>
+            {riskReductionPct > 0 && (
+              <div className="hidden sm:flex items-center gap-1 text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                <ShieldCheck className="size-3.5" />
+                <span>{riskReductionPct}% Hazard Exposure Reduced</span>
               </div>
-
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <ShieldAlert className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Risk-aware comparison
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Fastest and risk-aware routes are computed on the same road graph
-                  and scenario, so every trade-off between speed and exposure is
-                  explainable and reproducible.
-                </p>
-              </div>
-
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <Mountain className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Northeast terrain &amp; networks
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  State-wise road extraction and public-facility data across all
-                  eight states, with a deterministic synthetic sandbox and a real
-                  Guwahati OSM pilot network.
-                </p>
-              </div>
-
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <CloudRain className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Scenario &amp; weather controls
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Switch vehicles, tune risk preference, apply closures, and
-                  simulate weather conditions — then export the full result set as
-                  JSON for review.
-                </p>
-              </div>
-
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <Database className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Supabase / PostGIS foundation
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Eight-state metadata, versioned graph snapshots, hazard
-                  observations, and geo-tagged field-report APIs backed by a live
-                  spatial database.
-                </p>
-              </div>
-
-              <div className="group bg-card p-7 transition-colors hover:bg-secondary/50">
-                <span className="flex size-11 items-center justify-center rounded-lg bg-signal/12 text-signal ring-1 ring-signal/25">
-                  <FileWarning className="size-5" />
-                </span>
-                <h3 className="mt-5 font-display text-lg font-semibold text-foreground">
-                  Field reports &amp; moderation
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Officials submit geo-tagged incidents with private,
-                  authenticated evidence uploads. Reviewer-approved events become
-                  request-time closures for the routing engine.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-        </section>
 
-        {/* How it works Section */}
-        <section id="how" className="relative border-t border-border/70 py-20 lg:py-28">
-          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-            <div className="max-w-2xl">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal">
-                How it works
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                From raw road data to an explainable route
-              </h2>
-            </div>
-            <ol className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <li className="relative rounded-xl border border-border bg-card p-6">
-                <span className="font-mono text-sm font-semibold text-signal">
-                  01
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent"
-                />
-                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-                  Build the road graph
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  OSMnx extracts directed, multi-edge road networks for the region.
-                  Truck limits, closures, and versioned snapshots are stored in
-                  PostGIS.
-                </p>
-              </li>
-              <li className="relative rounded-xl border border-border bg-card p-6">
-                <span className="font-mono text-sm font-semibold text-signal">
-                  02
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent"
-                />
-                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-                  Choose a scenario
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Pick origin and destination, select a vehicle, set your risk
-                  preference, and apply any active closures or simulated weather
-                  conditions.
-                </p>
-              </li>
-              <li className="relative rounded-xl border border-border bg-card p-6">
-                <span className="font-mono text-sm font-semibold text-signal">
-                  03
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent"
-                />
-                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-                  Solve with custom A*
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  The engine runs A* twice on the same graph — once for the
-                  fastest path, once weighted by road-risk exposure — with
-                  explicit edge reconstruction.
-                </p>
-              </li>
-              <li className="relative rounded-xl border border-border bg-card p-6">
-                <span className="font-mono text-sm font-semibold text-signal">
-                  04
-                </span>
-                <span
-                  aria-hidden="true"
-                  className="mt-4 block h-px w-full bg-gradient-to-r from-signal/60 to-transparent"
-                />
-                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-                  Compare &amp; export
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Inspect the two routes side by side on interactive terrain,
-                  understand each trade-off, and export the full explainable
-                  result as JSON.
-                </p>
-              </li>
-            </ol>
-          </div>
-        </section>
+          {/* TAB 1: Route Comparison Cards */}
+          {activeTab === "comparison" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Safe Route Card */}
+              <div className="rounded-2xl border border-emerald-500/40 bg-slate-950/80 p-5 shadow-xl backdrop-blur-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500/20 border-b border-l border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold rounded-bl-xl uppercase">
+                  Recommended Dispatch
+                </div>
 
-        {/* Comparison Section */}
-        <section
-          id="comparison"
-          className="relative border-t border-border/70 py-20 lg:py-28"
-        >
-          <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-12 px-5 lg:grid-cols-2 lg:px-8">
-            <div className="relative order-2 overflow-hidden rounded-2xl border border-border lg:order-1">
-              <img
-                src="/route-map-dark.png"
-                alt="Dark cartographic map showing a teal fastest route and an amber risk-aware alternate route across mountainous terrain"
-                className="h-full w-full object-cover"
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/50 to-transparent" />
-            </div>
-            <div className="order-1 lg:order-2">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal">
-                Fastest vs. risk-aware
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Two routes, one honest trade-off
-              </h2>
-              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                RaahSetu never hides the cost of safety. It surfaces both options
-                on the same graph so planners can decide with full context.
-              </p>
-              <div className="mt-8 grid gap-4">
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <div className="flex items-center gap-2 text-hazard">
-                    <Zap className="size-4" />
-                    <span className="font-display font-semibold">
-                      Fastest route
-                    </span>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400">
+                    <ShieldCheck className="size-5" />
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Minimises estimated travel time only. May pass through
-                    landslide-prone or higher-exposure road edges.
-                  </p>
-                  <div className="mt-4 flex gap-6 font-mono text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="size-3.5" /> lowest time
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-hazard">
-                      <TriangleAlert className="size-3.5" /> higher risk index
-                    </span>
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      Terrain & Risk-Aware Route
+                    </h3>
+                    <p className="text-xs text-emerald-400/90 font-mono">
+                      Safe Mountain Logistics Corridor
+                    </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-signal/40 bg-signal/[0.06] p-5">
-                  <div className="flex items-center gap-2 text-signal">
-                    <ShieldCheck className="size-4" />
-                    <span className="font-display font-semibold text-foreground">
-                      Risk-aware route
-                    </span>
+                {safeStats && safe ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Distance</div>
+                        <div className="text-sm font-bold text-white mt-0.5">
+                          {safeStats.distance} km
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Est. Time</div>
+                        <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                          {formatHours(safeStats.hours)}
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Exposure</div>
+                        <div className="text-sm font-bold text-emerald-400 mt-0.5">
+                          {safeStats.riskIndex} pts
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Path Breadcrumbs */}
+                    <div>
+                      <div className="text-[11px] font-mono text-slate-400 mb-1.5 uppercase tracking-wider">
+                        Waypoint Sequence ({safe.length} Checkpoints)
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {safe.map((cityId, idx) => (
+                          <span
+                            key={cityId}
+                            className="inline-flex items-center gap-1 rounded-lg bg-slate-900 border border-slate-800 px-2 py-1 text-xs text-slate-300 font-mono"
+                          >
+                            <span>{CITY_MAP[cityId]?.name}</span>
+                            {idx < safe.length - 1 && (
+                              <ArrowRight className="size-3 text-slate-400" />
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Weights each edge by road-risk exposure and respects vehicle
-                    limits and closures, trading a little time for a lower risk
-                    index.
-                  </p>
-                  <div className="mt-4 flex gap-6 font-mono text-xs">
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Clock className="size-3.5" /> slightly longer
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-signal">
-                      <ShieldCheck className="size-3.5" /> lower risk index
-                    </span>
+                ) : (
+                  <div className="text-xs text-rose-400">No traversable path found.</div>
+                )}
+              </div>
+
+              {/* Shortest Route Card */}
+              <div className="rounded-2xl border border-amber-500/30 bg-slate-950/60 p-5 shadow-xl backdrop-blur-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500/15 border-b border-l border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold rounded-bl-xl uppercase">
+                  Nominal Distance Only
+                </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400">
+                    <AlertTriangle className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      Fastest Nominal Route
+                    </h3>
+                    <p className="text-xs text-amber-400/90 font-mono">
+                      Unconstrained Shortest Distance
+                    </p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        {/* Stack Section */}
-        <section id="stack" className="relative border-t border-border/70 py-20 lg:py-28">
-          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-            <div className="max-w-2xl">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal">
-                Engineering stack
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Built on the team blueprint
-              </h2>
-            </div>
-            <div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Dashboard UI
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  React + TypeScript
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Interactive terrain
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  React Three Fiber
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Routing API
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  Python 3.12 + FastAPI
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Pathfinding
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  Custom A* engine
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Road extraction
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  OSMnx
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Spatial data
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  Supabase / PostGIS
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  Containers
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  Docker
-                </p>
-              </div>
-              <div className="bg-card p-6">
-                <p className="font-mono text-xs uppercase tracking-widest text-signal">
-                  VM deployment
-                </p>
-                <p className="mt-2 font-display text-base font-semibold text-foreground">
-                  Kubernetes
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+                {shortestStats && shortest ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Distance</div>
+                        <div className="text-sm font-bold text-white mt-0.5">
+                          {shortestStats.distance} km
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Est. Time</div>
+                        <div className="text-sm font-bold text-amber-400 mt-0.5">
+                          {formatHours(shortestStats.hours)}
+                        </div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <div className="text-[10px] text-slate-400 uppercase">Exposure</div>
+                        <div className="text-sm font-bold text-amber-400 mt-0.5">
+                          {shortestStats.riskIndex} pts
+                        </div>
+                      </div>
+                    </div>
 
-        {/* Limits Section */}
-        <section className="relative border-t border-border/70 py-20 lg:py-28">
-          <div className="mx-auto w-full max-w-4xl px-5 lg:px-8">
-            <div className="rounded-2xl border border-border bg-card/60 p-8 lg:p-10">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-9 items-center justify-center rounded-md bg-hazard/12 text-hazard ring-1 ring-hazard/25">
-                  <Info className="size-5" />
-                </span>
-                <h2 className="font-display text-xl font-semibold text-foreground">
-                  What the prototype does not claim
-                </h2>
+                    {/* Path Breadcrumbs */}
+                    <div>
+                      <div className="text-[11px] font-mono text-slate-400 mb-1.5 uppercase tracking-wider">
+                        Waypoint Sequence ({shortest.length} Checkpoints)
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {shortest.map((cityId, idx) => (
+                          <span
+                            key={cityId}
+                            className="inline-flex items-center gap-1 rounded-lg bg-slate-900/60 border border-slate-800 px-2 py-1 text-xs text-slate-400 font-mono"
+                          >
+                            <span>{CITY_MAP[cityId]?.name}</span>
+                            {idx < shortest.length - 1 && (
+                              <ArrowRight className="size-3 text-slate-400" />
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-rose-400">No traversable path found.</div>
+                )}
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Explainability means being honest about limits. RaahSetu is
-                upfront about the boundaries of the current prototype:
-              </p>
-              <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
-                  The synthetic network uses fictional roads and hazards; the real
-                  OSM network explicitly reports where reviewed risk evidence is
-                  missing.
-                </li>
-                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
-                  Weather controls simulate conditions and travel time is estimated
-                  without live traffic.
-                </li>
-                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
-                  Risk exposure is an index, not an accident probability. Scoring
-                  is rule-based, not a trained predictive ML model.
-                </li>
-                <li className="flex gap-3 rounded-lg border border-border/60 bg-background/40 p-4 text-sm leading-relaxed text-muted-foreground">
-                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-hazard" />
-                  This is a hackathon prototype — not operational dispatch or
-                  navigation. GPS tracking, live feeds, and turn restrictions
-                  remain backlog work.
-                </li>
-              </ul>
             </div>
-          </div>
+          )}
+
+          {/* TAB 2: Turn-by-Turn Leg Itinerary */}
+          {activeTab === "itinerary" && (
+            <div className="rounded-2xl border border-slate-800/90 bg-slate-950/80 p-4 shadow-xl backdrop-blur-md">
+              <div className="mb-3 flex items-center justify-between text-xs text-slate-400 font-mono">
+                <span>Hover a leg to spotlight on map</span>
+                <span>Calculated under {VEHICLE_PROFILES[vehicle].name} & {liveWeather.summary}</span>
+              </div>
+
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {safeLegs.map((leg, idx) => (
+                  <div
+                    key={`${leg.fromId}-${leg.toId}-${idx}`}
+                    onMouseEnter={() => setHoveredLegIndex(idx)}
+                    onMouseLeave={() => setHoveredLegIndex(null)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      hoveredLegIndex === idx
+                        ? "border-amber-400/80 bg-amber-500/10 shadow-lg shadow-amber-500/5"
+                        : "border-slate-800/80 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="size-6 rounded-lg bg-slate-800 text-slate-300 font-mono text-xs flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </span>
+                        <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                          <span>{leg.fromCity.name}</span>
+                          <ArrowRight className="size-3.5 text-slate-400" />
+                          <span>{leg.toCity.name}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          leg.terrainType === "High Mountain Pass"
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                            : leg.terrainType === "Foothills"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        }`}>
+                          {leg.terrainType}
+                        </span>
+                        <span className="text-slate-300 font-bold">{leg.dist} km</span>
+                        <span className="text-slate-400">({formatHours(leg.hours)})</span>
+                        <span className={`font-bold ${
+                          leg.risk > 40 ? "text-rose-400" : leg.risk > 20 ? "text-amber-400" : "text-emerald-400"
+                        }`}>
+                          {leg.risk}% Risk
+                        </span>
+                      </div>
+                    </div>
+
+                    {leg.note && (
+                      <p className="text-xs text-slate-400 mt-2 pl-8 border-l-2 border-slate-700/60">
+                        {leg.note}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="relative overflow-hidden border-t border-border/70">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 grid-lines opacity-30"
-        />
-        <div className="relative mx-auto w-full max-w-7xl px-5 py-20 lg:px-8 lg:py-24">
-          <div className="flex flex-col items-start gap-8 rounded-2xl border border-border bg-card/70 p-8 lg:flex-row lg:items-center lg:justify-between lg:p-12">
-            <div className="max-w-xl">
-              <h2 className="text-balance font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Explainable Logistics Routing
-              </h2>
-              <p className="mt-3 text-pretty leading-relaxed text-muted-foreground">
-                The full stack — routing engine, spatial schema, datasets, and
-                deployment definitions — built for Northeast India.
-              </p>
-            </div>
-            <a
-              href="#planner"
-              className="inline-flex shrink-0 items-center gap-2 rounded-md bg-signal px-6 py-3 text-sm font-semibold text-signal-foreground transition-transform hover:-translate-y-0.5"
-            >
-              Explore Route Planner
-              <ArrowRight className="size-4" />
-            </a>
-          </div>
-
-          <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-border/60 pt-8 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-8 items-center justify-center rounded-md bg-signal/15 text-signal ring-1 ring-signal/30">
-                <Waypoints className="size-4" />
-              </span>
-              <div className="leading-tight">
-                <p className="font-display text-sm font-semibold text-foreground">
-                  RaahSetu
-                </p>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Logistics Intelligence · Northeast India
-                </p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0. Working
-              name for the prototype.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
+
+export default App;
