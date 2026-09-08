@@ -1,7 +1,13 @@
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $PythonPath = Join-Path $ProjectRoot '.venv\Scripts\python.exe'
-if (-not (Test-Path -LiteralPath $PythonPath)) { throw 'Run scripts/setup.ps1 first.' }
+if (-not (Test-Path -LiteralPath $PythonPath)) {
+    Write-Host 'Project environment is missing. Running setup first...'
+    & (Join-Path $PSScriptRoot 'setup.ps1')
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $PythonPath)) {
+        throw 'Project setup failed. Run scripts/setup.ps1 and retry.'
+    }
+}
 $LogDirectory = Join-Path $ProjectRoot 'work'
 New-Item -ItemType Directory -Force -Path $LogDirectory | Out-Null
 $Processes = @()

@@ -23,6 +23,15 @@ Dashboard: http://127.0.0.1:5173/
 7. Real OSM risk evidence abhi incomplete hai. Is point ko judges se clearly explain karna.
 8. Export comparison se exact input, output aur graph version save karo.
 
+Regional data activate karne ke liye processed OSM extracts ke baad yeh command chalao:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_runtime.py
+```
+
+Dashboard ke data-readiness indicator aur `http://127.0.0.1:8000/api/v1/data-status`
+endpoint se confirm karo ki snapshots API ke liye ready hain.
+
 ## Kya padhna hai
 
 - `README.md`: setup aur code structure

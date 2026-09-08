@@ -13,6 +13,7 @@ export type ElevationGrid = {
 };
 export type Location = { id: string; lon: number; lat: number; label: string };
 export type SearchResult = Location & {
+  dataset_id: string;
   kind: "road" | "place" | "facility";
   detail?: string;
   snap_distance_m?: number;
@@ -53,6 +54,18 @@ export type Bootstrap = {
     description: string;
     closed_edge_ids: string[];
   }[];
+};
+export type DataStatus = {
+  status: "demo_only" | "ready";
+  runtime_snapshots: string[];
+  runtime_snapshot_count: number;
+  downloaded_files: number;
+  downloaded_bytes: number;
+  terrain_tiles: number;
+  terrain_tiles_planned: number;
+  weather_reference_point_days: number;
+  historical_ne_landslides: number;
+  gaps: string[];
 };
 export type Network = {
   type: "FeatureCollection";

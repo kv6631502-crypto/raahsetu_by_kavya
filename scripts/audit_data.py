@@ -30,15 +30,20 @@ def main():
             raise ValueError(f"Invalid HGT grid: {path.name}")
     targets = json.loads((DATA / "catalog-terrain.json").read_text(encoding="utf-8"))
     missing_terrain = [r["id"] for r in targets if not (DATA / r["file"]).exists()]
-    extraction = json.loads(
-        (DATA / "processed/osm/extraction-summary.json").read_text(encoding="utf-8")
-    )
-    landslides = json.loads(
-        (DATA / "processed/landslides/summary.json").read_text(encoding="utf-8")
+    extraction_path = DATA / "processed/osm/extraction-summary.json"
+    extraction = json.loads(extraction_path.read_text(encoding="utf-8")) if extraction_path.exists() else []
+    landslide_path = DATA / "processed/landslides/summary.json"
+    landslides = (
+        json.loads(landslide_path.read_text(encoding="utf-8"))
+        if landslide_path.exists()
+        else {"northeast_records": 0}
     )
     weather = DATA / "processed/weather/ne-reference-points-daily-2021-2025.csv"
-    with weather.open(encoding="utf-8", newline="") as file:
-        weather_rows = sum(1 for _ in csv.DictReader(file))
+    if weather.exists():
+        with weather.open(encoding="utf-8", newline="") as file:
+            weather_rows = sum(1 for _ in csv.DictReader(file))
+    else:
+        weather_rows = 0
     summary = {
         "audited_at": datetime.now(UTC).isoformat(),
         "verified_download_files": len(receipts),

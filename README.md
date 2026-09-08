@@ -18,7 +18,8 @@ On a new teammate's computer, install Python 3.12, Node.js 24 and Git, then run:
 
 ```powershell
 .\scripts\setup.ps1
-.\scripts\start.ps1
+.\.venv\Scripts\python.exe scripts/prepare_runtime.py
+.\.venv\Scripts\python.exe backend/scripts/import_osm.py --xml datasets/processed/osm/guwahati-pilot-roads.osm --name guwahati
 ```
 
 Stop processes created by the helper with `scripts/stop.ps1`. The helper never stops unrelated processes.
@@ -103,6 +104,16 @@ The corridor builder creates `osm-guwahati-corridor-reviewed-v1` from two 1 km a
 
 `datasets/processed/ne-coverage-catalog.json` is the explicit Northeast coverage manifest: all eight states, all eight capitals, OSM road extracts and facility files with counts.
 
+`prepare_runtime.py` converts every processed state road extract into a validated
+`backend/data/osm-<state>.json` snapshot. Use `--only assam` for an incremental rebuild.
+The API endpoint `/api/v1/data-status` reports whether regional snapshots are ready,
+how much source data has been verified, and which evidence gaps remain.
+
+`prepare_runtime.py` converts every processed state road extract into a validated
+`backend/data/osm-<state>.json` snapshot. Use `--only assam` for an incremental rebuild.
+The API endpoint `/api/v1/data-status` reports whether regional snapshots are ready,
+how much source data has been verified, and which evidence gaps remain.
+
 ## Verification
 
 ```powershell
@@ -129,6 +140,21 @@ The local `.env` contains the backend-only Supabase pooler connection. Use
 `scripts/setup_supabase.ps1` for a fresh environment and the commands in
 `docs/DEPLOYMENT.md` for controlled imports. No privileged database credential belongs in
 the frontend.
+
+### Google sign-in setup
+
+1. In Supabase, open **Authentication > Providers > Google** and enable Google.
+2. In Google Cloud Console, create a Web OAuth client.
+3. Set the authorized redirect URI to `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. In Supabase **Authentication > URL Configuration**, set the site URL to
+  `http://127.0.0.1:5173/` for local development and add the deployed dashboard URL
+  to the additional redirect URLs.
+5. Put the Supabase URL and publishable key in the backend environment as
+  `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, then restart the API.
+
+The dashboard's **Sign in** button opens the shared account panel. Google returns to
+the dashboard, verifies the callback token through Supabase, stores the short-lived
+session locally, and uses the existing refresh and sign-out flow.
 
 Docker and Kubernetes definitions are prepared. Their runtime verification requires Docker/K8s, which were unavailable on the development machine. Read the deployment guide before exposing the app externally.
 

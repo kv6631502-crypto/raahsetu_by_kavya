@@ -67,6 +67,22 @@ def test_unknown_dataset_and_weather(client):
     assert client.get("/api/v1/network?focus_node=unknown").status_code == 422
 
 
+def test_accessibility_events_are_empty_in_demo_mode(client, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    response = client.get("/api/v1/accessibility-events?region_code=assam")
+    assert response.status_code == 200
+    assert response.json() == {"events": []}
+
+
+def test_data_status_is_safe_and_operationally_useful(client):
+    response = client.get("/api/v1/data-status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] in {"demo_only", "ready"}
+    assert isinstance(payload["runtime_snapshots"], list)
+    assert isinstance(payload["gaps"], list)
+
+
 def test_fleet_position_validates_coordinates_before_store(client):
     response = client.post(
         "/api/v1/fleet/positions",

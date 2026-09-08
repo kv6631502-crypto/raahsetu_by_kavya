@@ -1,5 +1,6 @@
 import type {
   Bootstrap,
+  DataStatus,
   AuthSession,
   AccessibilityEvent,
   Alert,
@@ -39,6 +40,7 @@ export const getBootstrap = (dataset = "demo") =>
   request<Bootstrap>(
     `/api/v1/bootstrap?dataset=${encodeURIComponent(dataset)}`,
   );
+export const getDataStatus = () => request<DataStatus>("/api/v1/data-status");
 export const getTerrain = (dataset = "demo") =>
   request<ElevationGrid | null>(
     `/api/v1/terrain?dataset=${encodeURIComponent(dataset)}`,
@@ -58,9 +60,9 @@ export const compareRoutes = (input: RouteInput, signal: AbortSignal) =>
     body: JSON.stringify(input),
     signal,
   });
-export const searchPlaces = (query: string, dataset = "demo") =>
+export const searchPlaces = (query: string, dataset?: string) =>
   request<{ results: SearchResult[] }>(
-    `/api/v1/search?q=${encodeURIComponent(query)}&dataset=${encodeURIComponent(dataset)}`,
+    `/api/v1/search?q=${encodeURIComponent(query)}${dataset ? `&dataset=${encodeURIComponent(dataset)}` : ""}`,
   );
 export const createFieldReport = (input: FieldReportInput, token: string) =>
   request<FieldReport>("/api/v1/field-reports", {
@@ -127,6 +129,31 @@ export const signIn = (email: string, password: string) =>
   authRequest("token?grant_type=password", { email, password });
 export const signUp = (email: string, password: string, displayName: string) =>
   authRequest("signup", { email, password, data: { display_name: displayName } });
+
+export const consumeOAuthCallback = async (): Promise<AuthSession | null> => {
+  if (!window.location.hash.includes("access_token=")) return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  if (!accessToken || !refreshToken) throw new AuthError("The Google sign-in response was incomplete.", 400);
+  const config = await getPublicConfig();
+  const response = await fetch(`${config.supabase_url}/auth/v1/user`, {
+    headers: { apikey: config.supabase_publishable_key, Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  const user = await response.json().catch(() => ({}));
+  if (!response.ok || !user.id) throw new AuthError("Google sign-in could not verify this account.", response.status);
+  const expiresIn = Number(params.get("expires_in") || 3600);
+  const session: AuthSession = {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_in: expiresIn,
+    expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+    user: { id: user.id, email: user.email },
+  };
+  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+  return session;
+};
 
 export const refreshSession = (refreshToken: string) =>
   authRequest("token?grant_type=refresh_token", { refresh_token: refreshToken });

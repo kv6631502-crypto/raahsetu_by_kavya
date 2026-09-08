@@ -1,10 +1,10 @@
 # Local data status
 
-Audited: 2026-09-07T16:31:34.506209+00:00
+Audited: 2026-09-08T14:30:08.209900+00:00
 
 - 8 state road extracts with referenced OSM nodes.
-- 273,494 road ways across extracts, including boundary overlap.
-- 2,705 facility features, including overlap and unverified operating status.
+- 273,497 road ways across extracts, including boundary overlap.
+- 2,706 facility features, including overlap and unverified operating status.
 - 45/45 elevation tiles downloaded and gzip/grid-validated.
 - 467 historical NE landslide records.
 - 14,608 weather point-days at eight reference locations.

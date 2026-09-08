@@ -44,6 +44,14 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT.parent / ".env")
 logger = logging.getLogger("raahsetu")
 
+DEMO_CITY_ALIASES = {
+    "guwahati": ("n2_0", "Guwahati", "demo origin"),
+    "dimapur": ("n0_3", "Dimapur", "demo place"),
+    "kohima": ("n1_1", "Kohima", "demo place"),
+    "senapati": ("n3_5", "Senapati", "demo place"),
+    "imphal": ("n2_6", "Imphal", "demo destination"),
+}
+
 
 def load_graph() -> RoadGraph:
     configured = os.getenv("DATASET_PATH")
@@ -129,6 +137,33 @@ def health():
     return {"status": "ok", "dataset_id": graph.dataset.id, "version": graph.version}
 
 
+def data_readiness() -> dict:
+    status_path = ROOT.parent / "datasets" / "DATA_STATUS.json"
+    status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.exists() else {}
+    snapshots = sorted(
+        path.stem.removeprefix("osm-")
+        for path in (ROOT / "data").glob("osm-*.json")
+        if not path.name.endswith("-terrain.json")
+    )
+    return {
+        "status": "ready" if snapshots else "demo_only",
+        "runtime_snapshots": snapshots,
+        "runtime_snapshot_count": len(snapshots),
+        "downloaded_files": status.get("verified_download_files", 0),
+        "downloaded_bytes": status.get("downloaded_bytes", 0),
+        "terrain_tiles": status.get("terrain_tiles", 0),
+        "terrain_tiles_planned": status.get("terrain_tiles_planned", 0),
+        "weather_reference_point_days": status.get("weather_reference_point_days", 0),
+        "historical_ne_landslides": status.get("historical_ne_landslides", 0),
+        "gaps": status.get("gaps", []),
+    }
+
+
+@app.get("/api/v1/data-status")
+def data_status():
+    return data_readiness()
+
+
 @app.get("/api/v1/public-config")
 def public_config():
     url = os.getenv("SUPABASE_URL")
@@ -206,6 +241,8 @@ def accessibility_events(
     store: Annotated[FieldReportStore, Depends(get_field_report_store)],
     region_code: str | None = Query(default=None, pattern=r"^[a-z]+(?:-[a-z]+)*$"),
 ):
+    if not os.getenv("DATABASE_URL"):
+        return {"events": []}
     try:
         return {"events": store.active_events(region_code)}
     except RuntimeError as exc:
@@ -438,60 +475,105 @@ def network(
 @app.get("/api/v1/search")
 def search_places(
     q: str = Query(min_length=2, max_length=80),
-    dataset: str = "demo",
+    dataset: str | None = None,
     limit: int = Query(default=12, ge=1, le=30),
 ):
-    """Search loaded OSM road names and labelled nodes without external geocoding."""
-    graph = get_graph(dataset)
+    """Search road names and labelled places across available networks."""
     needle = " ".join(q.casefold().split())
     results: list[dict] = []
-    seen: set[str] = set()
-    catalog_matches = sorted(
-        (item for item in search_catalog(dataset) if needle in item["label"].casefold()),
-        key=lambda item: (
-            not item["label"].casefold().startswith(needle),
-            item["kind"] != "place",
-            len(item["label"]),
-        ),
-    )
-    for item in catalog_matches:
-        try:
-            node_id, snap_distance = graph.resolve(Endpoint(lon=item["lon"], lat=item["lat"]))
-        except ValueError:
-            continue
-        if node_id in seen:
-            continue
-        results.append(
-            {
-                "id": node_id,
-                "label": item["label"],
-                "kind": item["kind"],
-                "detail": item["detail"],
-                "lon": item["lon"],
-                "lat": item["lat"],
-                "snap_distance_m": snap_distance,
-            }
+    # Do not load every multi-hundred-megabyte regional snapshot on each keystroke.
+    # The lightweight demo graph is the default search surface; an explicit dataset
+    # remains available for callers that already selected a regional network.
+    dataset_ids = [dataset or "demo"]
+    for dataset_id in dataset_ids:
+        graph = get_graph(dataset_id)
+        seen: set[str] = set()
+        if dataset_id == "demo":
+            for alias, (node_id, label, detail) in DEMO_CITY_ALIASES.items():
+                if needle in alias or alias.startswith(needle):
+                    node = graph.nodes.get(node_id)
+                    if node is not None:
+                        results.append(
+                            {
+                                "id": node_id,
+                                "dataset_id": dataset_id,
+                                "label": label,
+                                "kind": "place",
+                                "detail": detail,
+                                "lon": node.lon,
+                                "lat": node.lat,
+                            }
+                        )
+                        seen.add(node_id)
+        catalog_matches = sorted(
+            (item for item in search_catalog(dataset_id) if needle in item["label"].casefold()),
+            key=lambda item: (
+                not item["label"].casefold().startswith(needle),
+                item["kind"] != "place",
+                len(item["label"]),
+            ),
         )
-        seen.add(node_id)
-        if len(results) >= limit:
-            return {"query": q, "dataset_id": graph.dataset.id, "results": results}
-    for node in graph.nodes.values():
-        label = node.label or ""
-        if needle in label.casefold() and node.id not in seen:
+        for item in catalog_matches:
+            try:
+                node_id, snap_distance = graph.resolve(Endpoint(lon=item["lon"], lat=item["lat"]))
+            except ValueError:
+                continue
+            if node_id in seen:
+                continue
             results.append(
-                {"id": node.id, "label": label, "kind": "place", "lon": node.lon, "lat": node.lat}
+                {
+                    "id": node_id,
+                    "dataset_id": dataset_id,
+                    "label": item["label"],
+                    "kind": item["kind"],
+                    "detail": item["detail"],
+                    "lon": item["lon"],
+                    "lat": item["lat"],
+                    "snap_distance_m": snap_distance,
+                }
             )
-            seen.add(node.id)
-    for edge in graph.edges.values():
-        if needle in edge.name.casefold() and edge.u not in seen:
-            node = graph.nodes[edge.u]
-            results.append(
-                {"id": edge.u, "label": edge.name, "kind": "road", "lon": node.lon, "lat": node.lat}
-            )
-            seen.add(edge.u)
+            seen.add(node_id)
             if len(results) >= limit:
                 break
-    return {"query": q, "dataset_id": graph.dataset.id, "results": results[:limit]}
+        if len(results) >= limit:
+            break
+        for node in graph.nodes.values():
+            label = node.label or ""
+            if needle in label.casefold() and node.id not in seen:
+                results.append(
+                    {
+                        "id": node.id,
+                        "dataset_id": dataset_id,
+                        "label": label,
+                        "kind": "place",
+                        "lon": node.lon,
+                        "lat": node.lat,
+                    }
+                )
+                seen.add(node.id)
+                if len(results) >= limit:
+                    break
+        if len(results) >= limit:
+            break
+        for edge in graph.edges.values():
+            if needle in edge.name.casefold() and edge.u not in seen:
+                node = graph.nodes[edge.u]
+                results.append(
+                    {
+                        "id": edge.u,
+                        "dataset_id": dataset_id,
+                        "label": edge.name,
+                        "kind": "road",
+                        "lon": node.lon,
+                        "lat": node.lat,
+                    }
+                )
+                seen.add(edge.u)
+                if len(results) >= limit:
+                    break
+        if len(results) >= limit:
+            break
+    return {"query": q, "dataset_id": dataset, "results": results[:limit]}
 
 
 @app.post("/api/v1/routes/compare")
