@@ -461,6 +461,128 @@ export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
   },
 ];
 
+
+export const CITY_ELEVATIONS_M: Record<string, number> = {
+  // Sikkim
+  gangtok: 1650,
+  namchi: 1315,
+  pelling: 2150,
+  mangan: 1310,
+  rangpo: 330,
+  singtam: 400,
+  ravangla: 2130,
+  chungthang: 1790,
+  // Arunachal Pradesh
+  tawang: 3048,
+  dirang: 1560,
+  bomdila: 2415,
+  bhalukpong: 213,
+  seppa: 360,
+  itanagar: 320,
+  naharlagun: 290,
+  ziro: 1572,
+  basar: 660,
+  aalo: 300,
+  pasighat: 155,
+  roing: 390,
+  tezu: 185,
+  namsai: 150,
+  changlang: 580,
+  khonsa: 1215,
+  // Assam
+  dhubri: 34,
+  kokrajhar: 38,
+  bongaigaon: 54,
+  goalpara: 35,
+  barpeta: 35,
+  nalbari: 42,
+  rangia: 53,
+  guwahati: 55,
+  mangaldai: 50,
+  morigaon: 56,
+  nagaon: 60,
+  tezpur: 73,
+  hojai: 59,
+  diphu: 186,
+  haflong: 966,
+  bokakhat: 76,
+  golaghat: 95,
+  jorhat: 116,
+  lakhimpur: 101,
+  dhemaji: 91,
+  sivasagar: 95,
+  dibrugarh: 108,
+  tinsukia: 125,
+  digboi: 165,
+  margherita: 162,
+  silchar: 35,
+  karimganj: 18,
+  hailakandi: 21,
+  // Meghalaya
+  shillong: 1496,
+  cherrapunji: 1484,
+  dawki: 45,
+  jowai: 1380,
+  nongstoin: 1400,
+  williamnagar: 340,
+  tura: 349,
+  baghmara: 40,
+  resubelpara: 140,
+  ampati: 25,
+  khliehriat: 1200,
+  mairang: 1600,
+  nongpoh: 485,
+  // Nagaland
+  kohima: 1444,
+  dimapur: 145,
+  mokokchung: 1325,
+  tuensang: 1371,
+  mon: 897,
+  wokha: 1313,
+  zunheboto: 1874,
+  phek: 1024,
+  kiphire: 896,
+  longleng: 1066,
+  peren: 1445,
+  chumukedima: 170,
+  // Manipur
+  imphal: 786,
+  churachandpur: 914,
+  thoubal: 765,
+  bishnupur: 770,
+  kakching: 776,
+  ukhrul: 2020,
+  senapati: 1060,
+  tamenglong: 1260,
+  chandel: 850,
+  jiribam: 36,
+  kangpokpi: 992,
+  moreh: 220,
+  // Mizoram
+  aizawl: 1132,
+  lunglei: 722,
+  champhai: 1678,
+  serchhip: 1296,
+  kolasib: 620,
+  lawngtlai: 800,
+  saiha: 729,
+  mamit: 718,
+  hnahthial: 680,
+  khawzawl: 1250,
+  saitual: 1120,
+  // Tripura
+  agartala: 15,
+  udaipur: 22,
+  dharmanagar: 21,
+  kailashahar: 25,
+  belonia: 23,
+  khowai: 23,
+  ambassa: 72,
+  sabroom: 18,
+  teliamura: 32,
+  bishalgarh: 20,
+};
+
 export function App() {
   const [origin, setOrigin] = useState("guwahati");
   const [destination, setDestination] = useState("tawang");
@@ -780,6 +902,109 @@ export function App() {
     return Math.max(0, Math.round(diff));
   }, [shortestStats, safeStats]);
 
+
+
+  // Route Elevation Profile & Mountain Incline Telemetry
+  const elevationAnalysis = useMemo(() => {
+    if (!safe || safe.length === 0) return null;
+
+    const profilePoints: { cityName: string; state: string; elevationM: number; distanceKm: number }[] = [];
+    let cumulativeDist = 0;
+
+    for (let i = 0; i < safe.length; i++) {
+      const cityId = safe[i];
+      const city = CITY_MAP[cityId];
+      if (!city) continue;
+
+      let elev = CITY_ELEVATIONS_M[cityId] || 150;
+
+      if (i > 0) {
+        const prevCity = CITY_MAP[safe[i - 1]];
+        if (prevCity) {
+          const leg = safeLegs.find(
+            (l) => l.fromCity.id === prevCity.id && l.toCity.id === city.id
+          );
+          cumulativeDist += leg ? leg.dist : 45;
+        }
+      }
+
+      // Check if leg traverses high mountain pass (e.g. Sela Pass between Bomdila/Dirang & Tawang)
+      if (
+        (cityId === "tawang" && safe[i - 1] === "dirang") ||
+        (cityId === "dirang" && safe[i - 1] === "tawang")
+      ) {
+        profilePoints.push({
+          cityName: "Sela Pass Summit",
+          state: "Arunachal Pradesh",
+          elevationM: 4170, // 13,700 ft
+          distanceKm: Math.max(0, cumulativeDist - 24),
+        });
+      }
+
+      profilePoints.push({
+        cityName: city.name,
+        state: city.state,
+        elevationM: elev,
+        distanceKm: cumulativeDist,
+      });
+    }
+
+    if (profilePoints.length === 0) return null;
+
+    const startElev = profilePoints[0].elevationM;
+    const endElev = profilePoints[profilePoints.length - 1].elevationM;
+    const elevations = profilePoints.map((p) => p.elevationM);
+    const maxElev = Math.max(...elevations);
+    const minElev = Math.min(...elevations);
+    const peakPoint = profilePoints.find((p) => p.elevationM === maxElev);
+
+    let totalAscentM = 0;
+    let maxGradientPct = 0;
+
+    for (let i = 1; i < profilePoints.length; i++) {
+      const diff = profilePoints[i].elevationM - profilePoints[i - 1].elevationM;
+      if (diff > 0) totalAscentM += diff;
+
+      const segDistM = Math.max(1000, (profilePoints[i].distanceKm - profilePoints[i - 1].distanceKm) * 1000);
+      const gradient = Math.round((Math.abs(diff) / segDistM) * 100 * 10) / 10;
+      if (gradient > maxGradientPct) maxGradientPct = gradient;
+    }
+
+    // Warnings determination ("if any, if no then leave it")
+    const warnings: { type: "HIGH_ALTITUDE" | "STEEP_GHAT"; title: string; message: string; severity: "CRITICAL" | "HIGH" }[] = [];
+
+    // 1. High Altitude Freeze Warning (Only if route climbs to 2,800m+ / 9,200ft+)
+    if (maxElev >= 2800) {
+      warnings.push({
+        type: "HIGH_ALTITUDE",
+        title: `High Altitude Pass Summit: ${maxElev}m (${Math.round(maxElev * 3.28084)} ft)`,
+        message: `Summit at ${peakPoint?.cityName || "Pass Summit"} exceeds 2,800m. Freezing black ice on hairpin curves, sub-zero chill & engine atmospheric power drop. Heavy trucks require anti-skid tire chains and emergency coolant check.`,
+        severity: "CRITICAL",
+      });
+    }
+
+    // 2. Steep Ghat Incline / Heavy Brake Fade Warning (Only if gradient >= 6.5% or total ascent >= 1,000m)
+    if (maxGradientPct >= 6.5 || totalAscentM >= 1000) {
+      warnings.push({
+        type: "STEEP_GHAT",
+        title: `Steep Mountain Ghat: ${maxGradientPct}% Gradient (+${totalAscentM}m Total Ascent)`,
+        message: `Sustained hill ascent and hairpins. Heavy brake shoe thermal fade risk on descents. 16T+ freight vehicles must use low crawler gears and exhaust retarder brakes.`,
+        severity: "HIGH",
+      });
+    }
+
+    return {
+      startElev,
+      endElev,
+      maxElev,
+      minElev,
+      totalAscentM,
+      maxGradientPct,
+      peakName: peakPoint?.cityName || "Summit",
+      profilePoints,
+      warnings, // If empty, warnings section is omitted!
+    };
+  }, [safe, safeLegs]);
 
   // Google Maps Style Live Navigation & Driver Tracking State
   const [isNavigating, setIsNavigating] = useState(false);
@@ -2295,6 +2520,115 @@ export function App() {
                     </>
                   )}
                 </div>
+
+                {/* Elevation Profile & Mountain Incline Telemetry Card */}
+                {elevationAnalysis && (
+                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs uppercase tracking-widest text-signal font-bold flex items-center gap-2">
+                        <Mountain className="size-4 text-signal" />
+                        <span>Terrain Elevation & Altitude Profile</span>
+                      </span>
+                      <span className="text-[11px] font-mono text-muted-foreground">
+                        Peak: <strong className="text-foreground">{elevationAnalysis.maxElev}m</strong>
+                      </span>
+                    </div>
+
+                    {/* 4 Elevation Stats Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-xs">
+                      <div className="p-2.5 rounded-xl bg-secondary/50 border border-border">
+                        <div className="text-muted-foreground text-[10px] uppercase">Departure</div>
+                        <div className="font-bold text-foreground text-sm mt-0.5">{elevationAnalysis.startElev} m</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-secondary/50 border border-border">
+                        <div className="text-muted-foreground text-[10px] uppercase">Destination</div>
+                        <div className="font-bold text-foreground text-sm mt-0.5">{elevationAnalysis.endElev} m</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-secondary/50 border border-border">
+                        <div className="text-muted-foreground text-[10px] uppercase">Peak Summit</div>
+                        <div className="font-bold text-amber-400 text-sm mt-0.5">{elevationAnalysis.maxElev} m</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-secondary/50 border border-border">
+                        <div className="text-muted-foreground text-[10px] uppercase">Total Climb</div>
+                        <div className="font-bold text-signal text-sm mt-0.5">+{elevationAnalysis.totalAscentM} m</div>
+                      </div>
+                    </div>
+
+                    {/* Visual SVG Altitude Cross-Section Chart */}
+                    <div className="p-3 rounded-xl bg-secondary/30 border border-border/80 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                        <span>ALTITUDE CROSS-SECTION</span>
+                        <span>{elevationAnalysis.maxGradientPct}% Max Gradient</span>
+                      </div>
+
+                      <div className="relative h-24 w-full">
+                        <svg className="w-full h-full overflow-visible" viewBox="0 0 400 80" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="elevGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.4" />
+                              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.02" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Chart Path */}
+                          {(() => {
+                            const pts = elevationAnalysis.profilePoints;
+                            if (pts.length < 2) return null;
+                            const totalD = pts[pts.length - 1].distanceKm || 1;
+                            const maxE = Math.max(800, elevationAnalysis.maxElev);
+
+                            const coords = pts.map((p) => {
+                              const x = Math.round((p.distanceKm / totalD) * 400);
+                              const y = Math.round(75 - (p.elevationM / maxE) * 65);
+                              return { x, y, name: p.cityName, elev: p.elevationM };
+                            });
+
+                            const lineD = coords.reduce((acc, pt, i) => `${acc} ${i === 0 ? "M" : "L"} ${pt.x} ${pt.y}`, "");
+                            const areaD = `${lineD} L 400 80 L 0 80 Z`;
+
+                            return (
+                              <>
+                                <path d={areaD} fill="url(#elevGradient)" />
+                                <path d={lineD} fill="none" stroke="#38bdf8" strokeWidth="2.5" />
+                                {coords.map((c, i) => (
+                                  <circle key={i} cx={c.x} cy={c.y} r="3" fill="#ffffff" stroke="#0284c7" strokeWidth="1.5" />
+                                ))}
+                              </>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-0.5">
+                        <span className="truncate max-w-[120px]">{elevationAnalysis.profilePoints[0]?.cityName}</span>
+                        <span className="text-amber-300 font-bold">▲ {elevationAnalysis.peakName}</span>
+                        <span className="truncate max-w-[120px] text-right">{elevationAnalysis.profilePoints[elevationAnalysis.profilePoints.length - 1]?.cityName}</span>
+                      </div>
+                    </div>
+
+                    {/* DYNAMIC ALTITUDE & MOUNTAIN WARNINGS (Rendered ONLY IF ANY, IF NO THEN LEFT OUT) */}
+                    {elevationAnalysis.warnings.length > 0 && (
+                      <div className="space-y-2 pt-1">
+                        {elevationAnalysis.warnings.map((w, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                              w.severity === "CRITICAL"
+                                ? "border-destructive/50 bg-destructive/10 text-rose-300"
+                                : "border-hazard/50 bg-hazard/10 text-amber-300"
+                            }`}
+                          >
+                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                            <div className="text-xs leading-relaxed space-y-0.5">
+                              <div className="font-bold text-white font-mono tracking-wide">{w.title}</div>
+                              <div className="text-[11px] text-slate-300">{w.message}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
