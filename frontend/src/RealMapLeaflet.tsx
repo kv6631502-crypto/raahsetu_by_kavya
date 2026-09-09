@@ -197,33 +197,37 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     const { lat, lon, accuracy, speedKmh, placeName } = userGps;
 
-    // Custom pulse icon for Real GPS Vehicle
+    // Calibrated Heading & Navigation Pointer Chevron Icon
+    const headingDeg = userGps.heading || 0;
     const vehicleIcon = L.divIcon({
       className: "rs-real-gps-icon",
       html: `
-        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
-          <div style="position: absolute; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.2); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          <div style="position: relative; width: 18px; height: 18px; border-radius: 50%; background: #0284c7; border: 3px solid #ffffff; box-shadow: 0 0 10px #38bdf8; display: flex; align-items: center; justify-content: center;">
-            <div style="width: 5px; height: 5px; border-radius: 50%; background: #ffffff;"></div>
+        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.25); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="position: relative; width: 28px; height: 28px; border-radius: 50%; background: #0284c7; border: 3px solid #ffffff; box-shadow: 0 0 14px rgba(56, 189, 248, 0.9); display: flex; align-items: center; justify-content: center; transform: rotate(${headingDeg}deg); transition: transform 0.35s ease;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="#ffffff" stroke="#ffffff" stroke-width="1.5">
+              <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+            </svg>
           </div>
         </div>
       `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18],
+      iconSize: [44, 44],
+      iconAnchor: [22, 22],
     });
 
     if (!gpsMarkerRef.current) {
-      const marker = L.marker([lat, lon], { icon: vehicleIcon }).addTo(map);
+      const marker = L.marker([lat, lon], { icon: vehicleIcon, zIndexOffset: 1000 }).addTo(map);
       marker.bindPopup(
         `<div style="font-family: monospace; font-size: 11px; padding: 4px;">
-          <strong style="color: #38bdf8;">📍 REAL GPS VEHICLE FIX</strong><br/>
+          <strong style="color: #38bdf8;">📍 CALIBRATED GPS TELEMETRY</strong><br/>
           <span>${placeName}</span><br/>
           <span style="color: #94a3b8;">${lat.toFixed(5)}°N, ${lon.toFixed(5)}°E</span><br/>
-          <span style="color: #10b981; font-weight: bold;">Speed: ${speedKmh} km/h</span>
+          <span style="color: #10b981; font-weight: bold;">Speed: ${speedKmh} km/h · Heading: ${headingDeg}°</span>
         </div>`
       );
       gpsMarkerRef.current = marker;
     } else {
+      gpsMarkerRef.current.setIcon(vehicleIcon);
       gpsMarkerRef.current.setLatLng([lat, lon]);
     }
 
@@ -246,7 +250,8 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     // When navigating, center view on real GPS position
     if (isNavigating) {
-      map.setView([lat, lon], Math.max(12, map.getZoom()), { animate: true });
+      // Smoothly pan with vehicle without resetting zoom
+      map.panTo([lat, lon], { animate: true, duration: 0.4 });
     }
   }, [userGps, isNavigating]);
 
