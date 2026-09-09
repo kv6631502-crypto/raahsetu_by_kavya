@@ -34,8 +34,8 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   const gpsMarkerRef = useRef<L.Marker | null>(null);
   const gpsAccuracyCircleRef = useRef<L.Circle | null>(null);
 
-  const [tileTheme, setTileTheme] = useState<"dark" | "osm" | "satellite">("dark");
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const [tileTheme, setTileTheme] = useState<"dark" | "osm" | "satellite">("osm");
+  const tileLayersGroupRef = useRef<L.LayerGroup | null>(null);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -51,20 +51,10 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
-    // Initial tile layer (CartoDB Dark Matter for sleek cyber look)
-    const darkTiles = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd",
-        maxZoom: 19,
-      }
-    ).addTo(map);
-
-    tileLayerRef.current = darkTiles;
-    mapInstanceRef.current = map;
+    // Layer groups
+    tileLayersGroupRef.current = L.layerGroup().addTo(map);
     routeLayerGroupRef.current = L.layerGroup().addTo(map);
+    mapInstanceRef.current = map;
 
     return () => {
       map.remove();
@@ -72,30 +62,52 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
     };
   }, []);
 
-  // Handle tile theme switching
+  // Handle tile theme switching (100% Free, NO API Key, NO Watermarks)
   useEffect(() => {
     const map = mapInstanceRef.current;
-    if (!map) return;
+    const tileGroup = tileLayersGroupRef.current;
+    if (!map || !tileGroup) return;
 
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-    }
-
-    let url = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-    let attr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    tileGroup.clearLayers();
 
     if (tileTheme === "osm") {
-      url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-      attr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+      // 1. Official OpenStreetMap (Zero watermarks, 100% free)
+      const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      });
+      tileGroup.addLayer(osmLayer);
     } else if (tileTheme === "satellite") {
-      url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-      attr = "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community";
+      // 2. Esri World Satellite Imagery + Boundaries Reference (Zero watermarks, 100% free)
+      const satLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye",
+          maxZoom: 19,
+        }
+      );
+      const labelsLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 19 }
+      );
+      tileGroup.addLayer(satLayer);
+      tileGroup.addLayer(labelsLayer);
+    } else {
+      // 3. Dark Mode: Esri World Dark Gray Base + Reference (Zero watermarks, 100% free)
+      const darkBase = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
+          maxZoom: 16,
+        }
+      );
+      const darkRef = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 16 }
+      );
+      tileGroup.addLayer(darkBase);
+      tileGroup.addLayer(darkRef);
     }
-
-    tileLayerRef.current = L.tileLayer(url, {
-      attribution: attr,
-      maxZoom: 19,
-    }).addTo(map);
   }, [tileTheme]);
 
   // Render Real Road Network & Active Route Polylines
