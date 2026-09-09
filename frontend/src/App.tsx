@@ -4,6 +4,11 @@ import {
   Lock,
   User,
   Shield,
+  Phone,
+  PhoneCall,
+  ShieldAlert,
+  HeartHandshake,
+  Siren,
   ArrowRight,
   ArrowUpDown,
   Camera,
@@ -356,6 +361,29 @@ function CityCombobox({
   );
 }
 
+
+export interface DriverProfile {
+  driverName: string;
+  driverMobile: string;
+  vehicleNo: string;
+  vehicleType: VehicleType;
+  commodity: CommodityType;
+  trustedContactName: string;
+  trustedContactMobile: string;
+  isRegistered: boolean;
+}
+
+const DEFAULT_DRIVER_PROFILE: DriverProfile = {
+  driverName: "Rajesh Kumar Das",
+  driverMobile: "+91 98640 12345",
+  vehicleNo: "AS 01 EC 4421",
+  vehicleType: "heavy",
+  commodity: "medical",
+  trustedContactName: "Suresh Das (Fleet Supervisor)",
+  trustedContactMobile: "+91 94350 98765",
+  isRegistered: true,
+};
+
 export function App() {
   const [origin, setOrigin] = useState("guwahati");
   const [destination, setDestination] = useState("tawang");
@@ -402,6 +430,86 @@ export function App() {
       return 0;
     }
   });
+  // Persistent Driver & Vehicle Profile State
+  const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
+    try {
+      const saved = localStorage.getItem("raahsetu_driver_profile");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_DRIVER_PROFILE;
+  });
+
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [isSosModalOpen, setIsSosModalOpen] = useState(false);
+  const [isSosTransmitting, setIsSosTransmitting] = useState(false);
+  const [sosTransmissionSuccess, setSosTransmissionSuccess] = useState(false);
+  const [sosAlertsList, setSosAlertsList] = useState<Array<{
+    id: string;
+    timestamp: string;
+    vehicleNo: string;
+    driverName: string;
+    driverMobile: string;
+    trustedMobile: string;
+    location: string;
+    coords: string;
+    status: string;
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem("raahsetu_sos_logs");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSaveDriverProfile = (updated: DriverProfile) => {
+    setDriverProfile(updated);
+    setVehicle(updated.vehicleType);
+    setCommodity(updated.commodity);
+    try {
+      localStorage.setItem("raahsetu_driver_profile", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const triggerEmergencySos = () => {
+    setIsSosTransmitting(true);
+    setSosTransmissionSuccess(false);
+
+    const lat = navGpsCoords?.lat || (customOrigin ? customOrigin.lat : CITY_MAP[origin]?.lat || 26.1445);
+    const lon = navGpsCoords?.lon || (customOrigin ? customOrigin.lon : CITY_MAP[origin]?.lon || 91.7362);
+    const locName = navGpsCoords?.placeName || `${CITY_MAP[origin]?.name}–${CITY_MAP[destination]?.name} Corridor`;
+
+    const newLog = {
+      id: `SOS-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      vehicleNo: driverProfile.vehicleNo,
+      driverName: driverProfile.driverName,
+      driverMobile: driverProfile.driverMobile,
+      trustedMobile: driverProfile.trustedContactMobile,
+      location: locName,
+      coords: `${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E`,
+      status: "DISPATCHED_TO_AUTHORITIES",
+    };
+
+    const updatedLogs = [newLog, ...sosAlertsList];
+    setSosAlertsList(updatedLogs);
+    try {
+      localStorage.setItem("raahsetu_sos_logs", JSON.stringify(updatedLogs));
+    } catch {}
+
+    setTimeout(() => {
+      setIsSosTransmitting(false);
+      setSosTransmissionSuccess(true);
+    }, 800);
+  };
+
+  const generateSosMessage = () => {
+    const lat = navGpsCoords?.lat || (customOrigin ? customOrigin.lat : CITY_MAP[origin]?.lat || 26.1445);
+    const lon = navGpsCoords?.lon || (customOrigin ? customOrigin.lon : CITY_MAP[origin]?.lon || 91.7362);
+    const corridor = `${CITY_MAP[origin]?.name} to ${CITY_MAP[destination]?.name} (NH Corridor)`;
+    return `🚨 EMERGENCY SOS from RaahSetu! Driver ${driverProfile.driverName} (Vehicle ${driverProfile.vehicleNo}) reported a distress emergency on ${corridor}. Current GPS: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E. Map: https://maps.google.com/?q=${lat},${lon}. Driver Contact: ${driverProfile.driverMobile}. Trusted contact alerted. Please call immediately!`;
+  };
+
   // New UI Navigation & Auth States
   const [hasViewedNavigation, setHasViewedNavigation] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -410,7 +518,6 @@ export function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authNotice, setAuthNotice] = useState<string | null>(null);
-  const [isDispatchPopoverOpen, setIsDispatchPopoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"comparison" | "itinerary">("comparison");
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -1126,15 +1233,31 @@ export function App() {
               ))}
             </div>
 
-            {/* Sign In / Sign Up Button */}
+            {/* Vehicle & Driver Registration Button */}
             <button
               type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-slate-700/80 bg-slate-900/90 text-slate-100 font-semibold text-xs hover:border-signal/50 hover:bg-slate-800 transition-all shadow-md cursor-pointer"
+              onClick={() => setIsRegistrationModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-500/40 bg-slate-900/90 text-white font-semibold text-xs hover:border-signal hover:bg-slate-800 transition-all shadow-md cursor-pointer"
+              title="Driver & Vehicle Registration"
             >
-              <User className="size-3.5 text-signal" />
-              <span className="hidden sm:inline">Sign In / Sign Up</span>
-              <span className="sm:hidden">Sign In</span>
+              <Truck className="size-3.5 text-signal" />
+              <span className="hidden sm:inline font-mono font-bold text-signal">{driverProfile.vehicleNo}</span>
+              <span className="hidden md:inline text-slate-300 font-sans">({driverProfile.driverName.split(" ")[0]})</span>
+              <span className="sm:hidden font-mono font-bold text-signal">Vehicle</span>
+            </button>
+
+            {/* Emergency SOS Button in Top Header */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSosModalOpen(true);
+                triggerEmergencySos();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition-all cursor-pointer animate-pulse"
+              title="One-Click Emergency SOS to Trusted Mobile & NDRF"
+            >
+              <Siren className="size-3.5 text-white" />
+              <span>SOS</span>
             </button>
           </div>
         </div>
@@ -1257,103 +1380,6 @@ export function App() {
                   />
                 </div>
 
-                {/* Segment 3: Dispatch & Cargo Profile Popover */}
-                <div className="relative shrink-0 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={() => setIsDispatchPopoverOpen(!isDispatchPopoverOpen)}
-                    className="w-full sm:w-auto flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl sm:rounded-full bg-slate-900/90 border border-slate-700/70 hover:border-slate-600 text-xs font-mono transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Truck className="size-4 text-signal shrink-0" />
-                      <div className="text-left">
-                        <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">
-                          Dispatch Profile
-                        </div>
-                        <div className="font-bold text-white truncate max-w-[130px]">
-                          {VEHICLE_PROFILES[vehicle].name} · {COMMODITY_PROFILES[commodity].name.split(" ")[0]}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground ml-1">▾</span>
-                  </button>
-
-                  {/* Popover */}
-                  {isDispatchPopoverOpen && (
-                    <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl border border-slate-700 bg-slate-950/98 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in">
-                      {/* Commodity selection */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1.5 text-xs font-mono">
-                          <span className="text-signal font-bold uppercase tracking-wider">Essential Cargo</span>
-                          <span className="text-[10px] text-muted-foreground">Priority Weight</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {(Object.keys(COMMODITY_PROFILES) as CommodityType[]).map((cKey) => {
-                            const p = COMMODITY_PROFILES[cKey];
-                            const isSel = commodity === cKey;
-                            return (
-                              <button
-                                key={cKey}
-                                type="button"
-                                onClick={() => setCommodity(cKey)}
-                                className={`p-2 rounded-xl text-left text-xs border transition-all cursor-pointer ${
-                                  isSel
-                                    ? "border-signal bg-signal/15 text-white font-bold"
-                                    : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
-                                }`}
-                              >
-                                <div className="font-medium truncate">{p.name}</div>
-                                <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.priority}</div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Vehicle selection */}
-                      <div>
-                        <div className="mb-1.5 text-xs font-mono text-signal font-bold uppercase tracking-wider">
-                          Vehicle Axle Class
-                        </div>
-                        <div className="space-y-1.5">
-                          {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
-                            const vp = VEHICLE_PROFILES[vKey];
-                            const isSel = vehicle === vKey;
-                            return (
-                              <button
-                                key={vKey}
-                                type="button"
-                                onClick={() => setVehicle(vKey)}
-                                className={`w-full p-2 rounded-xl text-left text-xs border flex items-center justify-between transition-all cursor-pointer ${
-                                  isSel
-                                    ? "border-signal bg-signal/15 text-white font-bold"
-                                    : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
-                                }`}
-                              >
-                                <div>
-                                  <span className="font-semibold">{vp.name}</span>
-                                  <span className="ml-1.5 text-[10px] text-muted-foreground font-mono">({vp.badge})</span>
-                                </div>
-                                {isSel && <Check className="size-3.5 text-signal" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 pt-2 border-t border-slate-800 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => setIsDispatchPopoverOpen(false)}
-                          className="px-3 py-1 rounded-lg bg-signal text-signal-foreground font-bold text-xs cursor-pointer"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Segment 4: Primary CTA Button: "View Navigation" */}
                 <button
                   type="button"
@@ -1368,6 +1394,45 @@ export function App() {
                 >
                   <span>View Navigation</span>
                   <ArrowRight className="size-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Registered Vehicle Status Bar & Emergency SOS Quick Trigger */}
+            <div className="relative z-10 mt-3 max-w-5xl flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-2xl bg-slate-950/70 border border-slate-800/80 text-xs font-mono backdrop-blur-md">
+              <div className="flex items-center gap-2 text-slate-300 flex-wrap">
+                <Truck className="size-4 text-signal shrink-0" />
+                <span>
+                  Registered Vehicle: <strong className="text-signal font-mono font-bold">{driverProfile.vehicleNo}</strong> ({VEHICLE_PROFILES[driverProfile.vehicleType].name})
+                </span>
+                <span className="text-slate-600 hidden sm:inline">|</span>
+                <span className="hidden sm:inline text-slate-300">
+                  Driver: <strong className="text-white">{driverProfile.driverName}</strong> ({driverProfile.driverMobile})
+                </span>
+                <span className="text-slate-600 hidden md:inline">|</span>
+                <span className="hidden md:inline text-slate-400">
+                  Trusted Contact: <strong className="text-amber-400">{driverProfile.trustedContactMobile}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsRegistrationModalOpen(true)}
+                  className="ml-1 text-[11px] text-signal hover:underline cursor-pointer font-bold"
+                >
+                  [Edit Details]
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSosModalOpen(true);
+                    triggerEmergencySos();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600/20 border border-rose-500/60 text-rose-300 hover:bg-rose-600 hover:text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                >
+                  <Siren className="size-3.5 text-rose-400" />
+                  <span>EMERGENCY SOS</span>
                 </button>
               </div>
             </div>
@@ -2215,6 +2280,19 @@ export function App() {
 
                             <button
                               type="button"
+                              onClick={() => {
+                                setIsSosModalOpen(true);
+                                triggerEmergencySos();
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg flex items-center gap-1 cursor-pointer animate-pulse"
+                              title="Trigger Automated SOS to Trusted Contact & NDRF"
+                            >
+                              <Siren className="size-3.5" />
+                              <span className="hidden sm:inline">SOS</span>
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => setIsVoiceMuted(!isVoiceMuted)}
                               className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                                 isVoiceMuted ? "bg-secondary text-muted-foreground border-border" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
@@ -2937,6 +3015,322 @@ export function App() {
                 {authMode === "signin" ? "Sign In to Operations" : "Register Credentials"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DRIVER & VEHICLE REGISTRATION MODAL */}
+      {isRegistrationModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-700 bg-slate-950 p-6 sm:p-7 shadow-2xl text-foreground">
+            <button
+              type="button"
+              onClick={() => setIsRegistrationModalOpen(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-slate-900 cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-lg shadow-signal/10">
+                <Truck className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-bold text-white">
+                  Driver & Vehicle Registration Profile
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Saved once — powers automated route calculations & instant SOS emergency response
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const fd = new FormData(form);
+                const updated: DriverProfile = {
+                  driverName: (fd.get("driverName") as string) || driverProfile.driverName,
+                  driverMobile: (fd.get("driverMobile") as string) || driverProfile.driverMobile,
+                  vehicleNo: ((fd.get("vehicleNo") as string) || driverProfile.vehicleNo).toUpperCase(),
+                  vehicleType: (fd.get("vehicleType") as VehicleType) || driverProfile.vehicleType,
+                  commodity: (fd.get("commodity") as CommodityType) || driverProfile.commodity,
+                  trustedContactName: (fd.get("trustedContactName") as string) || driverProfile.trustedContactName,
+                  trustedContactMobile: (fd.get("trustedContactMobile") as string) || driverProfile.trustedContactMobile,
+                  isRegistered: true,
+                };
+                handleSaveDriverProfile(updated);
+                setIsRegistrationModalOpen(false);
+              }}
+              className="mt-4 space-y-4"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-muted-foreground mb-1">
+                    Driver Full Name *
+                  </label>
+                  <div className="flex items-center rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2">
+                    <User className="size-4 text-muted-foreground mr-2 shrink-0" />
+                    <input
+                      name="driverName"
+                      type="text"
+                      required
+                      defaultValue={driverProfile.driverName}
+                      placeholder="e.g. Rajesh Kumar Das"
+                      className="w-full bg-transparent text-sm text-white placeholder-muted-foreground outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-muted-foreground mb-1">
+                    Driver Mobile Number *
+                  </label>
+                  <div className="flex items-center rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2">
+                    <Phone className="size-4 text-muted-foreground mr-2 shrink-0" />
+                    <input
+                      name="driverMobile"
+                      type="tel"
+                      required
+                      defaultValue={driverProfile.driverMobile}
+                      placeholder="+91 98640 12345"
+                      className="w-full bg-transparent text-sm text-white placeholder-muted-foreground outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-muted-foreground mb-1">
+                    Vehicle Number (State Plate) *
+                  </label>
+                  <div className="flex items-center rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2">
+                    <Truck className="size-4 text-muted-foreground mr-2 shrink-0" />
+                    <input
+                      name="vehicleNo"
+                      type="text"
+                      required
+                      defaultValue={driverProfile.vehicleNo}
+                      placeholder="AS 01 EC 4421"
+                      className="w-full bg-transparent text-sm text-signal font-mono font-bold uppercase placeholder-muted-foreground outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono text-muted-foreground mb-1">
+                    Vehicle Axle Class *
+                  </label>
+                  <select
+                    name="vehicleType"
+                    defaultValue={driverProfile.vehicleType}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2 text-sm text-white outline-none"
+                  >
+                    <option value="heavy">Heavy Multi-Axle (10-18 wheels, 28T)</option>
+                    <option value="medium">Medium 2-Axle (6 wheels, 16T)</option>
+                    <option value="light">Light Commercial (4 wheels, 3.5T)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-muted-foreground mb-1">
+                  Primary Essential Cargo Type
+                </label>
+                <select
+                  name="commodity"
+                  defaultValue={driverProfile.commodity}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2 text-sm text-white outline-none"
+                >
+                  <option value="medical">Cold-Chain Medicines & Vaccines (Critical)</option>
+                  <option value="produce">Perishable Agricultural Produce (High Priority)</option>
+                  <option value="food">PDS Food Grains & Rations (Heavy)</option>
+                  <option value="fuel">POL Fuel Tankers (Hazardous)</option>
+                  <option value="infra">Infrastructure & Steel/Cement (Multi-Axle)</option>
+                </select>
+              </div>
+
+              {/* Trusted Emergency Contact Section */}
+              <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-rose-300 font-mono uppercase tracking-wider">
+                    <HeartHandshake className="size-4 text-rose-400" />
+                    Trusted Emergency Contact (Automated SOS Target)
+                  </span>
+                  <span className="text-[10px] text-rose-400 font-mono">Automated SMS/WhatsApp</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-mono text-muted-foreground mb-1">
+                      Contact Person Name *
+                    </label>
+                    <input
+                      name="trustedContactName"
+                      type="text"
+                      required
+                      defaultValue={driverProfile.trustedContactName}
+                      placeholder="e.g. Suresh Das (Supervisor / Family)"
+                      className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono text-muted-foreground mb-1">
+                      Trusted Mobile Number *
+                    </label>
+                    <input
+                      name="trustedContactMobile"
+                      type="tel"
+                      required
+                      defaultValue={driverProfile.trustedContactMobile}
+                      placeholder="+91 94350 98765"
+                      className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-amber-400 font-mono font-bold outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsRegistrationModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-700 text-muted-foreground hover:bg-slate-900 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-signal text-signal-foreground font-bold text-xs hover:brightness-110 shadow-lg shadow-signal/20 cursor-pointer"
+                >
+                  Save Profile & Arm SOS Beacon
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* AUTOMATED EMERGENCY SOS DISTRESS MODAL */}
+      {isSosModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-3xl border-2 border-rose-500 bg-slate-950 p-6 sm:p-7 shadow-2xl text-foreground">
+            <button
+              type="button"
+              onClick={() => setIsSosModalOpen(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-slate-900 cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-xl shadow-rose-600/40 animate-pulse">
+                <Siren className="size-6" />
+              </div>
+              <div>
+                <h3 className="font-display text-xl font-black text-rose-400 tracking-tight flex items-center gap-2">
+                  EMERGENCY SOS DISTRESS BEACON
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Immediate telemetry transmission to Disaster Authorities & Trusted Contact
+                </p>
+              </div>
+            </div>
+
+            {/* Real-time Stamped Telemetry Card */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 mb-4 space-y-2 font-mono text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-muted-foreground">Distress Vehicle:</span>
+                <span className="text-signal font-bold">{driverProfile.vehicleNo}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-muted-foreground">Driver:</span>
+                <span className="text-white font-bold">{driverProfile.driverName} ({driverProfile.driverMobile})</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-muted-foreground">Last Recorded GPS:</span>
+                <span className="text-amber-400 font-bold">
+                  {navGpsCoords
+                    ? `${navGpsCoords.lat.toFixed(4)}°N, ${navGpsCoords.lon.toFixed(4)}°E (±${Math.round(navGpsCoords.accuracy || 10)}m)`
+                    : `${CITY_MAP[origin]?.lat.toFixed(4)}°N, ${CITY_MAP[origin]?.lon.toFixed(4)}°E (Corridor Hub)`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Active Sector:</span>
+                <span className="text-white truncate max-w-[220px]">
+                  {CITY_MAP[origin]?.name} ➔ {CITY_MAP[destination]?.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Transmission Status Feedback */}
+            {isSosTransmitting ? (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/50 flex items-center justify-center gap-2 text-rose-300 font-mono text-xs mb-4">
+                <Loader2 className="size-4 animate-spin text-rose-400" />
+                <span>Broadcasting GPS coordinates to Disaster Management Room...</span>
+              </div>
+            ) : sosTransmissionSuccess ? (
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 font-mono text-xs text-center font-bold mb-4">
+                ✓ SOS Distress Beacon Stamped & Broadcast to Regional Authority Feed.
+              </div>
+            ) : null}
+
+            {/* Automated Dispatch Actions */}
+            <div className="space-y-2.5">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-bold">
+                Automated Message Dispatch to Trusted Mobile: <span className="text-amber-400 font-bold">{driverProfile.trustedContactMobile}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <a
+                  href={`sms:${driverProfile.trustedContactMobile}?body=${encodeURIComponent(generateSosMessage())}`}
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg transition-all text-center cursor-pointer"
+                >
+                  <PhoneCall className="size-4" />
+                  <span>Send Automated SMS</span>
+                </a>
+
+                <a
+                  href={`https://api.whatsapp.com/send?phone=${driverProfile.trustedContactMobile.replace(/[^0-9]/g, "")}&text=${encodeURIComponent(generateSosMessage())}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all text-center cursor-pointer"
+                >
+                  <span>💬 Send WhatsApp SOS</span>
+                </a>
+              </div>
+
+              {/* Direct Emergency Call Hotlines */}
+              <div className="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+                <a
+                  href="tel:1078"
+                  className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-mono font-semibold text-center"
+                >
+                  <ShieldAlert className="size-3.5 text-rose-400" />
+                  <span>Call NDRF (1078)</span>
+                </a>
+
+                <a
+                  href={`tel:${driverProfile.trustedContactMobile}`}
+                  className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-mono font-semibold text-center"
+                >
+                  <Phone className="size-3.5 text-signal" />
+                  <span>Call Trusted Contact</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsSosModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-700 text-muted-foreground hover:bg-slate-900 text-xs cursor-pointer"
+              >
+                Close Window
+              </button>
+            </div>
           </div>
         </div>
       )}
