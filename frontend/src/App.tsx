@@ -248,6 +248,7 @@ export function App() {
     lon: number;
     nearestHub: City;
     distanceKm: number;
+    isOutsideNer?: boolean;
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -349,6 +350,10 @@ export function App() {
     speedKmh: number;
     heading: number;
     placeName: string;
+    isWithinNer: boolean;
+    svgX: number;
+    svgY: number;
+    distToBorderKm?: number;
     source: "live_gps" | "simulated";
   } | null>(null);
   const [navProgressPct, setNavProgressPct] = useState(0);
@@ -487,15 +492,25 @@ export function App() {
       lat: number,
       lon: number,
       placeName: string,
+      accuracy?: number,
       speed?: number,
       heading?: number
     ) => {
+      const proj = projectGeoToSvg(lat, lon);
+      const isWithinNer = proj.isWithinRegion;
+      const realSpeedKmh = speed && speed > 0 ? Math.round(speed * 3.6) : 0;
+
       setNavGpsCoords({
         lat,
         lon,
-        speedKmh: speed && speed > 0 ? Math.round(speed * 3.6) : 52,
+        accuracy,
+        speedKmh: realSpeedKmh,
         heading: heading || 0,
         placeName,
+        isWithinNer,
+        svgX: proj.x,
+        svgY: proj.y,
+        distToBorderKm: proj.distToBorderKm,
         source: "live_gps",
       });
       setIsNavigating(true);
@@ -505,9 +520,16 @@ export function App() {
       setIsSimulatingDrive(true);
 
       const destCityName = CITY_MAP[destination]?.name || "Destination";
-      speakGuidance(
-        `Navigation started towards ${destCityName}. Live GPS location acquired at ${placeName}.`
-      );
+      const originCityName = CITY_MAP[origin]?.name || "Origin";
+      if (isWithinNer) {
+        speakGuidance(
+          `GPS calibrated at ${placeName}. Navigating corridor from ${originCityName} to ${destCityName}.`
+        );
+      } else {
+        speakGuidance(
+          `Real GPS fix at ${placeName}. Running corridor simulation from ${originCityName} to ${destCityName}.`
+        );
+      }
     };
 
     if (!navigator.geolocation) {
@@ -515,14 +537,17 @@ export function App() {
       startTrip(
         originCity.lat,
         originCity.lon,
-        `${originCity.name}, ${originCity.state} (Origin Hub)`
+        `${originCity.name}, ${originCity.state} (Origin Hub)`,
+        25,
+        0,
+        0
       );
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude, speed, heading } = pos.coords;
+        const { latitude, longitude, accuracy, speed, heading } = pos.coords;
         let placeTitle = `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
 
         try {
@@ -538,16 +563,16 @@ export function App() {
             if (road && cityOrTown) {
               placeTitle = `${road}, ${cityOrTown}`;
             } else if (cityOrTown) {
-              placeTitle = `${cityOrTown}, ${addr.state || "India"}`;
+              placeTitle = `${cityOrTown}, ${addr.state || ""}`.trim();
             } else if (data.display_name) {
-              placeTitle = data.display_name.split(",").slice(0, 2).join(",");
+              placeTitle = data.display_name.split(",").slice(0, 3).join(", ");
             }
           }
         } catch {
           // Fallback to formatted coordinates
         }
 
-        startTrip(latitude, longitude, placeTitle, speed || undefined, heading || undefined);
+        startTrip(latitude, longitude, placeTitle, accuracy, speed || undefined, heading || undefined);
 
         // Start GPS tracking
         try {
@@ -556,12 +581,22 @@ export function App() {
           }
           navWatchRef.current = navigator.geolocation.watchPosition(
             (watchPos) => {
+              const watchSpeed = watchPos.coords.speed && watchPos.coords.speed > 0
+                ? Math.round(watchPos.coords.speed * 3.6)
+                : 0;
+              const watchProj = projectGeoToSvg(watchPos.coords.latitude, watchPos.coords.longitude);
+
               setNavGpsCoords((prev) => ({
                 lat: watchPos.coords.latitude,
                 lon: watchPos.coords.longitude,
-                speedKmh: watchPos.coords.speed ? Math.round(watchPos.coords.speed * 3.6) : (prev?.speedKmh || 52),
+                accuracy: watchPos.coords.accuracy,
+                speedKmh: watchSpeed,
                 heading: watchPos.coords.heading || prev?.heading || 0,
                 placeName: prev?.placeName || `${watchPos.coords.latitude.toFixed(4)}°N, ${watchPos.coords.longitude.toFixed(4)}°E`,
+                isWithinNer: watchProj.isWithinRegion,
+                svgX: watchProj.x,
+                svgY: watchProj.y,
+                distToBorderKm: watchProj.distToBorderKm,
                 source: "live_gps",
               }));
             },
@@ -655,7 +690,7 @@ export function App() {
     setDestination(oldOrigin);
   };
 
-  // GPS Live Location Detection (Displays Exact Current Location)
+  // GPS Live Location Detection (Calibrated & Ground-Truth Verified)
   const handleGpsLocation = () => {
     if (!navigator.geolocation) {
       setLocationNotice("Geolocation is not supported by your browser.");
@@ -666,22 +701,27 @@ export function App() {
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, accuracy } = pos.coords;
+        const proj = projectGeoToSvg(latitude, longitude);
         const nearest = findNearestCity(latitude, longitude);
 
         let placeTitle = `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
         try {
-          // Reverse geocode via OpenStreetMap Nominatim for exact local city/district name
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14`,
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`,
             { headers: { "Accept-Language": "en" } }
           );
           if (res.ok) {
             const data = await res.json();
             const addr = data.address || {};
-            const localName = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state_district;
-            if (localName) {
-              placeTitle = `${localName}, ${addr.state || "Current GPS"}`;
+            const road = addr.road || addr.suburb || addr.neighbourhood;
+            const cityOrTown = addr.city || addr.town || addr.village || addr.county || addr.state_district;
+            if (road && cityOrTown) {
+              placeTitle = `${road}, ${cityOrTown}`;
+            } else if (cityOrTown) {
+              placeTitle = `${cityOrTown}, ${addr.state || ""}`.trim();
+            } else if (data.display_name) {
+              placeTitle = data.display_name.split(",").slice(0, 3).join(", ");
             }
           }
         } catch {
@@ -689,9 +729,29 @@ export function App() {
         }
 
         setIsLocating(false);
+
+        // Check if device is genuinely within Northeast India
+        if (!proj.isWithinRegion || nearest.distanceKm > 150) {
+          // Device is outside Northeast India (e.g. testing from Delhi, Mumbai, Bengaluru, etc.)
+          // Real coordinates shown without overriding origin to a fake distant mountain town!
+          setLocationNotice(
+            `📍 Real Device GPS: ${placeTitle} (${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E, ±${Math.round(accuracy)}m). Status: Device is ${Math.round(nearest.distanceKm)} km outside the Northeast corridor boundary. Using chosen route (${CITY_MAP[origin]?.name} ➔ ${CITY_MAP[destination]?.name}) for dispatch planning.`
+          );
+          setCustomOrigin({
+            name: `${placeTitle} (Outside NER)`,
+            lat: latitude,
+            lon: longitude,
+            nearestHub: nearest.city,
+            distanceKm: nearest.distanceKm,
+            isOutsideNer: true,
+          });
+          return;
+        }
+
+        // Inside Northeast India: Link directly to nearest highway corridor hub
         if (nearest.city.id === destination) {
           setLocationNotice(
-            `Current GPS position is at ${placeTitle}, but the highway entry hub (${nearest.city.name}) is already your destination.`
+            `Exact GPS acquired at ${placeTitle}, but the highway entry hub (${nearest.city.name}) is already your destination.`
           );
           return;
         }
@@ -703,13 +763,13 @@ export function App() {
           lon: longitude,
           nearestHub: nearest.city,
           distanceKm: nearest.distanceKm,
+          isOutsideNer: false,
         });
 
         setLocationNotice(
           `GPS Active: Exact location detected at ${placeTitle} (${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E). Linked to highway corridor via ${nearest.city.name} (${nearest.distanceKm} km entry connection).`
         );
-      },
-      (err) => {
+      }, (err) => {
         setIsLocating(false);
         setLocationNotice(`Unable to retrieve GPS coordinates (${err.message}).`);
       },
@@ -1760,8 +1820,12 @@ export function App() {
                           {/* Speed & Controls */}
                           <div className="flex items-center gap-2 shrink-0">
                             <div className="hidden sm:flex flex-col items-center bg-black/50 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-mono">
-                              <span className="text-lg font-black text-emerald-400">{navGpsCoords?.speedKmh || 52}</span>
-                              <span className="text-[8px] uppercase tracking-widest text-muted-foreground">km/h</span>
+                              <span className="text-lg font-black text-emerald-400">
+                                {isSimulatingDrive ? "48" : (navGpsCoords?.speedKmh || 0)}
+                              </span>
+                              <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
+                                {isSimulatingDrive ? "km/h (sim)" : "km/h (gps)"}
+                              </span>
                             </div>
 
                             <button
@@ -1836,9 +1900,12 @@ export function App() {
                         {/* Right: GPS Origin, Simulation Controls & Exit */}
                         <div className="flex items-center gap-2">
                           {navGpsCoords?.placeName && (
-                            <div className="hidden md:flex items-center gap-1.5 text-[10px] font-mono text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 rounded-md px-2 py-1 max-w-[200px] truncate" title={navGpsCoords.placeName}>
+                            <div className="hidden md:flex items-center gap-1.5 text-[10px] font-mono text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 rounded-md px-2.5 py-1 max-w-[260px] truncate" title={navGpsCoords.placeName}>
                               <LocateFixed className="size-3 text-emerald-400 shrink-0" />
-                              <span className="truncate">{navGpsCoords.placeName}</span>
+                              <span className="truncate">
+                                {navGpsCoords.isWithinNer ? "🟢 NER GPS: " : "📡 Device Fix: "}
+                                {navGpsCoords.placeName}
+                              </span>
                             </div>
                           )}
 
@@ -2011,7 +2078,7 @@ export function App() {
                       )}
 
                       {/* Exact Live GPS Location Marker & Connector */}
-                      {customOrigin && (() => {
+                      {customOrigin && !customOrigin.isOutsideNer && (() => {
                         const gpsSvg = projectGeoToSvg(customOrigin.lat, customOrigin.lon);
                         return (
                           <g className="cursor-pointer">
@@ -2056,7 +2123,7 @@ export function App() {
                               fontWeight="bold"
                               filter="drop-shadow(0px 1px 3px rgba(0,0,0,0.95))"
                             >
-                              📍 {customOrigin.name} (Exact GPS)
+                              📍 {customOrigin.name} (Calibrated GPS)
                             </text>
                           </g>
                         );
@@ -2105,7 +2172,7 @@ export function App() {
                               fontFamily="monospace"
                               fontWeight="bold"
                             >
-                              🚗 ${navGpsCoords?.speedKmh || 52} km/h • DRIVER
+                              ${isSimulatingDrive ? "🚗 48 km/h • CORRIDOR TRANSIT" : `📍 ${navGpsCoords?.speedKmh || 0} km/h • LIVE GPS`}
                             </text>
                           </g>
                         </g>

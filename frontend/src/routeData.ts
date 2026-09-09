@@ -733,13 +733,84 @@ export function findNearestCity(
   return { city: nearest, distanceKm: Math.round(minDistance * 10) / 10 };
 }
 
-export function projectGeoToSvg(lat: number, lon: number): { x: number; y: number } {
-  // Calibrated projection for Northeast India SVG viewBox (1000 x 560)
-  const x = Math.round(530 + (lon - 91.7362) * 121);
-  const y = Math.round(247 + (26.1445 - lat) * 87);
+export interface SvgProjection {
+  x: number;
+  y: number;
+  isWithinRegion: boolean;
+  distToBorderKm: number;
+}
+
+export function projectGeoToSvg(lat: number, lon: number): SvgProjection {
+  // Calibrated geodetic boundary for Northeast India: [21.5°N, 29.8°N] x [88.0°E, 97.5°E]
+  const isWithinRegion = lat >= 21.5 && lat <= 29.8 && lon >= 88.0 && lon <= 97.5;
+
+  const sorted = CITIES.map((c) => ({
+    c,
+    dist: haversineDistanceKm(lat, lon, c.lat, c.lon),
+  })).sort((a, b) => a.dist - b.dist);
+
+  if (sorted.length === 0) {
+    return { x: 500, y: 280, isWithinRegion: false, distToBorderKm: 0 };
+  }
+
+  const nearest = sorted[0];
+
+  // Exact match or < 400m from a known surveyed city
+  if (nearest.dist < 0.4) {
+    return {
+      x: nearest.c.x,
+      y: nearest.c.y,
+      isWithinRegion,
+      distToBorderKm: isWithinRegion ? 0 : Math.round(nearest.dist),
+    };
+  }
+
+  // 3 nearest non-collinear anchor cities for precise affine triangulation
+  const c1 = sorted[0].c;
+  const c2 = sorted[1].c;
+  let c3 = sorted[2].c;
+
+  for (let i = 2; i < Math.min(10, sorted.length); i++) {
+    const cand = sorted[i].c;
+    const det = (c2.lon - c1.lon) * (cand.lat - c1.lat) - (c2.lat - c1.lat) * (cand.lon - c1.lon);
+    if (Math.abs(det) > 0.05) {
+      c3 = cand;
+      break;
+    }
+  }
+
+  const denom = (c2.lat - c3.lat) * (c1.lon - c3.lon) + (c3.lon - c2.lon) * (c1.lat - c3.lat);
+  if (Math.abs(denom) > 1e-6) {
+    const w1 = ((c2.lat - c3.lat) * (lon - c3.lon) + (c3.lon - c2.lon) * (lat - c3.lat)) / denom;
+    const w2 = ((c3.lat - c1.lat) * (lon - c3.lon) + (c1.lon - c3.lon) * (lat - c3.lat)) / denom;
+    const w3 = 1 - w1 - w2;
+
+    const x = Math.round(w1 * c1.x + w2 * c2.x + w3 * c3.x);
+    const y = Math.round(w1 * c1.y + w2 * c2.y + w3 * c3.y);
+
+    return {
+      x: Math.max(15, Math.min(985, x)),
+      y: Math.max(15, Math.min(545, y)),
+      isWithinRegion,
+      distToBorderKm: isWithinRegion ? 0 : Math.round(nearest.dist),
+    };
+  }
+
+  // Fallback to Inverse Distance Weighting across 4 nearest
+  const topK = sorted.slice(0, 4);
+  let sumW = 0, sumX = 0, sumY = 0;
+  for (const item of topK) {
+    const w = 1 / Math.pow(Math.max(1, item.dist), 2);
+    sumW += w;
+    sumX += w * item.c.x;
+    sumY += w * item.c.y;
+  }
+
   return {
-    x: Math.max(20, Math.min(980, x)),
-    y: Math.max(20, Math.min(540, y)),
+    x: Math.round(sumX / sumW),
+    y: Math.round(sumY / sumW),
+    isWithinRegion,
+    distToBorderKm: isWithinRegion ? 0 : Math.round(nearest.dist),
   };
 }
 
