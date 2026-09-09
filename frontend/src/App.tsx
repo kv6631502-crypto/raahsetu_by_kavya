@@ -1857,7 +1857,7 @@ export function App() {
                   title="Start Live Navigation & Focus Map"
                 >
                   <Navigation className="size-4 fill-slate-950" />
-                  <span>Start Navigation</span>
+                  <span>View Navigation</span>
                   <ArrowRight className="size-4 stroke-[2.5]" />
                 </button>
               </div>
@@ -1930,153 +1930,10 @@ export function App() {
         </section>
 
         
-        {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
-        <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
-          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
-              <div>
-                <span className="font-mono text-xs uppercase tracking-[0.25em] text-hazard font-bold">
-                  Ground Reality & Disaster Impact
-                </span>
-                <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Why mountain freight is a life-or-death equation
-                </h2>
-                <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                  Official reports from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau
-                  (NCRB), and Geological Survey of India (GSI) highlight an urgent mountain highway crisis.
-                </p>
-              </div>
-
-              {/* Photo Artifact: Mountain Corridor Sensor Station */}
-              <div className="relative rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group">
-                <img
-                  src="/hazard-monitoring-station.jpg"
-                  alt="High altitude landslide monitoring station"
-                  className="w-full h-48 sm:h-56 object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono">
-                  <span className="px-2 py-0.5 rounded-md bg-hazard/20 text-hazard border border-hazard/40 font-bold backdrop-blur-md">
-                    GSI & BRO Safe Zone Sensor
-                  </span>
-                  <span className="text-slate-300 backdrop-blur-md px-2 py-0.5 rounded bg-black/60">
-                    Sela Corridor (13,700 ft)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 backdrop-blur-md">
-                <div className="font-mono text-3xl font-black text-destructive">1,68,491</div>
-                <div className="mt-2 text-sm font-bold text-foreground">Annual Fatalities Nationwide</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  MoRTH accident census shows mountain ghat sections experience a fatal accident severity of{" "}
-                  <strong className="text-destructive font-bold">45.2%</strong>—nearly double the plain highway average.
-                </p>
-                <div className="mt-4 text-[10px] font-mono text-destructive/80 font-bold uppercase">
-                  Source: MoRTH Official Census
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-hazard/40 bg-hazard/10 p-6 backdrop-blur-md">
-                <div className="font-mono text-3xl font-black text-hazard">400+</div>
-                <div className="mt-2 text-sm font-bold text-foreground">Major Monsoon Landslides</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  GSI records over 400 severe rockfall and mudflow blockages annually, completely severing lifelines like NH-6,
-                  NH-2, NH-10, and NH-13 for weeks.
-                </p>
-                <div className="mt-4 text-[10px] font-mono text-hazard font-bold uppercase">
-                  Source: Geological Survey of India
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-hazard/30 bg-card p-6 backdrop-blur-md">
-                <div className="font-mono text-3xl font-black text-hazard">6,200+</div>
-                <div className="mt-2 text-sm font-bold text-foreground">Northeast Corridor Lives Lost</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Over 6,200 drivers and commuters have perished in the Northeast mountain belt over the past decade due to
-                  avoidable ghat drop-offs and brake failures on extreme slopes.
-                </p>
-                <div className="mt-4 text-[10px] font-mono text-muted-foreground font-bold uppercase">
-                  Source: Regional NCRB Records
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-signal/40 bg-signal/10 p-6 backdrop-blur-md">
-                <div className="font-mono text-3xl font-black text-signal">₹3,500 Cr</div>
-                <div className="mt-2 text-sm font-bold text-foreground">Annual Economic Freight Delay</div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Critical convoys carrying life-saving pharmaceuticals, oxygen, rations, and defense goods remain
-                  stranded in Sonapur tunnel and Sela Pass chokepoints.
-                </p>
-                <div className="mt-4 text-[10px] font-mono text-signal font-bold uppercase">
-                  Source: Logistics Council Estimates
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION 3: THE INTERACTIVE ROUTE PLANNER */}
-        <section id="console" className="relative border-t border-border/70 py-16 lg:py-24">
+{hasViewedNavigation && (
+        <section id="console" className="relative border-t border-border/70 py-16 lg:py-24 animate-in fade-in duration-500">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
           <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
-
-            {!hasViewedNavigation ? (
-              /* CLEAN COLLAPSED STATE (Before User Clicks Navigation) */
-              <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950/80 via-slate-900/60 to-slate-950/90 p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-2xl backdrop-blur-2xl animate-in fade-in duration-500">
-                <div className="size-16 rounded-2xl bg-signal/15 border border-signal/30 flex items-center justify-center text-signal mx-auto mb-5 shadow-xl shadow-signal/10">
-                  <Navigation className="size-8 animate-pulse" />
-                </div>
-                <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
-                  Intelligent Freight Navigation Studio
-                </span>
-                <h3 className="font-display text-2xl sm:text-4xl font-extrabold text-white mt-2 tracking-tight">
-                  Click Below or Use the Top Console to Launch Studio
-                </h3>
-                <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mt-3 leading-relaxed">
-                  Select your Origin and Destination in the floating bar above, then click <strong>Start Navigation</strong> to view the live GPS tracker, satellite map, elevation analysis, and district connectivity matrix.
-                </p>
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasViewedNavigation(true);
-                      handleStartNavigation();
-                      setTimeout(() => {
-                        const mapEl = document.getElementById("route-map-viewport");
-                        if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                      }, 100);
-                    }}
-                    className="px-7 py-3.5 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
-                  >
-                    <Navigation className="size-4 fill-slate-950" />
-                    <span>View Navigation & Interactive Map</span>
-                    <ArrowRight className="size-4 stroke-[2.5]" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasViewedNavigation(true);
-                      setActiveConsoleTab("districts");
-                      setTimeout(() => {
-                        const el = document.getElementById("console");
-                        if (el) el.scrollIntoView({ behavior: "smooth" });
-                      }, 50);
-                    }}
-                    className="px-6 py-3.5 rounded-full bg-slate-900/90 border border-slate-700 hover:border-signal text-slate-300 hover:text-white font-mono font-bold text-xs transition-all cursor-pointer flex items-center gap-2 shadow-lg"
-                  >
-                    <Activity className="size-4 text-signal" />
-                    <span>View District Accessibility Matrix</span>
-                    <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-black">8 States</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* UNROLLED RICH WORKSPACE (After User Clicks) */
-              <>
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-signal/10 border border-signal/30 text-signal text-xs font-mono shadow-sm">
                   <span className="flex items-center gap-2 font-bold">
                     <span className="size-2 rounded-full bg-signal animate-ping" />
@@ -3186,8 +3043,6 @@ export function App() {
             </div>
               </>
             )}
-              </>
-            )}
 
             <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <Milestone className="size-3.5" />
@@ -3196,6 +3051,97 @@ export function App() {
             </p>
           </div>
         </section>
+        )}
+
+
+        {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
+        <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
+          <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-hazard font-bold">
+                  Ground Reality & Disaster Impact
+                </span>
+                <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  Why mountain freight is a life-or-death equation
+                </h2>
+                <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                  Official reports from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau
+                  (NCRB), and Geological Survey of India (GSI) highlight an urgent mountain highway crisis.
+                </p>
+              </div>
+
+              {/* Photo Artifact: Mountain Corridor Sensor Station */}
+              <div className="relative rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group">
+                <img
+                  src="/hazard-monitoring-station.jpg"
+                  alt="High altitude landslide monitoring station"
+                  className="w-full h-48 sm:h-56 object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono">
+                  <span className="px-2 py-0.5 rounded-md bg-hazard/20 text-hazard border border-hazard/40 font-bold backdrop-blur-md">
+                    GSI & BRO Safe Zone Sensor
+                  </span>
+                  <span className="text-slate-300 backdrop-blur-md px-2 py-0.5 rounded bg-black/60">
+                    Sela Corridor (13,700 ft)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-destructive">1,68,491</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Annual Fatalities Nationwide</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  MoRTH accident census shows mountain ghat sections experience a fatal accident severity of{" "}
+                  <strong className="text-destructive font-bold">45.2%</strong>—nearly double the plain highway average.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-destructive/80 font-bold uppercase">
+                  Source: MoRTH Official Census
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-hazard/40 bg-hazard/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-hazard">400+</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Major Monsoon Landslides</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  GSI records over 400 severe rockfall and mudflow blockages annually, completely severing lifelines like NH-6,
+                  NH-2, NH-10, and NH-13 for weeks.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-hazard font-bold uppercase">
+                  Source: Geological Survey of India
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-hazard/30 bg-card p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-hazard">6,200+</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Northeast Corridor Lives Lost</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Over 6,200 drivers and commuters have perished in the Northeast mountain belt over the past decade due to
+                  avoidable ghat drop-offs and brake failures on extreme slopes.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-muted-foreground font-bold uppercase">
+                  Source: Regional NCRB Records
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-signal/40 bg-signal/10 p-6 backdrop-blur-md">
+                <div className="font-mono text-3xl font-black text-signal">₹3,500 Cr</div>
+                <div className="mt-2 text-sm font-bold text-foreground">Annual Economic Freight Delay</div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Critical convoys carrying life-saving pharmaceuticals, oxygen, rations, and defense goods remain
+                  stranded in Sonapur tunnel and Sela Pass chokepoints.
+                </p>
+                <div className="mt-4 text-[10px] font-mono text-signal font-bold uppercase">
+                  Source: Logistics Council Estimates
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
 
         {/* SECTION 4: THE PLATFORM */}
         <section id="platform" className="relative border-t border-border/70 py-20 lg:py-28">
