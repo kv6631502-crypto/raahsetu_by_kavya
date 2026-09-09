@@ -18,6 +18,7 @@ import {
   LocateFixed,
   MapPin,
   Maximize2,
+  Mic,
   Milestone,
   Minimize2,
   Mountain,
@@ -36,10 +37,14 @@ import {
   Wifi,
   X,
   Zap,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { RealMapLeaflet } from "./RealMapLeaflet";
+import {
+  getSpeechRecognitionLocale,
+  matchCityFromVoice,
+  parseRouteVoiceCommand,
+  speakMultilingual,
+} from "./voiceRecognition";
 import {
   CITIES,
   CITY_MAP,
@@ -47,10 +52,11 @@ import {
   COMMODITY_PROFILES,
   CommodityType,
   DISTRICT_CONNECTIVITY,
-  EDGES,
   REGIONAL_ALERTS,
   STRATEGIC_CORRIDORS,
   SupportedLanguage,
+  TranslationSchema,
+  UI_TRANSLATIONS,
   VEHICLE_PROFILES,
   VehicleType,
   WEATHER_PROFILES,
@@ -63,7 +69,6 @@ import {
   getRouteLegs,
   projectGeoToSvg,
   solvePath,
-  toPolylinePoints,
 } from "./routeData";
 
 interface CityComboboxProps {
@@ -73,6 +78,8 @@ interface CityComboboxProps {
   onSelect: (id: string) => void;
   otherCityId: string;
   customOrigin?: { name: string; lat: number; lon: number } | null;
+  lang: SupportedLanguage;
+  t: TranslationSchema;
 }
 
 function CityCombobox({
@@ -82,11 +89,67 @@ function CityCombobox({
   onSelect,
   otherCityId,
   customOrigin,
+  lang,
+  t,
 }: CityComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const startVoiceInput = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert("Voice recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
+      return;
+    }
+    if (isListening) return;
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = getSpeechRecognitionLocale(lang);
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceNotice(t.listening);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setVoiceNotice(`"${transcript}"`);
+        const matched = matchCityFromVoice(transcript, CITIES);
+        if (matched && matched.id !== otherCityId) {
+          onSelect(matched.id);
+          speakMultilingual(`${matched.name} ${t.voiceMatchedSuccess}`, lang);
+          setVoiceNotice(`${matched.name} ✓`);
+          setTimeout(() => {
+            setIsListening(false);
+            setVoiceNotice(null);
+          }, 1200);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setVoiceNotice(null);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setTimeout(() => setVoiceNotice(null), 1500);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setVoiceNotice(null);
+    }
+  };
 
   const selectedCity = CITY_MAP[selectedId];
 
@@ -141,7 +204,7 @@ function CityCombobox({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type city, state, or border outpost..."
+            placeholder={t.searchPlaceholder}
             className="w-full bg-transparent text-sm font-medium text-foreground placeholder-muted-foreground outline-none"
             autoFocus
           />
@@ -173,6 +236,24 @@ function CityCombobox({
             </span>
           </button>
         )}
+        {/* Voice Recognition Microphone Button */}
+        <button
+          type="button"
+          onClick={startVoiceInput}
+          className={`p-1 rounded-lg transition-all cursor-pointer ${
+            isListening
+              ? "bg-rose-500/20 text-rose-400 border border-rose-500/50 animate-pulse ring-2 ring-rose-500/30"
+              : "text-muted-foreground hover:text-signal hover:bg-secondary"
+          }`}
+          title={`${t.voiceSearch} (${lang.toUpperCase()})`}
+        >
+          {isListening ? (
+            <Mic className="size-4 text-rose-400 animate-bounce" />
+          ) : (
+            <Mic className="size-4" />
+          )}
+        </button>
+
         {open && (
           <button
             type="button"
@@ -181,6 +262,12 @@ function CityCombobox({
           >
             <X className="size-3.5" />
           </button>
+        )}
+
+        {voiceNotice && (
+          <span className="absolute -top-7 right-0 text-[10px] font-bold font-mono px-2 py-0.5 rounded-md bg-signal text-signal-foreground shadow-lg animate-in fade-in">
+            {voiceNotice}
+          </span>
         )}
       </div>
 
@@ -225,6 +312,9 @@ export function App() {
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
   const [commodity, setCommodity] = useState<CommodityType>("medical");
   const [lang, setLang] = useState<SupportedLanguage>("en");
+  const t = UI_TRANSLATIONS[lang];
+  const [isSmartVoiceListening, setIsSmartVoiceListening] = useState(false);
+  const [smartVoiceNotice, setSmartVoiceNotice] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportSuccessNotice, setReportSuccessNotice] = useState<string | null>(null);
   const [offlineReportsCount, setOfflineReportsCount] = useState<number>(() => {
@@ -237,7 +327,6 @@ export function App() {
   });
   const [activeTab, setActiveTab] = useState<"comparison" | "itinerary">("comparison");
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
-  const [hoveredCity, setHoveredCity] = useState<City | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
   const [customOrigin, setCustomOrigin] = useState<{
@@ -250,9 +339,6 @@ export function App() {
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // SVG Map Zoom & Pan State
-  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Read URL search params on initial load
   useEffect(() => {
@@ -332,15 +418,10 @@ export function App() {
     return Math.max(0, Math.round(diff));
   }, [shortestStats, safeStats]);
 
-  // Set of all node IDs currently on the active safe route
-  const activeRouteCityIds = useMemo(() => {
-    return new Set(safe || []);
-  }, [safe]);
 
   // Google Maps Style Live Navigation & Driver Tracking State
   const [isNavigating, setIsNavigating] = useState(false);
   const [isBigScreenNav, setIsBigScreenNav] = useState(false);
-  const [mapEngine, setMapEngine] = useState<"leaflet" | "svg">("leaflet");
   const [isStartingNav, setIsStartingNav] = useState(false);
   const [navGpsCoords, setNavGpsCoords] = useState<{
     lat: number;
@@ -454,18 +535,75 @@ export function App() {
     };
   }, [safeLegs, safeStats, navProgressPct]);
 
-  const speakGuidance = (text: string) => {
-    if (isVoiceMuted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.lang = "en-IN";
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Ignore speech errors
+
+  // Smart Multilingual Voice Route Assistant
+  const handleSmartVoiceRoute = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
+      return;
     }
+    if (isSmartVoiceListening) return;
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = getSpeechRecognitionLocale(lang);
+
+      recognition.onstart = () => {
+        setIsSmartVoiceListening(true);
+        setSmartVoiceNotice(t.listening);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setSmartVoiceNotice(`"${transcript}"`);
+        const parsed = parseRouteVoiceCommand(transcript, CITIES);
+
+        if (parsed.isRoute && parsed.origin && parsed.destination) {
+          setCustomOrigin(null);
+          setOrigin(parsed.origin.id);
+          setDestination(parsed.destination.id);
+          speakMultilingual(`${parsed.origin.name} ${parsed.destination.name} ${t.voiceMatchedSuccess}`, lang);
+          setSmartVoiceNotice(`${parsed.origin.name} ➔ ${parsed.destination.name} ✓`);
+          setTimeout(() => {
+            setIsSmartVoiceListening(false);
+            setSmartVoiceNotice(null);
+          }, 1500);
+        } else if (parsed.origin) {
+          setCustomOrigin(null);
+          setOrigin(parsed.origin.id);
+          speakMultilingual(`${parsed.origin.name} ${t.voiceMatchedSuccess}`, lang);
+          setSmartVoiceNotice(`Origin: ${parsed.origin.name} ✓`);
+          setTimeout(() => {
+            setIsSmartVoiceListening(false);
+            setSmartVoiceNotice(null);
+          }, 1500);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsSmartVoiceListening(false);
+        setSmartVoiceNotice(null);
+      };
+
+      recognition.onend = () => {
+        setIsSmartVoiceListening(false);
+        setTimeout(() => setSmartVoiceNotice(null), 2000);
+      };
+
+      recognition.start();
+    } catch {
+      setIsSmartVoiceListening(false);
+      setSmartVoiceNotice(null);
+    }
+  };
+
+  const speakGuidance = (text: string) => {
+    if (isVoiceMuted) return;
+    speakMultilingual(text, lang, isVoiceMuted);
   };
 
   const handleStartNavigation = async () => {
@@ -799,24 +937,6 @@ export function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Dynamic SVG viewBox calculation with zoom & pan
-  const svgViewBox = useMemo(() => {
-    const baseW = 1000;
-    const baseH = 560;
-    const w = baseW / zoomLevel;
-    const h = baseH / zoomLevel;
-    const x = (baseW - w) / 2 + panOffset.x;
-    const y = (baseH - h) / 2 + panOffset.y;
-    return `${x} ${y} ${w} ${h}`;
-  }, [zoomLevel, panOffset]);
-
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(2.5, z + 0.3));
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.8, z - 0.3));
-  const handleResetZoom = () => {
-    setZoomLevel(1.0);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-signal/30 selection:text-signal">
       {/* Sticky Header Navbar */}
@@ -913,7 +1033,7 @@ export function App() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground shadow-sm">
                 <span className="size-1.5 rounded-full bg-signal node-pulse" />
-                Northeast Mountain Freight Resilience System
+                {t.heroBadge}
               </div>
 
               <h1 className="mt-6 text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
@@ -924,9 +1044,7 @@ export function App() {
               </h1>
 
               <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-                RaahSetu is an explainable, risk-aware logistics route planner for Northeast India. It compares the
-                fastest route with one that accounts for road risk, vehicle limits, and closures — powered by a custom A*
-                engine over real OpenStreetMap networks.
+                {t.tagline}
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -1240,6 +1358,35 @@ export function App() {
                 {/* Endpoints Picker Card */}
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
                   <div className="grid gap-4">
+                    
+                    {/* Multilingual Voice Route Assistant */}
+                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-signal/30 bg-signal/5 mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          type="button"
+                          onClick={handleSmartVoiceRoute}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 ${
+                            isSmartVoiceListening
+                              ? "bg-rose-500 text-white animate-pulse ring-2 ring-rose-500/40"
+                              : "bg-signal text-signal-foreground hover:bg-signal/90"
+                          }`}
+                          title={t.smartVoiceDesc}
+                        >
+                          <Mic className="size-3.5" />
+                          <span>{isSmartVoiceListening ? t.listening : t.voiceSearch}</span>
+                        </button>
+                        <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">
+                          {smartVoiceNotice ? (
+                            <strong className="text-signal font-mono">{smartVoiceNotice}</strong>
+                          ) : (
+                            t.smartVoiceDesc
+                          )}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono uppercase text-signal font-bold shrink-0 ml-2 px-1.5 py-0.5 rounded bg-signal/15 border border-signal/30">
+                        {lang.toUpperCase()}
+                      </span>
+                    </div>
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <CityCombobox
                         label="Origin"
@@ -1251,6 +1398,8 @@ export function App() {
                         }}
                         otherCityId={destination}
                         customOrigin={customOrigin}
+                        lang={lang}
+                        t={t}
                       />
 
                       <div className="pt-6 shrink-0">
@@ -1270,6 +1419,8 @@ export function App() {
                         selectedId={destination}
                         onSelect={setDestination}
                         otherCityId={origin}
+                        lang={lang}
+                        t={t}
                       />
                     </div>
 
@@ -1285,7 +1436,7 @@ export function App() {
                         ) : (
                           <LocateFixed className="size-3.5 text-signal" />
                         )}
-                        <span>{isLocating ? "Acquiring GPS..." : "Snap Origin to Live GPS"}</span>
+                        <span>{isLocating ? t.calibratingRoute : t.snapOriginGps}</span>
                       </button>
 
                       <div className="text-[11px] font-mono text-muted-foreground">
@@ -1314,17 +1465,17 @@ export function App() {
                         {isStartingNav ? (
                           <>
                             <Loader2 className="size-4 animate-spin" />
-                            <span>Acquiring Live GPS & Calibrating Route...</span>
+                            <span>{t.calibratingRoute}</span>
                           </>
                         ) : isNavigating ? (
                           <>
                             <X className="size-4" />
-                            <span>Exit Live Navigation Mode</span>
+                            <span>{t.stopNavigation}</span>
                           </>
                         ) : (
                           <>
                             <Navigation className="size-4 fill-slate-950" />
-                            <span>Start Navigation (Live GPS & OSM)</span>
+                            <span>{t.startNavigation}</span>
                           </>
                         )}
                       </button>
@@ -1337,7 +1488,7 @@ export function App() {
                   <div className="flex items-center justify-between mb-3">
                     <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-signal font-bold">
                       <Layers className="size-4 text-signal" />
-                      Essential Commodity Cargo Priority
+                      {t.cargoTitle}
                     </span>
                     <span className="text-[11px] text-muted-foreground font-mono">
                       Governs route detour & risk tolerance
@@ -1384,7 +1535,7 @@ export function App() {
                   <div className="flex items-center justify-between mb-3">
                     <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
                       <Truck className="size-4 text-signal" />
-                      Vehicle Dispatch Profile
+                      {t.vehicleTitle}
                     </span>
                     <span className="text-[11px] text-muted-foreground font-mono">
                       Governs hill speed & axle margins
@@ -1697,31 +1848,7 @@ export function App() {
                         <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
                           {isBigScreenNav ? "raahsetu.live_navigation_cockpit" : "regional_map"}
                         </span>
-                        {/* Map Mode Toggle: Real OpenStreetMap vs Schematic SVG */}
-                        <div className="flex items-center p-0.5 bg-secondary/80 rounded-lg border border-border text-[11px] font-bold">
-                          <button
-                            type="button"
-                            onClick={() => setMapEngine("leaflet")}
-                            className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
-                              mapEngine === "leaflet"
-                                ? "bg-signal text-signal-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            🗺️ Real OpenStreetMap
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMapEngine("svg")}
-                            className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
-                              mapEngine === "svg"
-                                ? "bg-signal text-signal-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            ⚡ Schematic Grid
-                          </button>
-                        </div>
+
                       </div>
                       {isBigScreenNav && (
                         <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[11px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
@@ -1736,33 +1863,6 @@ export function App() {
                       </span>
 
                       <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-lg border border-border">
-                        <button
-                          type="button"
-                          onClick={handleZoomIn}
-                          className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
-                          title="Zoom In"
-                        >
-                          <ZoomIn className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleZoomOut}
-                          className="p-1 text-muted-foreground hover:text-foreground rounded cursor-pointer"
-                          title="Zoom Out"
-                        >
-                          <ZoomOut className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleResetZoom}
-                          className="px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground rounded cursor-pointer"
-                          title="Reset Zoom"
-                        >
-                          {Math.round(zoomLevel * 100)}%
-                        </button>
-
-                        <div className="w-px h-3.5 bg-border/80 mx-0.5" />
-
                         {/* Big Screen Toggle Button */}
                         <button
                           type="button"
@@ -1799,18 +1899,16 @@ export function App() {
                         : "relative w-full aspect-[1000/560] min-h-[480px] max-h-[580px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40"
                     }
                   >
-                    {/* Render Real OpenStreetMap when in Leaflet mode */}
-                    {mapEngine === "leaflet" && (
-                      <RealMapLeaflet
-                        originCity={CITY_MAP[origin]}
-                        destCity={CITY_MAP[destination]}
-                        routePath={safe}
-                        safeLegs={safeLegs}
-                        userGps={navGpsCoords}
-                        isNavigating={isNavigating}
-                        isBigScreen={isBigScreenNav}
-                      />
-                    )}
+                    {/* OpenStreetMap Tile Engine (Sole dedicated map engine) */}
+                    <RealMapLeaflet
+                      originCity={CITY_MAP[origin]}
+                      destCity={CITY_MAP[destination]}
+                      routePath={safe}
+                      safeLegs={safeLegs}
+                      userGps={navGpsCoords}
+                      isNavigating={isNavigating}
+                      isBigScreen={isBigScreenNav}
+                    />
                     {/* Google Maps Style Top Navigation HUD Overlay */}
                     {isNavigating && (
                       <div className="absolute top-3 left-3 right-3 z-30 flex flex-col gap-2 pointer-events-auto transition-all animate-in fade-in slide-in-from-top-3 duration-300">
@@ -1951,338 +2049,6 @@ export function App() {
                             className="h-full bg-gradient-to-r from-signal to-emerald-400 transition-all duration-300"
                             style={{ width: `${navProgressPct}%` }}
                           />
-                        </div>
-                      </div>
-                    )}
-
-                    {mapEngine === "svg" && (
-                    <svg
-                      viewBox={svgViewBox}
-                      className={
-                        isBigScreenNav
-                          ? "relative w-full h-full max-h-[82vh] select-none cursor-crosshair object-contain"
-                          : "relative w-full h-full select-none cursor-crosshair"
-                      }
-                    >
-                      <defs>
-                        <filter id="glow-safe" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="3.5" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                        <filter id="glow-hazard" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="3" result="blur" />
-                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                      </defs>
-
-                      {/* Brahmaputra River Basin Artery */}
-                      <path
-                        d="M 90 290 Q 250 270 420 250 T 680 210 T 880 180"
-                        fill="none"
-                        stroke="#0891b2"
-                        strokeWidth="8"
-                        strokeOpacity="0.25"
-                        strokeLinecap="round"
-                      />
-                      <text
-                        x="320"
-                        y="262"
-                        fill="#0891b2"
-                        fontSize="11"
-                        fontFamily="monospace"
-                        fontWeight="bold"
-                        opacity="0.4"
-                        letterSpacing="4"
-                      >
-                        BRAHMAPUTRA VALLEY BASIN
-                      </text>
-
-                      {/* State Labels */}
-                      <text x="360" y="295" fill="var(--muted-foreground)" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">ASSAM</text>
-                      <text x="560" y="110" fill="var(--muted-foreground)" fontSize="12" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">ARUNACHAL PRADESH</text>
-                      <text x="240" y="385" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MEGHALAYA</text>
-                      <text x="690" y="295" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">NAGALAND</text>
-                      <text x="670" y="420" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MANIPUR</text>
-                      <text x="520" y="520" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">MIZORAM</text>
-                      <text x="350" y="490" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">TRIPURA</text>
-                      <text x="80" y="140" fill="var(--muted-foreground)" fontSize="11" fontFamily="sans-serif" fontWeight="bold" opacity="0.35" letterSpacing="3">SIKKIM</text>
-
-                      {/* Road Network Edges */}
-                      {EDGES.map((edge) => {
-                        const a = CITY_MAP[edge.a];
-                        const b = CITY_MAP[edge.b];
-                        return (
-                          <line
-                            key={`${edge.a}-${edge.b}`}
-                            x1={a.x}
-                            y1={a.y}
-                            x2={b.x}
-                            y2={b.y}
-                            stroke="var(--border)"
-                            strokeWidth="1.5"
-                            strokeOpacity="0.75"
-                          />
-                        );
-                      })}
-
-                      {/* Shortest / Nominal Route (Hazard Orange Dashed) */}
-                      {shortest && (
-                        <polyline
-                          points={toPolylinePoints(shortest)}
-                          fill="none"
-                          stroke="var(--hazard)"
-                          strokeWidth="3.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeDasharray="4 6"
-                          opacity="0.9"
-                        />
-                      )}
-
-                      {/* Safe / Risk-Aware Route (Glowing Mint Line with Animated Flow) */}
-                      {safe && (
-                        <>
-                          <polyline
-                            points={toPolylinePoints(safe)}
-                            fill="none"
-                            stroke="var(--signal)"
-                            strokeWidth="7"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            opacity="0.25"
-                            filter="url(#glow-safe)"
-                          />
-                          <polyline
-                            points={toPolylinePoints(safe)}
-                            fill="none"
-                            stroke="var(--signal)"
-                            strokeWidth="3.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="route-flow"
-                          />
-                        </>
-                      )}
-
-                      {/* Hovered Itinerary Leg Highlight */}
-                      {hoveredLegIndex !== null && safeLegs[hoveredLegIndex] && (
-                        <line
-                          x1={safeLegs[hoveredLegIndex].fromCity.x}
-                          y1={safeLegs[hoveredLegIndex].fromCity.y}
-                          x2={safeLegs[hoveredLegIndex].toCity.x}
-                          y2={safeLegs[hoveredLegIndex].toCity.y}
-                          stroke="#fde047"
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          filter="url(#glow-hazard)"
-                        />
-                      )}
-
-                      {/* Exact Live GPS Location Marker & Connector */}
-                      {customOrigin && !customOrigin.isOutsideNer && (() => {
-                        const gpsSvg = projectGeoToSvg(customOrigin.lat, customOrigin.lon);
-                        return (
-                          <g className="cursor-pointer">
-                            {/* Connector line from exact GPS position to highway entry hub */}
-                            <line
-                              x1={gpsSvg.x}
-                              y1={gpsSvg.y}
-                              x2={customOrigin.nearestHub.x}
-                              y2={customOrigin.nearestHub.y}
-                              stroke="var(--signal)"
-                              strokeWidth="2.5"
-                              strokeDasharray="4 4"
-                              opacity="0.8"
-                            />
-                            {/* Live GPS Radar beacon */}
-                            <circle
-                              cx={gpsSvg.x}
-                              cy={gpsSvg.y}
-                              r="22"
-                              fill="none"
-                              stroke="#38bdf8"
-                              strokeWidth="2.5"
-                              className="radar-ping"
-                            />
-                            <circle
-                              cx={gpsSvg.x}
-                              cy={gpsSvg.y}
-                              r="8"
-                              fill="#38bdf8"
-                              stroke="#0f172a"
-                              strokeWidth="2.5"
-                              filter="drop-shadow(0 0 8px #38bdf8)"
-                            />
-                            <circle cx={gpsSvg.x} cy={gpsSvg.y} r="3" fill="#ffffff" />
-                            <text
-                              x={gpsSvg.x}
-                              y={gpsSvg.y - 16}
-                              textAnchor="middle"
-                              fill="#38bdf8"
-                              fontSize="12"
-                              fontFamily="monospace"
-                              fontWeight="bold"
-                              filter="drop-shadow(0px 1px 3px rgba(0,0,0,0.95))"
-                            >
-                              📍 {customOrigin.name} (Calibrated GPS)
-                            </text>
-                          </g>
-                        );
-                      })()}
-
-                      {/* Live Navigating Driver Vehicle Beacon (Google Maps Style) */}
-                      {isNavigating && (
-                        <g transform={`translate(${navTelemetry.currentSvg.x}, ${navTelemetry.currentSvg.y})`} className="cursor-pointer">
-                          {/* Animated radar rings */}
-                          <circle r="26" fill="none" stroke="#10b981" strokeWidth="2" className="radar-ping" />
-                          <circle r="14" fill="rgba(16, 185, 129, 0.2)" stroke="#38bdf8" strokeWidth="1.5" />
-                          
-                          {/* Directional Heading indicator arrow */}
-                          <g transform={`rotate(${navTelemetry.headingAngle})`}>
-                            <polygon
-                              points="0,-16 10,10 0,5 -10,10"
-                              fill="#10b981"
-                              stroke="#022c22"
-                              strokeWidth="2"
-                              filter="drop-shadow(0 0 8px #10b981)"
-                            />
-                          </g>
-
-                          {/* Center core dot */}
-                          <circle r="3.5" fill="#ffffff" />
-
-                          {/* Floating Driver Badge */}
-                          <g transform="translate(0, -28)">
-                            <rect
-                              x="-65"
-                              y="-12"
-                              width="130"
-                              height="20"
-                              rx="5"
-                              fill="#022c22"
-                              stroke="#10b981"
-                              strokeWidth="1.2"
-                              filter="drop-shadow(0 2px 5px rgba(0,0,0,0.8))"
-                            />
-                            <text
-                              x="0"
-                              y="2"
-                              textAnchor="middle"
-                              fill="#6ee7b7"
-                              fontSize="10"
-                              fontFamily="monospace"
-                              fontWeight="bold"
-                            >
-                              📍 ${navGpsCoords?.speedKmh || 0} km/h • LIVE GPS
-                            </text>
-                          </g>
-                        </g>
-                      )}
-
-                      {/* City Nodes */}
-                      {CITIES.map((city) => {
-                        const isOrigin = city.id === origin;
-                        const isDest = city.id === destination;
-                        const isOnRoute = activeRouteCityIds.has(city.id);
-
-                        if (isOrigin) {
-                          return (
-                            <g key={city.id} className="cursor-pointer">
-                              <circle cx={city.x} cy={city.y} r="18" fill="none" stroke="var(--signal)" strokeWidth="2" opacity="0.7" className="radar-ping" />
-                              <circle cx={city.x} cy={city.y} r="8" fill="var(--signal)" stroke="var(--background)" strokeWidth="2.5" />
-                              <text
-                                x={city.x}
-                                y={city.y - 14}
-                                textAnchor="middle"
-                                fill="var(--foreground)"
-                                fontSize="12"
-                                fontFamily="monospace"
-                                fontWeight="bold"
-                                filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
-                              >
-                                {city.name} (Origin)
-                              </text>
-                            </g>
-                          );
-                        }
-
-                        if (isDest) {
-                          return (
-                            <g key={city.id} className="cursor-pointer">
-                              <circle cx={city.x} cy={city.y} r="18" fill="none" stroke="var(--hazard)" strokeWidth="2" opacity="0.7" className="radar-ping" />
-                              <circle cx={city.x} cy={city.y} r="8" fill="var(--hazard)" stroke="var(--background)" strokeWidth="2.5" />
-                              <text
-                                x={city.x}
-                                y={city.y - 14}
-                                textAnchor="middle"
-                                fill="var(--foreground)"
-                                fontSize="12"
-                                fontFamily="monospace"
-                                fontWeight="bold"
-                                filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.9))"
-                              >
-                                {city.name} (Dest)
-                              </text>
-                            </g>
-                          );
-                        }
-
-                        if (isOnRoute) {
-                          return (
-                            <g
-                              key={city.id}
-                              className="cursor-pointer"
-                              onMouseEnter={() => setHoveredCity(city)}
-                              onMouseLeave={() => setHoveredCity(null)}
-                            >
-                              <circle cx={city.x} cy={city.y} r="5" fill="var(--foreground)" stroke="var(--background)" strokeWidth="1.5" />
-                              <text
-                                x={city.x}
-                                y={city.y + 14}
-                                textAnchor="middle"
-                                fill="var(--muted-foreground)"
-                                fontSize="10"
-                                fontFamily="monospace"
-                                fontWeight="bold"
-                              >
-                                {city.name}
-                              </text>
-                            </g>
-                          );
-                        }
-
-                        return (
-                          <circle
-                            key={city.id}
-                            cx={city.x}
-                            cy={city.y}
-                            r="2.5"
-                            fill="var(--muted-foreground)"
-                            stroke="var(--background)"
-                            strokeWidth="1.5"
-                            opacity="0.5"
-                            className="hover:opacity-100 hover:fill-signal cursor-pointer transition-all"
-                            onMouseEnter={() => setHoveredCity(city)}
-                            onMouseLeave={() => setHoveredCity(null)}
-                            onClick={() => {
-                              if (!origin) setOrigin(city.id);
-                              else setDestination(city.id);
-                            }}
-                          />
-                        );
-                      })}
-                    </svg>
-                    )}
-
-                    {hoveredCity && (
-                      <div className="absolute bottom-3 left-3 rounded-xl border border-border bg-card/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-md pointer-events-none">
-                        <div className="font-bold text-foreground flex items-center gap-1.5">
-                          <MapPin className="size-3 text-signal" />
-                          <span>{hoveredCity.name}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground">({hoveredCity.state})</span>
-                        </div>
-                        <div className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                          Lat: {hoveredCity.lat.toFixed(3)}°N · Lon: {hoveredCity.lon.toFixed(3)}°E
                         </div>
                       </div>
                     )}

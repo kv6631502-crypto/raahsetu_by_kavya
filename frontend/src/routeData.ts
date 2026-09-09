@@ -1038,7 +1038,7 @@ export const DISTRICT_CONNECTIVITY: DistrictStatus[] = [
 
 export type SupportedLanguage = "en" | "hi" | "as" | "bn";
 
-export const UI_TRANSLATIONS: Record<SupportedLanguage, {
+export interface TranslationSchema {
   tagline: string;
   heroBadge: string;
   plannerTitle: string;
@@ -1051,7 +1051,30 @@ export const UI_TRANSLATIONS: Record<SupportedLanguage, {
   districtMatrix: string;
   earlyAlerts: string;
   offlineReady: string;
-}> = {
+  origin: string;
+  destination: string;
+  startNavigation: string;
+  stopNavigation: string;
+  calibratingRoute: string;
+  snapOriginGps: string;
+  voiceSearch: string;
+  listening: string;
+  speakPrompt: string;
+  locationsAvailable: string;
+  estTime: string;
+  distance: string;
+  riskIndex: string;
+  nextHub: string;
+  speed: string;
+  exitBigScreen: string;
+  searchPlaceholder: string;
+  smartVoiceAssistant: string;
+  smartVoiceDesc: string;
+  voiceMatchedSuccess: string;
+  voiceNoMatch: string;
+}
+
+export const UI_TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
   en: {
     tagline: "Explainable Logistics Routing for Northeast India",
     heroBadge: "AI-Powered Regional Logistics Intelligence",
@@ -1065,6 +1088,27 @@ export const UI_TRANSLATIONS: Record<SupportedLanguage, {
     districtMatrix: "District Connectivity Status",
     earlyAlerts: "NER Early-Warning Disruption Feed",
     offlineReady: "Offline Resilient Network",
+    origin: "Origin",
+    destination: "Destination",
+    startNavigation: "Start Navigation",
+    stopNavigation: "Stop Navigation",
+    calibratingRoute: "Calibrating Route...",
+    snapOriginGps: "Snap Origin to Live GPS",
+    voiceSearch: "Voice Input",
+    listening: "Listening...",
+    speakPrompt: "Click mic to speak city (e.g. Guwahati, Tawang)",
+    locationsAvailable: "locations available",
+    estTime: "Est. Time",
+    distance: "Distance",
+    riskIndex: "Risk Index",
+    nextHub: "Next Hub",
+    speed: "Speed",
+    exitBigScreen: "Exit Big Screen",
+    searchPlaceholder: "Type city, state, or speak...",
+    smartVoiceAssistant: "Multilingual Voice Route Assistant",
+    smartVoiceDesc: "Speak naturally in English, Hindi, Assamese, or Bengali (e.g. 'Guwahati to Tawang' or 'गुवाहाटी से तवांग')",
+    voiceMatchedSuccess: "Route matched successfully",
+    voiceNoMatch: "City not recognized. Please speak again.",
   },
   hi: {
     tagline: "पूर्वोत्तर भारत के लिए व्याख्यात्मक लॉजिस्टिक्स रूटिंग",
@@ -1079,6 +1123,27 @@ export const UI_TRANSLATIONS: Record<SupportedLanguage, {
     districtMatrix: "जिला-वार कनेक्टिविटी स्थिति",
     earlyAlerts: "पूर्वोत्तर पूर्व-चेतावनी व्यवधान फ़ीड",
     offlineReady: "ऑफ़लाइन सुरक्षित नेटवर्क",
+    origin: "प्रस्थान (स्रोत)",
+    destination: "गंतव्य",
+    startNavigation: "नेविगेशन शुरू करें",
+    stopNavigation: "नेविगेशन समाप्त करें",
+    calibratingRoute: "मार्ग गणना हो रही है...",
+    snapOriginGps: "वर्तमान स्थान से जोड़ें",
+    voiceSearch: "बोलकर खोजें",
+    listening: "सुन रहा हूँ...",
+    speakPrompt: "शहर का नाम बोलने के लिए माइक दबाएं (उदा. गुवाहाटी, तवांग)",
+    locationsAvailable: "स्थान उपलब्ध",
+    estTime: "अनुमानित समय",
+    distance: "दूरी",
+    riskIndex: "जोखिम सूचकांक",
+    nextHub: "अगला पड़ाव",
+    speed: "गति",
+    exitBigScreen: "स्क्रीन छोटी करें",
+    searchPlaceholder: "शहर, राज्य लिखें या बोलें...",
+    smartVoiceAssistant: "बहुभाषी वॉयस रूट सहायक",
+    smartVoiceDesc: "हिंदी, असमिया, बंगाली या अंग्रेजी में बोलें (जैसे: 'गुवाहाटी से तवांग' या 'गंगटोक')",
+    voiceMatchedSuccess: "मार्ग सफलतापूर्वक पहचाना गया",
+    voiceNoMatch: "शहर की पहचान नहीं हो सकी। कृपया पुनः बोलें।",
   },
   as: {
     tagline: "উত্তৰ-পূব ভাৰতৰ বাবে ব্যাখ্যাযোগ্য লজিষ্টিক ৰুটিং ব্যৱস্থা",
@@ -1093,6 +1158,27 @@ export const UI_TRANSLATIONS: Record<SupportedLanguage, {
     districtMatrix: "জিলা-ভিত্তিক সংযোগ স্থিতি",
     earlyAlerts: "উত্তৰ-পূব আগতীয়া সতৰ্কবাৰ্তা ফীড",
     offlineReady: "অফলাইন সুৰক্ষিত নেটৱৰ্ক",
+    origin: "উৎস",
+    destination: "গন্তব্য",
+    startNavigation: "নেভিগেশ্বন আৰম্ভ কৰক",
+    stopNavigation: "নেভিগেশ্বন বন্ধ কৰক",
+    calibratingRoute: "পথ গণনা কৰা হৈছে...",
+    snapOriginGps: "বৰ্তমান স্থান সংলগ্ন কৰক",
+    voiceSearch: "কণ্ঠেৰে কওক",
+    listening: "শুনি আছোঁ...",
+    speakPrompt: "চহৰ ক'বলৈ মাইক টিপক (যেনে গুৱাহাটী, তাৱাং)",
+    locationsAvailable: "স্থান উপলব্ধ",
+    estTime: "আনুমানিক সময়",
+    distance: "দূৰত্ব",
+    riskIndex: "বিপদ সূচক",
+    nextHub: "পৰৱৰ্তী কেন্দ্ৰ",
+    speed: "গতি",
+    exitBigScreen: "ডাঙৰ স্ক্ৰীনৰ পৰা ওলাওক",
+    searchPlaceholder: "চহৰ, ৰাজ্য লিখক নাইবা কওক...",
+    smartVoiceAssistant: "বহুভাষিক কণ্ঠ পথ সহায়ক",
+    smartVoiceDesc: "অসমীয়া, বাংলা, হিন্দী বা ইংৰাজীত কওক (যেনে: 'গুৱাহাটীৰ পৰা তাৱাং')",
+    voiceMatchedSuccess: "পথ সফলভাৱে চিনাক্ত কৰা হ'ল",
+    voiceNoMatch: "চহৰ চিনাক্ত কৰিব পৰা নগ'ল। অনুগ্ৰহ কৰি পুনৰ কওক।",
   },
   bn: {
     tagline: "উত্তর-পূর্ব ভারতের জন্য ব্যাখ্যামূলক লজিস্টিক রাউটিং",
@@ -1107,5 +1193,26 @@ export const UI_TRANSLATIONS: Record<SupportedLanguage, {
     districtMatrix: "জেলা-ভিত্তিক সংযোগ অবস্থা",
     earlyAlerts: "উত্তর-পূর্ব প্রাথমিক সতর্কতা ফিড",
     offlineReady: "অফলাইন নির্ভরযোগ্য নেটওয়ার্ক",
+    origin: "উৎস",
+    destination: "গন্তব্য",
+    startNavigation: "নেভিগেশন শুরু করুন",
+    stopNavigation: "নেভিগেশন বন্ধ করুন",
+    calibratingRoute: "রুট গণনা করা হচ্ছে...",
+    snapOriginGps: "বর্তমান অবস্থান যুক্ত করুন",
+    voiceSearch: "কণ্ঠে বলুন",
+    listening: "শুনছি...",
+    speakPrompt: "শহরের নাম বলতে মাইক চাপুন (যেমন গুয়াহাটি, তাওয়াং)",
+    locationsAvailable: "স্থান উপলব্ধ",
+    estTime: "আনুমানিক সময়",
+    distance: "দূরত্ব",
+    riskIndex: "ঝুঁকি সূচক",
+    nextHub: "পরবর্তী কেন্দ্র",
+    speed: "গতি",
+    exitBigScreen: "বড় পর্দা থেকে বেরোন",
+    searchPlaceholder: "শহর, রাজ্য লিখুন অথবা বলুন...",
+    smartVoiceAssistant: "বহুভাষিক ভয়েস রুট সহকারী",
+    smartVoiceDesc: "বাংলা, হিন্দি, অসমিয়া বা ইংরেজিতে বলুন (যেমন: 'গুয়াহাটি থেকে তাওয়াং')",
+    voiceMatchedSuccess: "রুট সফলভাবে শনাক্ত হয়েছে",
+    voiceNoMatch: "শহর শনাক্ত করা যায়নি। অনুগ্রহ করে আবার বলুন।",
   },
 };

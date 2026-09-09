@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CITIES, CITY_MAP, City, RouteLeg } from "./routeData";
-import { LocateFixed, Layers } from "lucide-react";
+import { LocateFixed } from "lucide-react";
 
 interface RealMapLeafletProps {
   originCity: City;
@@ -34,10 +34,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   const gpsMarkerRef = useRef<L.Marker | null>(null);
   const gpsAccuracyCircleRef = useRef<L.Circle | null>(null);
 
-  const [tileTheme, setTileTheme] = useState<"dark" | "osm" | "satellite">("osm");
-  const tileLayersGroupRef = useRef<L.LayerGroup | null>(null);
-
-  // Initialize Leaflet Map
+  // Initialize Leaflet Map with OpenStreetMap as the sole basemap
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -51,8 +48,13 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
-    // Layer groups
-    tileLayersGroupRef.current = L.layerGroup().addTo(map);
+    // Official OpenStreetMap standard tile layer (Sole basemap: 100% free, zero watermark)
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Active route and pins layer group
     routeLayerGroupRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
 
@@ -61,54 +63,6 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
-
-  // Handle tile theme switching (100% Free, NO API Key, NO Watermarks)
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    const tileGroup = tileLayersGroupRef.current;
-    if (!map || !tileGroup) return;
-
-    tileGroup.clearLayers();
-
-    if (tileTheme === "osm") {
-      // 1. Official OpenStreetMap (Zero watermarks, 100% free)
-      const osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      });
-      tileGroup.addLayer(osmLayer);
-    } else if (tileTheme === "satellite") {
-      // 2. Esri World Satellite Imagery + Boundaries Reference (Zero watermarks, 100% free)
-      const satLayer = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        {
-          attribution: "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye",
-          maxZoom: 19,
-        }
-      );
-      const labelsLayer = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-        { maxZoom: 19 }
-      );
-      tileGroup.addLayer(satLayer);
-      tileGroup.addLayer(labelsLayer);
-    } else {
-      // 3. Dark Mode: Esri World Dark Gray Base + Reference (Zero watermarks, 100% free)
-      const darkBase = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-        {
-          attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
-          maxZoom: 16,
-        }
-      );
-      const darkRef = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
-        { maxZoom: 16 }
-      );
-      tileGroup.addLayer(darkBase);
-      tileGroup.addLayer(darkRef);
-    }
-  }, [tileTheme]);
 
   // Render Real Road Network & Active Route Polylines
   useEffect(() => {
@@ -274,46 +228,6 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0 select-none">
-      {/* Real Map Layer Controls */}
-      <div className="absolute top-3 left-3 z-[400] flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-md border border-border p-1.5 rounded-xl shadow-xl">
-        <span className="text-[10px] uppercase font-mono text-muted-foreground px-1.5 font-bold flex items-center gap-1">
-          <Layers className="size-3 text-signal" /> Layer:
-        </span>
-        <button
-          type="button"
-          onClick={() => setTileTheme("dark")}
-          className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-            tileTheme === "dark"
-              ? "bg-signal text-signal-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Dark Street
-        </button>
-        <button
-          type="button"
-          onClick={() => setTileTheme("osm")}
-          className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-            tileTheme === "osm"
-              ? "bg-signal text-signal-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          OSM Standard
-        </button>
-        <button
-          type="button"
-          onClick={() => setTileTheme("satellite")}
-          className={`px-2 py-1 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
-            tileTheme === "satellite"
-              ? "bg-signal text-signal-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Satellite
-        </button>
-      </div>
-
       {/* Recenter / Focus GPS Control */}
       <div className="absolute top-3 right-12 z-[400] flex items-center gap-2">
         <button
