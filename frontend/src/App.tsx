@@ -64,7 +64,6 @@ import {
   City,
   COMMODITY_PROFILES,
   CommodityType,
-  DISTRICT_CONNECTIVITY,
   STRATEGIC_CORRIDORS,
   SupportedLanguage,
   TranslationSchema,
@@ -2997,77 +2996,6 @@ export function App() {
                     ))}
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* DISTRICT-WISE CONNECTIVITY HEALTH DASHBOARD (Requirement 'g') */}
-            <div className="rounded-3xl border border-border bg-card/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70 pb-4 mb-6">
-                <div>
-                  <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
-                    Accessibility Monitoring Dashboard
-                  </span>
-                  <h3 className="font-display text-2xl font-bold text-foreground mt-1">
-                    District-Wise Connectivity Status (8 NER States)
-                  </h3>
-                </div>
-                <div className="flex items-center gap-3 text-xs font-mono">
-                  <span className="inline-flex items-center gap-1.5 text-signal">
-                    <span className="size-2 rounded-full bg-signal" /> Normal
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-hazard">
-                    <span className="size-2 rounded-full bg-hazard" /> Watch
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 text-destructive">
-                    <span className="size-2 rounded-full bg-destructive" /> Restricted
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {DISTRICT_CONNECTIVITY.map((dist) => (
-                  <div
-                    key={dist.district}
-                    className={`p-4 rounded-2xl border transition-all ${
-                      dist.status === "RESTRICTED"
-                        ? "border-destructive/40 bg-destructive/10"
-                        : dist.status === "WATCH"
-                        ? "border-hazard/40 bg-hazard/10"
-                        : "border-border bg-secondary/30"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-muted-foreground font-mono">{dist.state}</span>
-                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                        dist.status === "RESTRICTED"
-                          ? "bg-destructive text-destructive-foreground"
-                          : dist.status === "WATCH"
-                          ? "bg-hazard text-hazard-foreground"
-                          : "bg-signal text-signal-foreground"
-                      }`}>
-                        {dist.status}
-                      </span>
-                    </div>
-                    <div className="font-bold text-sm text-foreground mt-2">{dist.district}</div>
-                    <div className="text-xs text-muted-foreground font-mono mt-1">{dist.primaryHighway}</div>
-                    <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] font-mono">
-                      <span>Incidents: <strong className="text-foreground">{dist.incidentCount}</strong></span>
-                      <span className={dist.delayAvgMinutes > 60 ? "text-destructive font-bold" : "text-muted-foreground"}>
-                        Delay: +{dist.delayAvgMinutes}m
-                      </span>
-                      <button
-                        onClick={() => {
-                          setDestination(dist.hubId);
-                          const el = document.getElementById("planner");
-                          if (el) el.scrollIntoView({ behavior: "smooth" });
-                        }}
-                        className="text-signal hover:underline font-bold cursor-pointer"
-                      >
-                        Route →
-                      </button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
