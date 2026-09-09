@@ -17,7 +17,9 @@ import {
   Loader2,
   LocateFixed,
   MapPin,
+  Maximize2,
   Milestone,
+  Minimize2,
   Mountain,
   Navigation,
   Pause,
@@ -338,6 +340,7 @@ export function App() {
 
   // Google Maps Style Live Navigation & Driver Tracking State
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isBigScreenNav, setIsBigScreenNav] = useState(false);
   const [isStartingNav, setIsStartingNav] = useState(false);
   const [navGpsCoords, setNavGpsCoords] = useState<{
     lat: number;
@@ -496,6 +499,7 @@ export function App() {
         source: "live_gps",
       });
       setIsNavigating(true);
+      setIsBigScreenNav(true);
       setIsStartingNav(false);
       setNavProgressPct(0);
       setIsSimulatingDrive(true);
@@ -585,6 +589,7 @@ export function App() {
 
   const handleStopNavigation = () => {
     setIsNavigating(false);
+    setIsBigScreenNav(false);
     setIsStartingNav(false);
     setIsSimulatingDrive(false);
     if (navWatchRef.current !== null) {
@@ -595,6 +600,17 @@ export function App() {
       window.speechSynthesis.cancel();
     }
   };
+
+  // Close Big Screen Navigation on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isBigScreenNav) {
+        setIsBigScreenNav(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isBigScreenNav]);
 
   // Smooth vehicle movement animation when navigating
   useEffect(() => {
@@ -1622,15 +1638,31 @@ export function App() {
               {/* Right Column: Interactive Map & Turn-by-Turn Leg Itinerary */}
               <div className="flex flex-col gap-5">
                 {/* The Map Card */}
-                <div id="route-map-viewport" ref={mapCardRef} className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-4 shadow-2xl shadow-black/50 backdrop-blur-md">
+                <div
+                  id="route-map-viewport"
+                  ref={mapCardRef}
+                  className={
+                    isBigScreenNav
+                      ? "fixed inset-0 z-50 w-screen h-screen bg-slate-950/98 backdrop-blur-2xl flex flex-col p-3 sm:p-5 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                      : "relative overflow-hidden rounded-2xl border border-border bg-card/80 p-4 shadow-2xl shadow-black/50 backdrop-blur-md"
+                  }
+                >
                   {/* Map Header & Controls */}
                   <div className="relative flex items-center justify-between px-2 pb-3 border-b border-border/60">
-                    <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                      northeast_india.map
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                        {isBigScreenNav ? "raahsetu.live_navigation_cockpit" : "northeast_india.map"}
+                      </span>
+                      {isBigScreenNav && (
+                        <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[11px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                          <span className="size-1.5 rounded-full bg-emerald-400 node-pulse" />
+                          BIG SCREEN THEATER MODE (ESC to minimize)
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs text-signal font-bold">
-                        <span className="size-2 rounded-full bg-signal node-pulse" /> solved
+                        <span className="size-2 rounded-full bg-signal node-pulse" /> {isNavigating ? "tracking" : "solved"}
                       </span>
 
                       <div className="flex items-center gap-1 bg-secondary/80 p-1 rounded-lg border border-border">
@@ -1658,12 +1690,45 @@ export function App() {
                         >
                           {Math.round(zoomLevel * 100)}%
                         </button>
+
+                        <div className="w-px h-3.5 bg-border/80 mx-0.5" />
+
+                        {/* Big Screen Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={() => setIsBigScreenNav(!isBigScreenNav)}
+                          className="p-1 text-muted-foreground hover:text-signal rounded cursor-pointer transition-colors"
+                          title={isBigScreenNav ? "Minimize View (Esc)" : "Expand to Big Screen"}
+                        >
+                          {isBigScreenNav ? (
+                            <Minimize2 className="size-3.5 text-signal" />
+                          ) : (
+                            <Maximize2 className="size-3.5" />
+                          )}
+                        </button>
                       </div>
+
+                      {isBigScreenNav && (
+                        <button
+                          type="button"
+                          onClick={() => setIsBigScreenNav(false)}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-foreground bg-secondary px-2.5 py-1.5 rounded-lg border border-border cursor-pointer transition-colors"
+                        >
+                          <Minimize2 className="size-3" />
+                          <span>Exit Big Screen</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   {/* SVG Canvas */}
-                  <div className="relative w-full aspect-[1000/560] max-h-[560px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40">
+                  <div
+                    className={
+                      isBigScreenNav
+                        ? "relative w-full flex-1 min-h-0 bg-background/80 rounded-2xl overflow-hidden my-2 border border-emerald-500/30 flex items-center justify-center shadow-2xl"
+                        : "relative w-full aspect-[1000/560] max-h-[560px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40"
+                    }
+                  >
                     {/* Google Maps Style Top Navigation HUD Overlay */}
                     {isNavigating && (
                       <div className="absolute top-3 left-3 right-3 z-30 flex flex-col gap-2 pointer-events-auto transition-all animate-in fade-in slide-in-from-top-3 duration-300">
@@ -1823,7 +1888,14 @@ export function App() {
                       </div>
                     )}
 
-                    <svg viewBox={svgViewBox} className="relative w-full h-full select-none cursor-crosshair">
+                    <svg
+                      viewBox={svgViewBox}
+                      className={
+                        isBigScreenNav
+                          ? "relative w-full h-full max-h-[82vh] select-none cursor-crosshair object-contain"
+                          : "relative w-full h-full select-none cursor-crosshair"
+                      }
+                    >
                       <defs>
                         <filter id="glow-safe" x="-30%" y="-30%" width="160%" height="160%">
                           <feGaussianBlur stdDeviation="3.5" result="blur" />
