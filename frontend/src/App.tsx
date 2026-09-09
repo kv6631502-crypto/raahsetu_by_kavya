@@ -1145,31 +1145,33 @@ export function App() {
         <section id="top" className="relative overflow-hidden px-4 sm:px-6 pt-4 pb-14 sm:pb-20">
           {/* Scenic Mountain Pass Hero Frame */}
           <div className="relative mx-auto w-full max-w-7xl rounded-[32px] overflow-hidden border border-slate-800/80 bg-gradient-to-b from-[#0a1622] via-[#0b1b2b] to-[#060c14] p-6 sm:p-12 lg:p-16 shadow-2xl shadow-black/80">
-            {/* Atmospheric Mountain Silhouette Background */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-25 mix-blend-screen"
-              style={{
-                backgroundImage: `radial-gradient(ellipse 90% 70% at 50% 10%, rgba(53, 220, 171, 0.2), transparent),
-                  radial-gradient(ellipse 60% 50% at 80% 30%, rgba(255, 157, 54, 0.15), transparent),
-                  linear-gradient(to bottom, transparent 30%, rgba(5, 7, 15, 0.95) 100%)`,
-              }}
-            />
-
-            {/* Mountain Skyline Illustration in Background */}
-            <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 right-0 h-64 opacity-20">
-              <svg viewBox="0 0 1200 300" className="w-full h-full object-cover" preserveAspectRatio="none">
-                <path d="M0,300 L0,220 L180,110 L340,190 L520,70 L720,170 L900,90 L1080,180 L1200,120 L1200,300 Z" fill="#132b2a" />
-                <path d="M0,300 L0,250 L140,170 L300,230 L480,130 L660,220 L840,150 L1020,220 L1200,180 L1200,300 Z" fill="#0c1d24" opacity="0.7" />
-              </svg>
+            {/* Realistic Himalayan Mountain Freight Corridor Background */}
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <img
+                src="/hero-himalayan-highway.jpg"
+                alt="Northeast Himalayan Mountain Freight Corridor"
+                className="w-full h-full object-cover object-center opacity-35 mix-blend-luminosity scale-105 transition-transform duration-1000"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#060c14] via-[#060c14]/75 to-[#0a1622]/85" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#060c14] via-transparent to-[#060c14]/85" />
             </div>
 
-            <div className="relative z-10 max-w-4xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-signal/40 bg-signal/10 px-3.5 py-1 text-xs font-mono text-signal backdrop-blur-md mb-6">
-                <span className="size-2 rounded-full bg-signal node-pulse" />
-                <span>NORTHEAST HIGHWAY CORRIDOR INTELLIGENCE</span>
-              </div>
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="max-w-3xl">
+                {/* Small Artifact Chips: Regional Telemetry & Landslide Defense */}
+                <div className="flex flex-wrap items-center gap-2.5 mb-6">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-signal/40 bg-signal/10 px-3.5 py-1 text-xs font-mono text-signal backdrop-blur-md shadow-sm">
+                    <span className="size-2 rounded-full bg-signal node-pulse" />
+                    <span>NORTHEAST HIGHWAY CORRIDOR INTELLIGENCE</span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-hazard/40 backdrop-blur-md text-xs font-mono shadow-sm">
+                    <span className="size-2 rounded-full bg-hazard animate-pulse" />
+                    <span className="text-hazard font-bold">GSI Landslide Defense</span>
+                    <span className="text-slate-500">|</span>
+                    <span className="text-slate-300">Sela & Sonapur Pass Active</span>
+                  </div>
+                </div>
 
               {/* Headline */}
               <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08]">
@@ -1181,6 +1183,32 @@ export function App() {
                 Explainable, terrain & hazard-aware logistics intelligence across 8 Northeast states over real OpenStreetMap road networks.
               </p>
             </div>
+
+            {/* Small Floating Telemetry Artifact Card */}
+            <div className="hidden lg:flex flex-col gap-2.5 shrink-0 self-start">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-950/80 border border-slate-700/70 backdrop-blur-xl shadow-2xl">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-md">
+                  <Radio className="size-5 text-signal animate-pulse" />
+                </div>
+                <div className="text-left font-mono">
+                  <div className="flex items-center gap-1.5 text-[10px] text-signal font-bold uppercase tracking-wider">
+                    <span className="size-1.5 rounded-full bg-signal animate-ping" />
+                    Live Telemetry Node
+                  </div>
+                  <div className="text-xs font-bold text-white">5,814 OSM Network Edges</div>
+                  <div className="text-[10px] text-slate-400">Pure Hardware GPS · 0 Sim</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] font-mono text-slate-400 backdrop-blur-md">
+                <span className="text-signal font-bold">8 States Linked</span>
+                <span>·</span>
+                <span>111 Road Hubs</span>
+                <span>·</span>
+                <span className="text-emerald-400">✓ Calibrated</span>
+              </div>
+            </div>
+          </div>
 
             {/* THE FLOATING CAPSULE SEARCH CONSOLE (Figma Inspired) */}
             <div className="relative z-20 mt-10 sm:mt-14 w-full max-w-5xl rounded-3xl sm:rounded-full bg-slate-950/90 border border-slate-700/80 p-2 sm:p-3 shadow-2xl shadow-black/90 backdrop-blur-2xl">
@@ -1344,13 +1372,28 @@ export function App() {
               </div>
             </div>
 
-            {/* Bottom Right Callout Card (Figma Style) */}
-            <div className="relative z-10 mt-10 sm:mt-14 flex justify-end">
-              <div className="max-w-md p-4 rounded-2xl bg-slate-950/80 border-l-4 border-l-amber-400 border border-slate-800/80 text-xs text-slate-300 backdrop-blur-xl shadow-2xl">
-                <div className="font-bold text-white text-sm">Real OSM Road Networks & Telemetry</div>
-                <p className="mt-1 leading-relaxed text-slate-400">
-                  Explainable, risk-aware logistics intelligence across 8 Northeast states over real OpenStreetMap road networks. Backed by live hardware GPS telemetry & GSI landslide models.
-                </p>
+            {/* Bottom Right Callout Card with Sensor Thumbnail Artifact (Figma Style) */}
+            <div className="relative z-10 mt-10 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Left Micro-Pill: Active Lifeline Corridor Status */}
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/70 border border-slate-800 text-[11px] font-mono text-slate-300 backdrop-blur-md">
+                <span className="size-2 rounded-full bg-signal animate-pulse" />
+                <span>Active Corridor Watch: <strong>NH-6, NH-10, NH-29, NH-13</strong></span>
+              </div>
+
+              {/* Right Showcase Card with Image Preview */}
+              <div className="max-w-md p-3 rounded-2xl bg-slate-950/85 border-l-4 border-l-amber-400 border border-slate-800/80 text-xs text-slate-300 backdrop-blur-xl shadow-2xl flex items-center gap-3">
+                <img
+                  src="/hazard-monitoring-station.jpg"
+                  alt="Geotechnical Early-Warning Sensor"
+                  className="size-16 rounded-xl object-cover border border-slate-700/80 shrink-0 shadow-md"
+                />
+                <div className="min-w-0">
+                  <div className="font-bold text-white text-sm truncate">Real OSM Road Networks & Telemetry</div>
+                  <p className="mt-0.5 leading-relaxed text-slate-400 text-[11px] line-clamp-2">
+                    Explainable, risk-aware routing across 8 Northeast states over verified OpenStreetMap road networks.
+                  </p>
+                  <span className="text-[10px] font-mono text-signal font-semibold">GSI Ground Truth · 100% Free OSM</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1360,17 +1403,37 @@ export function App() {
         {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
         <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
           <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
-            <div className="max-w-2xl">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-hazard font-bold">
-                Ground Reality & Disaster Impact
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Why mountain freight is a life-or-death equation
-              </h2>
-              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                Official reports from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau
-                (NCRB), and Geological Survey of India (GSI) highlight an urgent mountain highway crisis.
-              </p>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-hazard font-bold">
+                  Ground Reality & Disaster Impact
+                </span>
+                <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  Why mountain freight is a life-or-death equation
+                </h2>
+                <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
+                  Official reports from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau
+                  (NCRB), and Geological Survey of India (GSI) highlight an urgent mountain highway crisis.
+                </p>
+              </div>
+
+              {/* Photo Artifact: Mountain Corridor Sensor Station */}
+              <div className="relative rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl group">
+                <img
+                  src="/hazard-monitoring-station.jpg"
+                  alt="High altitude landslide monitoring station"
+                  className="w-full h-48 sm:h-56 object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono">
+                  <span className="px-2 py-0.5 rounded-md bg-hazard/20 text-hazard border border-hazard/40 font-bold backdrop-blur-md">
+                    GSI & BRO Safe Zone Sensor
+                  </span>
+                  <span className="text-slate-300 backdrop-blur-md px-2 py-0.5 rounded bg-black/60">
+                    Sela Corridor (13,700 ft)
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
