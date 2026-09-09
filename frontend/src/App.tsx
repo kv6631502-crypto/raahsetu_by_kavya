@@ -687,7 +687,7 @@ export function App() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     if (video.readyState < 2 || video.videoWidth === 0) {
-      console.warn("Video stream is still initializing frame. Please wait a moment.");
+      alert("Camera frame is still initializing. Please wait a second and click Capture Photo again.");
       return;
     }
     const canvas = document.createElement("canvas");

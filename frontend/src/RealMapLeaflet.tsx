@@ -120,6 +120,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
         }
       ).addTo(map);
     }
+    map.invalidateSize();
   }, [mapMode]);
 
   // Render Real Road Network & Active Route Polylines
