@@ -1534,19 +1534,7 @@ export function App() {
             <a href="#crisis-data" className="hover:text-signal transition-colors font-semibold">
               Crisis Data
             </a>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveConsoleTab("districts");
-                const el = document.getElementById("console");
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="hover:text-signal transition-colors font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Activity className="size-3.5 text-signal" />
-              <span>District Status</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-signal/20 text-signal text-[9px] font-mono font-bold">8</span>
-            </button>
+
             <button
               type="button"
               onClick={() => setIsReportModalOpen(true)}
@@ -2032,59 +2020,116 @@ export function App() {
 
         {/* SECTION 3: THE INTERACTIVE ROUTE PLANNER */}
         <section id="console" className="relative border-t border-border/70 py-16 lg:py-24">
-          {hasViewedNavigation && (
-            <div className="mx-auto max-w-7xl px-5 lg:px-8 mb-6">
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-signal/10 border border-signal/30 text-signal text-xs font-mono">
-                <span className="flex items-center gap-2 font-bold">
-                  <span className="size-2 rounded-full bg-signal animate-ping" />
-                  Navigation Studio Unrolled: Live Corridor Telemetry & Real OSM Road Engine Active
-                </span>
-                <span className="hidden sm:inline-block text-[11px] text-muted-foreground">
-                  Ready for Dispatch
-                </span>
-              </div>
-            </div>
-          )}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
           <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
 
-            {/* CONSOLE VIEW TABS: OPTION 1 (SIH REQUIREMENT 'g' COMPLIANCE) */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-4">
-              <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => setActiveConsoleTab("planner")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                    activeConsoleTab === "planner"
-                      ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Navigation className="size-3.5" />
-                  <span>Route Planner & Dispatch</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveConsoleTab("districts")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                    activeConsoleTab === "districts"
-                      ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Activity className="size-3.5 text-current" />
-                  <span>District Accessibility Matrix</span>
-                  <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-bold">
-                    SIH-Req (g)
-                  </span>
-                </button>
-              </div>
+            {!hasViewedNavigation ? (
+              /* CLEAN COLLAPSED STATE (Before User Clicks Navigation) */
+              <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950/80 via-slate-900/60 to-slate-950/90 p-8 sm:p-14 text-center max-w-4xl mx-auto shadow-2xl backdrop-blur-2xl animate-in fade-in duration-500">
+                <div className="size-16 rounded-2xl bg-signal/15 border border-signal/30 flex items-center justify-center text-signal mx-auto mb-5 shadow-xl shadow-signal/10">
+                  <Navigation className="size-8 animate-pulse" />
+                </div>
+                <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                  Intelligent Freight Navigation Studio
+                </span>
+                <h3 className="font-display text-2xl sm:text-4xl font-extrabold text-white mt-2 tracking-tight">
+                  Click Below or Use the Top Console to Launch Studio
+                </h3>
+                <p className="text-slate-300 text-sm sm:text-base max-w-xl mx-auto mt-3 leading-relaxed">
+                  Select your Origin and Destination in the floating bar above, then click <strong>Start Navigation</strong> to view the live GPS tracker, satellite map, elevation analysis, and district connectivity matrix.
+                </p>
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasViewedNavigation(true);
+                      handleStartNavigation();
+                      setTimeout(() => {
+                        const mapEl = document.getElementById("route-map-viewport");
+                        if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }, 100);
+                    }}
+                    className="px-7 py-3.5 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    <Navigation className="size-4 fill-slate-950" />
+                    <span>View Navigation & Interactive Map</span>
+                    <ArrowRight className="size-4 stroke-[2.5]" />
+                  </button>
 
-              <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                <span className="size-2 rounded-full bg-signal animate-pulse" />
-                <span>8 NER State Networks Monitored Live</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasViewedNavigation(true);
+                      setActiveConsoleTab("districts");
+                      setTimeout(() => {
+                        const el = document.getElementById("console");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    }}
+                    className="px-6 py-3.5 rounded-full bg-slate-900/90 border border-slate-700 hover:border-signal text-slate-300 hover:text-white font-mono font-bold text-xs transition-all cursor-pointer flex items-center gap-2 shadow-lg"
+                  >
+                    <Activity className="size-4 text-signal" />
+                    <span>View District Accessibility Matrix</span>
+                    <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-black">8 States</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* UNROLLED RICH WORKSPACE (After User Clicks) */
+              <>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-signal/10 border border-signal/30 text-signal text-xs font-mono shadow-sm">
+                  <span className="flex items-center gap-2 font-bold">
+                    <span className="size-2 rounded-full bg-signal animate-ping" />
+                    Live Corridor Telemetry, Hardware GPS & Real OSM Network Studio Active
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHasViewedNavigation(false)}
+                    className="text-[11px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800"
+                    title="Minimize studio to clean view"
+                  >
+                    <Minimize2 className="size-3" />
+                    <span>Clean View</span>
+                  </button>
+                </div>
+
+                {/* CONSOLE VIEW TABS: ROUTE PLANNER vs DISTRICT ACCESSIBILITY MATRIX */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-4">
+                  <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => setActiveConsoleTab("planner")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                        activeConsoleTab === "planner"
+                          ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Navigation className="size-3.5" />
+                      <span>Route Planner & Dispatch</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveConsoleTab("districts")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                        activeConsoleTab === "districts"
+                          ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Activity className="size-3.5 text-current" />
+                      <span>District Accessibility Matrix</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-bold">
+                        SIH-Req (g)
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                    <span className="size-2 rounded-full bg-signal animate-pulse" />
+                    <span>8 NER State Networks Monitored Live</span>
+                  </div>
+                </div>
 
             {activeConsoleTab === "districts" ? (
               /* DISTRICT-WISE CONNECTIVITY HEALTH DASHBOARD (SIH-26002 Requirement 'g') */
@@ -3139,6 +3184,8 @@ export function App() {
                 </div>
               </div>
             </div>
+              </>
+            )}
               </>
             )}
 
