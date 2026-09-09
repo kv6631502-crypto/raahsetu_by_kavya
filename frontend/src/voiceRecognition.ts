@@ -220,11 +220,132 @@ export function speakMultilingual(
   try {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
+    utterance.rate = 0.95;
     utterance.pitch = 1.0;
-    utterance.lang = getSpeechRecognitionLocale(lang);
+    const targetLocale = getSpeechRecognitionLocale(lang);
+    utterance.lang = targetLocale;
+
+    // Pick best matching native phone voice if available
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length > 0) {
+      const match = voices.find(
+        (v) =>
+          v.lang.toLowerCase() === targetLocale.toLowerCase() ||
+          v.lang.toLowerCase().startsWith(lang)
+      );
+      if (match) {
+        utterance.voice = match;
+      }
+    }
     window.speechSynthesis.speak(utterance);
   } catch {
     // Fail silently if speech synthesis not available
   }
 }
+
+/**
+ * Automatically detect phone / mobile browser's system language
+ */
+export function detectPhoneNativeLanguage(): {
+  lang: SupportedLanguage;
+  locale: string;
+  isNativeSupported: boolean;
+  displayName: string;
+} {
+  if (typeof window === "undefined" || !navigator) {
+    return { lang: "en", locale: "en-IN", isNativeSupported: false, displayName: "English" };
+  }
+  const rawLangs = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
+  for (const raw of rawLangs) {
+    const l = raw.toLowerCase();
+    if (l.startsWith("hi")) return { lang: "hi", locale: raw, isNativeSupported: true, displayName: "हिंदी (Hindi)" };
+    if (l.startsWith("as")) return { lang: "as", locale: raw, isNativeSupported: true, displayName: "অসমীয়া (Assamese)" };
+    if (l.startsWith("bn")) return { lang: "bn", locale: raw, isNativeSupported: true, displayName: "বাংলা (Bengali)" };
+  }
+  return { lang: "en", locale: navigator.language || "en-IN", isNativeSupported: false, displayName: "English" };
+}
+
+/**
+ * Generate native-language voice navigation instructions
+ */
+export function getLocalizedNavInstruction(
+  type: "start" | "waypoint" | "destination" | "caution" | "recalculate",
+  params: {
+    origin?: string;
+    destination?: string;
+    nextCity?: string;
+    distanceKm?: number;
+    cautionNote?: string;
+  },
+  lang: SupportedLanguage
+): string {
+  const { origin, destination, nextCity, distanceKm, cautionNote } = params;
+
+  switch (lang) {
+    case "hi":
+      if (type === "start") {
+        return `${origin || "प्रस्थान"} से ${destination || "गंतव्य"} के लिए वॉइस नेविगेशन प्रारंभ। सुरक्षित यात्रा करें।`;
+      }
+      if (type === "waypoint") {
+        const caution = cautionNote ? `। ध्यान दें: ${cautionNote}` : "";
+        return `${distanceKm || 0} किलोमीटर आगे, ${nextCity} की ओर सीधा चलें${caution}।`;
+      }
+      if (type === "destination") {
+        return `आप अपने गंतव्य ${destination || ""} पर पहुँच चुके हैं। यात्रा समाप्त।`;
+      }
+      if (type === "recalculate") {
+        return "मार्ग का पुनः परिकलन किया जा रहा है।";
+      }
+      return `सावधानी: ${cautionNote || "धीमी गति से चलें"}`;
+
+    case "as":
+      if (type === "start") {
+        return `${origin || "উৎস"}ৰ পৰা ${destination || "গন্তব্য"}লৈ কণ্ঠ নেভিগেশ্বন আৰম্ভ হ'ল। সুৰক্ষিতভাৱে চলাওক।`;
+      }
+      if (type === "waypoint") {
+        const caution = cautionNote ? `। সাৱধানতা: ${cautionNote}` : "";
+        return `${distanceKm || 0} কিলোমিটাৰৰ পিছত, ${nextCity}লৈ পোনপটীয়া যাওক${caution}।`;
+      }
+      if (type === "destination") {
+        return `আপুনি আপোনাৰ গন্তব্য ${destination || ""}ত উপনীত হ'ল। যাত্ৰা সমাপ্ত।`;
+      }
+      if (type === "recalculate") {
+        return "পথৰ পুনৰ গণনা কৰা হৈছে।";
+      }
+      return `সাৱধানতা: ${cautionNote || "সাৱধানে চলাওক"}`;
+
+    case "bn":
+      if (type === "start") {
+        return `${origin || "উৎস"} থেকে ${destination || "গন্তব্য"} এর জন্য ভয়েস নেভিগেশন শুরু হলো। নিরাপদ যাত্রা করুন।`;
+      }
+      if (type === "waypoint") {
+        const caution = cautionNote ? `। সতর্কতা: ${cautionNote}` : "";
+        return `${distanceKm || 0} কিলোমিটার পর, ${nextCity} এর দিকে এগিয়ে যান${caution}।`;
+      }
+      if (type === "destination") {
+        return `আপনি আপনার গন্তব্য ${destination || ""} এ পৌঁছে গেছেন। যাত্রা সমাপ্ত।`;
+      }
+      if (type === "recalculate") {
+        return "রুট পুনরায় ক্যালকুলেট করা হচ্ছে।";
+      }
+      return `সতর্কতা: ${cautionNote || "ধীরে চলুন"}`;
+
+    case "en":
+    default:
+      if (type === "start") {
+        return `Starting voice navigation from ${origin || "Origin"} to ${destination || "Destination"}. Drive safely.`;
+      }
+      if (type === "waypoint") {
+        const caution = cautionNote ? `. Caution: ${cautionNote}` : "";
+        return `In ${distanceKm || 0} kilometers, continue straight towards ${nextCity}${caution}.`;
+      }
+      if (type === "destination") {
+        return `You have arrived at your destination, ${destination || ""}. Trip completed.`;
+      }
+      if (type === "recalculate") {
+        return "Recalculating corridor route.";
+      }
+      return `Caution: ${cautionNote || "Drive carefully"}`;
+  }
+}
+

@@ -40,6 +40,8 @@ import {
 } from "lucide-react";
 import { RealMapLeaflet } from "./RealMapLeaflet";
 import {
+  detectPhoneNativeLanguage,
+  getLocalizedNavInstruction,
   getSpeechRecognitionLocale,
   matchCityFromVoice,
   parseRouteVoiceCommand,
@@ -311,8 +313,35 @@ export function App() {
   const [destination, setDestination] = useState("tawang");
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
   const [commodity, setCommodity] = useState<CommodityType>("medical");
-  const [lang, setLang] = useState<SupportedLanguage>("en");
+  // Automatic Phone Native Language Detection
+  const detectedPhoneInfo = useMemo(() => detectPhoneNativeLanguage(), []);
+  const [langMode, setLangMode] = useState<"auto" | "manual">(() => {
+    try {
+      return (localStorage.getItem("raahsetu_lang_mode") as "auto" | "manual") || "auto";
+    } catch {
+      return "auto";
+    }
+  });
+  const [lang, setLang] = useState<SupportedLanguage>(() => {
+    try {
+      const savedMode = localStorage.getItem("raahsetu_lang_mode");
+      const savedLang = localStorage.getItem("raahsetu_lang");
+      if (savedMode === "manual" && savedLang && ["en", "hi", "as", "bn"].includes(savedLang)) {
+        return savedLang as SupportedLanguage;
+      }
+    } catch {}
+    return detectPhoneNativeLanguage().lang;
+  });
   const t = UI_TRANSLATIONS[lang];
+
+  const handleSelectLanguage = (selectedLang: SupportedLanguage, mode: "auto" | "manual" = "manual") => {
+    setLang(selectedLang);
+    setLangMode(mode);
+    try {
+      localStorage.setItem("raahsetu_lang", selectedLang);
+      localStorage.setItem("raahsetu_lang_mode", mode);
+    } catch {}
+  };
   const [isSmartVoiceListening, setIsSmartVoiceListening] = useState(false);
   const [smartVoiceNotice, setSmartVoiceNotice] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -508,9 +537,15 @@ export function App() {
       Math.round(activeLeg.dist * (1 - legProgress))
     );
     const nextCheckpointName = activeLeg.toCity.name;
-    const nextInstruction = activeLeg.note
-      ? `Caution: ${activeLeg.note}. Proceeding to ${activeLeg.toCity.name}`
-      : `Continue straight towards ${activeLeg.toCity.name} via highway corridor`;
+    const nextInstruction = getLocalizedNavInstruction(
+      "waypoint",
+      {
+        nextCity: activeLeg.toCity.name,
+        distanceKm: distToNextCheckpoint,
+        cautionNote: activeLeg.note,
+      },
+      lang
+    );
 
     const etaDate = new Date(Date.now() + remainingHours * 3600 * 1000);
     const etaTime = etaDate.toLocaleTimeString([], {
@@ -658,15 +693,12 @@ export function App() {
 
       const destCityName = CITY_MAP[destination]?.name || "Destination";
       const originCityName = CITY_MAP[origin]?.name || "Origin";
-      if (isWithinNer) {
-        speakGuidance(
-          `GPS calibrated at ${placeName}. Navigating corridor from ${originCityName} to ${destCityName}.`
-        );
-      } else {
-        speakGuidance(
-          `Real GPS fix at ${placeName}. Running corridor simulation from ${originCityName} to ${destCityName}.`
-        );
-      }
+      const startVoiceMsg = getLocalizedNavInstruction(
+        "start",
+        { origin: originCityName, destination: destCityName },
+        lang
+      );
+      speakGuidance(startVoiceMsg);
     };
 
     if (!navigator.geolocation) {
@@ -797,9 +829,15 @@ export function App() {
 
     setLastSpokenLeg(navTelemetry.activeLegIndex);
     const leg = navTelemetry.activeLeg;
-    const msg = leg.note
-      ? `Caution ahead near ${leg.fromCity.name}. ${leg.note}. Heading to ${leg.toCity.name}.`
-      : `In ${leg.dist} kilometers, arrive at ${leg.toCity.name}.`;
+    const msg = getLocalizedNavInstruction(
+      "waypoint",
+      {
+        nextCity: leg.toCity.name,
+        distanceKm: leg.dist,
+        cautionNote: leg.note,
+      },
+      lang
+    );
     speakGuidance(msg);
   }, [isNavigating, navTelemetry.activeLegIndex, lastSpokenLeg, navTelemetry.activeLeg]);
 
@@ -981,15 +1019,33 @@ export function App() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Language Selector */}
+            {/* Language Selector with Phone Setting Auto-Detection */}
             <div className="flex items-center rounded-lg border border-border/70 bg-secondary/60 p-1 text-xs font-mono">
-              <Globe className="size-3.5 text-muted-foreground mr-1 ml-1" />
+              <Globe className="size-3.5 text-muted-foreground mr-1 ml-1 shrink-0" />
+              <button
+                type="button"
+                onClick={() => handleSelectLanguage(detectedPhoneInfo.lang, "auto")}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  langMode === "auto"
+                    ? "bg-signal text-signal-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={`Phone Setting: ${detectedPhoneInfo.displayName} (${detectedPhoneInfo.locale})`}
+              >
+                <span className={`size-1.5 rounded-full ${langMode === "auto" ? "bg-slate-950 animate-pulse" : "bg-signal"}`} />
+                <span>Auto</span>
+              </button>
+
+              <div className="w-px h-3 bg-border/80 mx-1" />
+
               {(["en", "hi", "as", "bn"] as SupportedLanguage[]).map((l) => (
                 <button
                   key={l}
-                  onClick={() => setLang(l)}
+                  onClick={() => handleSelectLanguage(l, "manual")}
                   className={`px-1.5 py-0.5 rounded text-[11px] font-bold uppercase transition-all cursor-pointer ${
-                    lang === l ? "bg-signal text-signal-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    langMode === "manual" && lang === l
+                      ? "bg-signal text-signal-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {l}
