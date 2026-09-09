@@ -844,10 +844,13 @@ export function App() {
     setIsStartingNav(true);
     setLocationNotice(null);
 
-    // Smooth scroll to map immediately
-    if (mapCardRef.current) {
-      mapCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    // Smooth scroll directly to map viewport
+    setTimeout(() => {
+      const mapEl = document.getElementById("route-map-viewport") || mapCardRef.current;
+      if (mapEl) {
+        mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 80);
 
     const startTrip = (
       lat: number,
@@ -1191,17 +1194,20 @@ export function App() {
               Home
             </a>
             <a
-              href="#console"
-              onClick={() => {
+              href="#route-map-viewport"
+              onClick={(e) => {
+                e.preventDefault();
                 setHasViewedNavigation(true);
                 setTimeout(() => {
-                  const el = document.getElementById("console");
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                }, 50);
+                  const mapEl = document.getElementById("route-map-viewport");
+                  if (mapEl) {
+                    mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }, 80);
               }}
               className="hover:text-signal transition-colors font-semibold flex items-center gap-1"
             >
-              <span>Console</span>
+              <span>Map & Console</span>
               <span className="size-1.5 rounded-full bg-signal animate-pulse" />
             </a>
             <a href="#crisis-data" className="hover:text-signal transition-colors font-semibold">
@@ -1405,19 +1411,24 @@ export function App() {
                   />
                 </div>
 
-                {/* Segment 4: Primary CTA Button: "View Navigation" */}
+                {/* Primary CTA Button: "Start Navigation" -> Redirects directly to Map Viewport */}
                 <button
                   type="button"
                   onClick={() => {
                     setHasViewedNavigation(true);
+                    handleStartNavigation();
                     setTimeout(() => {
-                      const el = document.getElementById("console");
-                      if (el) el.scrollIntoView({ behavior: "smooth" });
-                    }, 50);
+                      const mapEl = document.getElementById("route-map-viewport");
+                      if (mapEl) {
+                        mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 100);
                   }}
-                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                  title="Start Live Navigation & Focus Map"
                 >
-                  <span>View Navigation</span>
+                  <Navigation className="size-4 fill-slate-950" />
+                  <span>Start Navigation</span>
                   <ArrowRight className="size-4 stroke-[2.5]" />
                 </button>
               </div>

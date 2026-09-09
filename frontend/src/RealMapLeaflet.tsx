@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CITIES, CITY_MAP, City, RouteLeg } from "./routeData";
@@ -33,6 +33,8 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const gpsMarkerRef = useRef<L.Marker | null>(null);
   const gpsAccuracyCircleRef = useRef<L.Circle | null>(null);
+  const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
+  const currentTileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Initialize Leaflet Map with OpenStreetMap as the sole basemap
   useEffect(() => {
@@ -48,11 +50,12 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     L.control.zoom({ position: "topright" }).addTo(map);
 
-    // Official OpenStreetMap standard tile layer (Sole basemap: 100% free, zero watermark)
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    // Initialize default OpenStreetMap tile layer
+    const initialTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
+    currentTileLayerRef.current = initialTileLayer;
 
     // Active route and pins layer group
     routeLayerGroupRef.current = L.layerGroup().addTo(map);
@@ -63,6 +66,38 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Switch between OpenStreetMap and High-Resolution Satellite View
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (currentTileLayerRef.current) {
+      map.removeLayer(currentTileLayerRef.current);
+    }
+
+    if (mapMode === "satellite") {
+      // High-Resolution Satellite View (Esri World Imagery - 100% Free, Zero Watermark, Global Satellite Coverage)
+      currentTileLayerRef.current = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution:
+            'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19,
+        }
+      ).addTo(map);
+    } else {
+      // Official OpenStreetMap Standard
+      currentTileLayerRef.current = L.tileLayer(
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }
+      ).addTo(map);
+    }
+  }, [mapMode]);
 
   // Render Real Road Network & Active Route Polylines
   useEffect(() => {
@@ -228,6 +263,35 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0 select-none">
+      {/* Basemap Switcher: Street (OSM) vs High-Resolution Satellite View */}
+      <div className="absolute top-3 left-3 z-[400] flex items-center p-1 rounded-xl bg-slate-950/85 border border-slate-700/80 shadow-2xl backdrop-blur-md text-xs font-mono">
+        <button
+          type="button"
+          onClick={() => setMapMode("osm")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+            mapMode === "osm"
+              ? "bg-signal text-signal-foreground shadow-sm"
+              : "text-muted-foreground hover:text-white"
+          }`}
+          title="OpenStreetMap Standard Street Network"
+        >
+          <span>🗺️ Street</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMapMode("satellite")}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+            mapMode === "satellite"
+              ? "bg-amber-500 text-slate-950 shadow-sm font-bold"
+              : "text-muted-foreground hover:text-white"
+          }`}
+          title="High-Resolution Satellite Topography Imagery"
+        >
+          <span>🛰️ Satellite</span>
+        </button>
+      </div>
+
       {/* Recenter / Focus GPS Control */}
       <div className="absolute top-3 right-12 z-[400] flex items-center gap-2">
         <button
