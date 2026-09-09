@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Image as ImageIcon,
+  Trash2,
+  Upload,
   Lock,
   User,
   Shield,
@@ -422,6 +425,28 @@ export function App() {
   const [smartVoiceNotice, setSmartVoiceNotice] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportSuccessNotice, setReportSuccessNotice] = useState<string | null>(null);
+  const [reportPhoto, setReportPhoto] = useState<{
+    dataUrl: string;
+    name: string;
+    sizeKb: number;
+  } | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setReportPhoto({
+        dataUrl,
+        name: file.name,
+        sizeKb: Math.round(file.size / 1024),
+      });
+    };
+    reader.readAsDataURL(file);
+  };
   const [offlineReportsCount, setOfflineReportsCount] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("rs_offline_reports");
@@ -3371,6 +3396,8 @@ export function App() {
                   notes: formData.get("notes"),
                   timestamp: new Date().toISOString(),
                   offline: !navigator.onLine,
+                  photo: reportPhoto?.dataUrl || null,
+                  photoName: reportPhoto?.name || null,
                 };
                 try {
                   const existing = JSON.parse(localStorage.getItem("rs_offline_reports") || "[]");
@@ -3381,6 +3408,7 @@ export function App() {
                 setReportSuccessNotice("Incident report successfully logged to local geo-database and queued for central sync.");
                 setTimeout(() => {
                   setReportSuccessNotice(null);
+                  setReportPhoto(null);
                   setIsReportModalOpen(false);
                 }, 2200);
               }}
@@ -3443,17 +3471,110 @@ export function App() {
                 />
               </div>
 
-              {/* Photo Upload Simulator & GPS Stamp */}
-              <div className="rounded-xl border border-dashed border-border p-3.5 bg-secondary/30 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Camera className="size-4 text-signal" />
-                  <span className="text-muted-foreground font-mono text-[11px]">
-                    Geo-Tagged Photo Evidence Attached
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-signal/15 text-signal border border-signal/30">
-                  GPS Auto-Stamped
-                </span>
+              {/* Real Camera & Gallery Photo Attachment Section */}
+              <div>
+                <label className="font-mono uppercase font-bold text-muted-foreground block mb-1.5 flex items-center justify-between">
+                  <span>Photo Evidence (Camera / Gallery)</span>
+                  <span className="text-[10px] text-signal font-normal font-mono">Geo-Tagged Evidence</span>
+                </label>
+
+                {/* Hidden File Inputs */}
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+
+                {reportPhoto ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-border bg-slate-900 p-2 group">
+                    <div className="relative h-40 sm:h-48 w-full rounded-xl overflow-hidden">
+                      <img
+                        src={reportPhoto.dataUrl}
+                        alt="Incident road damage evidence"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+
+                      {/* GPS Stamp Overlay on Photo */}
+                      <div className="absolute top-2 left-2 flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-md bg-black/75 text-signal border border-signal/40 backdrop-blur-md">
+                        <MapPin className="size-3 text-signal" />
+                        <span>
+                          {navGpsCoords
+                            ? `${navGpsCoords.lat.toFixed(4)}°N, ${navGpsCoords.lon.toFixed(4)}°E`
+                            : `${CITY_MAP[origin]?.lat.toFixed(4)}°N, ${CITY_MAP[origin]?.lon.toFixed(4)}°E`}
+                        </span>
+                      </div>
+
+                      <div className="absolute top-2 right-2 text-[10px] font-mono px-2 py-1 rounded-md bg-black/75 text-slate-300 backdrop-blur-md">
+                        {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+
+                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-mono text-white">
+                        <span className="truncate max-w-[200px] text-slate-200">
+                          {reportPhoto.name} ({reportPhoto.sizeKb} KB)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setReportPhoto(null)}
+                          className="px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white font-bold flex items-center gap-1 shadow-md cursor-pointer transition-colors"
+                        >
+                          <Trash2 className="size-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-border/80 p-4 bg-secondary/30 text-center space-y-3">
+                    <div className="flex justify-center items-center gap-3">
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30">
+                        <Camera className="size-5" />
+                      </span>
+                      <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground border border-border">
+                        <ImageIcon className="size-5" />
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="font-semibold text-xs text-foreground">
+                        Attach road slip, mudflow, or boulder blockage photo
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        High resolution photo will be geo-stamped with real hardware GPS coordinates
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-signal text-signal-foreground font-bold text-xs hover:brightness-110 shadow-md cursor-pointer transition-all"
+                      >
+                        <Camera className="size-3.5" />
+                        <span>Take Photo (Camera)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => galleryInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs cursor-pointer transition-all"
+                      >
+                        <Upload className="size-3.5 text-muted-foreground" />
+                        <span>Choose from Gallery</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Offline Notice */}
