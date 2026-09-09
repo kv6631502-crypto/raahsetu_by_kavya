@@ -571,6 +571,14 @@ export const CITY_ELEVATIONS_M: Record<string, number> = {
   hnahthial: 680,
   khawzawl: 1250,
   saitual: 1120,
+  // Missing 7 cities (Hardcore test fix)
+  byrnihat: 120,
+  jalukie: 830,
+  tseminyu: 1420,
+  noney: 480,
+  moirang: 770,
+  vairengte: 510,
+  santirbazar: 45,
   // Tripura
   agartala: 15,
   udaipur: 22,
@@ -678,6 +686,10 @@ export function App() {
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      console.warn("Video stream is still initializing frame. Please wait a moment.");
+      return;
+    }
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -1847,11 +1859,11 @@ export function App() {
                     setHasViewedNavigation(true);
                     handleStartNavigation();
                     setTimeout(() => {
-                      const mapEl = document.getElementById("route-map-viewport");
-                      if (mapEl) {
-                        mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      const consoleEl = document.getElementById("console");
+                      if (consoleEl) {
+                        consoleEl.scrollIntoView({ behavior: "smooth", block: "start" });
                       }
-                    }, 100);
+                    }, 80);
                   }}
                   className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
                   title="Start Live Navigation & Focus Map"
@@ -1868,7 +1880,7 @@ export function App() {
               <div className="flex items-center gap-2 text-slate-300 flex-wrap">
                 <Truck className="size-4 text-signal shrink-0" />
                 <span>
-                  Registered Vehicle: <strong className="text-signal font-mono font-bold">{driverProfile.vehicleNo}</strong> ({VEHICLE_PROFILES[driverProfile.vehicleType].name})
+                  Registered Vehicle: <strong className="text-signal font-mono font-bold">{driverProfile.vehicleNo}</strong> ({(VEHICLE_PROFILES[driverProfile.vehicleType] || VEHICLE_PROFILES.standard).name})
                 </span>
                 <span className="text-slate-600 hidden sm:inline">|</span>
                 <span className="hidden sm:inline text-slate-300">
@@ -3712,7 +3724,7 @@ export function App() {
                     className="w-full rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="heavy">Heavy Multi-Axle (10-18 wheels, 28T)</option>
-                    <option value="medium">Medium 2-Axle (6 wheels, 16T)</option>
+                    <option value="standard">Standard 2-Axle (6 wheels, 16T)</option>
                     <option value="light">Light Commercial (4 wheels, 3.5T)</option>
                   </select>
                 </div>

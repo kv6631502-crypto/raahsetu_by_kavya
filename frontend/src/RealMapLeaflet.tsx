@@ -50,6 +50,11 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
+    // Remove stale Leaflet container ID if remounting in fast transitions
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      delete (mapContainerRef.current as any)._leaflet_id;
+    }
+
     // Center on Northeast India (Guwahati / Brahmaputra basin)
     const map = L.map(mapContainerRef.current, {
       center: [26.1445, 92.5],
@@ -71,7 +76,15 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
     routeLayerGroupRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
 
+    // Invalidate size after unroll transition to prevent grey/missing tiles
+    const resizeTimer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    }, 250);
+
     return () => {
+      clearTimeout(resizeTimer);
       map.remove();
       mapInstanceRef.current = null;
     };
