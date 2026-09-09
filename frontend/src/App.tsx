@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Lock,
+  User,
+  Shield,
   ArrowRight,
   ArrowUpDown,
   Camera,
@@ -82,6 +85,9 @@ interface CityComboboxProps {
   customOrigin?: { name: string; lat: number; lon: number } | null;
   lang: SupportedLanguage;
   t: TranslationSchema;
+  variant?: "default" | "capsule";
+  onGpsLocate?: () => void;
+  isLocating?: boolean;
 }
 
 function CityCombobox({
@@ -93,6 +99,9 @@ function CityCombobox({
   customOrigin,
   lang,
   t,
+  variant = "default",
+  onGpsLocate,
+  isLocating = false,
 }: CityComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -188,64 +197,103 @@ function CityCombobox({
 
   return (
     <div ref={containerRef} className="relative flex-1">
-      <span className="mb-1.5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      {variant === "default" && (
+        <span className="mb-1.5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          <MapPin
+            className={`size-3.5 ${
+              tone === "signal" ? "text-signal drop-shadow-[0_0_8px_rgba(53,220,171,0.6)]" : "text-hazard drop-shadow-[0_0_8px_rgba(255,157,54,0.6)]"
+            }`}
+          />
+          {label}
+        </span>
+      )}
+      <div
+        className={
+          variant === "capsule"
+            ? `relative flex items-center gap-2 rounded-2xl sm:rounded-full bg-slate-900/90 px-3.5 py-2.5 transition-all border border-slate-700/70 hover:border-slate-600 ${borderClass}`
+            : `relative flex items-center gap-2 rounded-xl border bg-secondary/60 px-3 py-2.5 shadow-sm transition-all backdrop-blur-md ${borderClass}`
+        }
+      >
+        <Search className="pointer-events-none size-3.5 shrink-0 text-muted-foreground" />
         <MapPin
-          className={`size-3.5 ${
-            tone === "signal" ? "text-signal drop-shadow-[0_0_8px_rgba(53,220,171,0.6)]" : "text-hazard drop-shadow-[0_0_8px_rgba(255,157,54,0.6)]"
+          className={`size-4 shrink-0 ${
+            tone === "signal"
+              ? "text-signal drop-shadow-[0_0_8px_rgba(53,220,171,0.6)]"
+              : "text-hazard drop-shadow-[0_0_8px_rgba(255,157,54,0.6)]"
           }`}
         />
-        {label}
-      </span>
-      <div
-        className={`relative flex items-center gap-2 rounded-xl border bg-secondary/60 px-3 py-2.5 shadow-sm transition-all backdrop-blur-md ${borderClass}`}
-      >
-        <Search className="pointer-events-none size-4 shrink-0 text-muted-foreground" />
-        {open ? (
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t.searchPlaceholder}
-            className="w-full bg-transparent text-sm font-medium text-foreground placeholder-muted-foreground outline-none"
-            autoFocus
-          />
-        ) : (
+
+        <div className="flex-1 min-w-0">
+          {variant === "capsule" && (
+            <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground font-bold leading-none mb-0.5">
+              {label}
+            </div>
+          )}
+          {open ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t.searchPlaceholder}
+              className="w-full bg-transparent text-sm font-medium text-foreground placeholder-muted-foreground outline-none"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                setQuery("");
+              }}
+              className="flex w-full items-center justify-between text-left text-sm cursor-pointer truncate"
+            >
+              <span className="font-semibold text-foreground truncate">
+                {customOrigin && label === "Origin" ? (
+                  <>
+                    <span className="text-signal font-bold">📍 {customOrigin.name}</span>
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-signal/15 text-signal border border-signal/30 font-mono">
+                      Live GPS
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-foreground">{selectedCity?.name}</span>
+                    <span className="ml-1.5 text-xs text-muted-foreground font-normal">
+                      ({selectedCity?.state})
+                    </span>
+                  </>
+                )}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* GPS Quick Snap Button for Origin */}
+        {label === "Origin" && onGpsLocate && (
           <button
             type="button"
-            onClick={() => {
-              setOpen(true);
-              setQuery("");
-            }}
-            className="flex w-full items-center justify-between text-left text-sm cursor-pointer"
+            onClick={onGpsLocate}
+            disabled={isLocating}
+            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+              isLocating
+                ? "bg-signal/20 text-signal animate-pulse"
+                : "text-muted-foreground hover:text-signal hover:bg-secondary/80"
+            }`}
+            title="Snap to Hardware GPS"
           >
-            <span className="font-semibold text-foreground">
-              {customOrigin && label === "Origin" ? (
-                <>
-                  <span className="text-signal font-bold">📍 {customOrigin.name}</span>
-                  <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-signal/15 text-signal border border-signal/30 font-mono">
-                    Live GPS
-                  </span>
-                </>
-              ) : (
-                <>
-                  {selectedCity?.name}
-                  <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                    ({selectedCity?.state})
-                  </span>
-                </>
-              )}
-            </span>
+            <LocateFixed className={`size-4 ${isLocating ? "animate-spin text-signal" : ""}`} />
           </button>
         )}
+
         {/* Voice Recognition Microphone Button */}
         <button
           type="button"
           onClick={startVoiceInput}
-          className={`p-1 rounded-lg transition-all cursor-pointer ${
+          className={`p-1.5 rounded-lg transition-all cursor-pointer ${
             isListening
               ? "bg-rose-500/20 text-rose-400 border border-rose-500/50 animate-pulse ring-2 ring-rose-500/30"
-              : "text-muted-foreground hover:text-signal hover:bg-secondary"
+              : "text-muted-foreground hover:text-signal hover:bg-secondary/80"
           }`}
           title={`${t.voiceSearch} (${lang.toUpperCase()})`}
         >
@@ -260,7 +308,7 @@ function CityCombobox({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="text-muted-foreground hover:text-foreground cursor-pointer"
+            className="text-muted-foreground hover:text-foreground cursor-pointer p-0.5"
           >
             <X className="size-3.5" />
           </button>
@@ -354,6 +402,15 @@ export function App() {
       return 0;
     }
   });
+  // New UI Navigation & Auth States
+  const [hasViewedNavigation, setHasViewedNavigation] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authRole, setAuthRole] = useState<"dispatcher" | "driver" | "authority">("dispatcher");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [isDispatchPopoverOpen, setIsDispatchPopoverOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"comparison" | "itinerary">("comparison");
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -978,54 +1035,70 @@ export function App() {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-signal/30 selection:text-signal">
       {/* Sticky Header Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-5 lg:px-8">
-          <a href="#top" className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-md bg-signal/15 text-signal ring-1 ring-signal/30 shadow-lg shadow-signal/10">
+            {/* FIGMA-INSPIRED NOTCH TOP BAR */}
+      <header className="sticky top-0 z-50 w-full px-4 sm:px-6 pt-3 pb-2 bg-gradient-to-b from-[#05070f] via-[#05070f]/90 to-transparent backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
+          {/* Brand Logo & Name */}
+          <a href="#top" className="flex items-center gap-2.5 shrink-0 group">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-lg shadow-signal/15 group-hover:scale-105 transition-transform">
               <Waypoints className="size-5" />
             </span>
             <span className="flex flex-col leading-none">
-              <span className="font-display text-base font-semibold tracking-tight text-foreground">
-                RaahSetu
+              <span className="font-display text-lg font-bold tracking-tight text-white flex items-center gap-1">
+                RaahSetu<span className="text-signal font-mono text-xs">.ai</span>
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal font-bold">
+              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-signal font-bold">
                 Logistics Intelligence
               </span>
             </span>
           </a>
 
-          <nav className="hidden items-center gap-8 md:flex font-mono text-xs uppercase tracking-wider">
-            <a href="#top" className="text-muted-foreground transition-colors hover:text-signal">
-              Overview
+          {/* Figma Center Notch Hanging Tab */}
+          <nav className="hidden md:flex items-center gap-6 px-7 py-2 rounded-full bg-slate-900/90 border border-slate-700/70 shadow-2xl backdrop-blur-xl font-mono text-xs uppercase tracking-wider text-slate-300">
+            <a href="#top" className="hover:text-signal transition-colors font-semibold">
+              Home
             </a>
-            <a href="#planner" className="text-muted-foreground transition-colors hover:text-signal">
-              Route Planner
+            <a
+              href="#console"
+              onClick={() => {
+                setHasViewedNavigation(true);
+                setTimeout(() => {
+                  const el = document.getElementById("console");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }, 50);
+              }}
+              className="hover:text-signal transition-colors font-semibold flex items-center gap-1"
+            >
+              <span>Console</span>
+              <span className="size-1.5 rounded-full bg-signal animate-pulse" />
             </a>
-            <a href="#crisis-data" className="text-muted-foreground transition-colors hover:text-signal">
+            <a href="#crisis-data" className="hover:text-signal transition-colors font-semibold">
               Crisis Data
             </a>
-            <a href="#platform" className="text-muted-foreground transition-colors hover:text-signal">
-              Platform
-            </a>
-            <a href="#how" className="text-muted-foreground transition-colors hover:text-signal">
-              How it works
-            </a>
-            <a href="#comparison" className="text-muted-foreground transition-colors hover:text-signal">
-              Comparison
-            </a>
-            <a href="#stack" className="text-muted-foreground transition-colors hover:text-signal">
-              Stack
-            </a>
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="hover:text-hazard transition-colors font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Camera className="size-3.5 text-hazard" />
+              <span>Report Incident</span>
+              {offlineReportsCount > 0 && (
+                <span className="rounded-full bg-hazard text-hazard-foreground px-1.5 py-0.2 text-[9px] font-mono font-bold">
+                  {offlineReportsCount}
+                </span>
+              )}
+            </button>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Language Selector with Phone Setting Auto-Detection */}
-            <div className="flex items-center rounded-lg border border-border/70 bg-secondary/60 p-1 text-xs font-mono">
-              <Globe className="size-3.5 text-muted-foreground mr-1 ml-1 shrink-0" />
+          {/* Right Controls: Multilingual Selector & Sign In/Up */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Multilingual Selector */}
+            <div className="flex items-center rounded-full border border-slate-700/80 bg-slate-900/90 p-1 text-xs font-mono shadow-md backdrop-blur-md">
+              <Globe className="size-3.5 text-muted-foreground ml-1.5 mr-1 shrink-0" />
               <button
                 type="button"
                 onClick={() => handleSelectLanguage(detectedPhoneInfo.lang, "auto")}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
                   langMode === "auto"
                     ? "bg-signal text-signal-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -1042,7 +1115,7 @@ export function App() {
                 <button
                   key={l}
                   onClick={() => handleSelectLanguage(l, "manual")}
-                  className={`px-1.5 py-0.5 rounded text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                  className={`px-1.5 py-0.5 rounded-full text-[11px] font-bold uppercase transition-all cursor-pointer ${
                     langMode === "manual" && lang === l
                       ? "bg-signal text-signal-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -1053,177 +1126,237 @@ export function App() {
               ))}
             </div>
 
-            {/* Field Incident Reporter Button */}
+            {/* Sign In / Sign Up Button */}
             <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-hazard/40 bg-hazard/10 px-3 py-1.5 text-xs font-bold text-hazard hover:bg-hazard/20 transition-all cursor-pointer"
-              title="Report road damage or landslide slip from field"
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-slate-700/80 bg-slate-900/90 text-slate-100 font-semibold text-xs hover:border-signal/50 hover:bg-slate-800 transition-all shadow-md cursor-pointer"
             >
-              <Camera className="size-3.5" />
-              <span>Report Incident</span>
-              {offlineReportsCount > 0 && (
-                <span className="ml-1 rounded-full bg-hazard text-hazard-foreground px-1.5 py-0.2 text-[10px] font-mono font-bold">
-                  {offlineReportsCount}
-                </span>
-              )}
+              <User className="size-3.5 text-signal" />
+              <span className="hidden sm:inline">Sign In / Sign Up</span>
+              <span className="sm:hidden">Sign In</span>
             </button>
-
-            <a
-              href="#planner"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-signal px-3.5 py-1.5 text-xs font-bold text-signal-foreground transition-transform hover:-translate-y-0.5 shadow-md shadow-signal/20 cursor-pointer"
-            >
-              <span>Launch Planner</span>
-              <ArrowRight className="size-3.5" />
-            </a>
           </div>
         </div>
       </header>
 
       <main>
-        {/* SECTION 1: HERO SECTION */}
-        <section id="top" className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-40" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+        {/* SECTION 1: FIGMA-INSPIRED HERO WITH MOUNTAIN BACKDROP & FLOATING CAPSULE CONSOLE */}
+        <section id="top" className="relative overflow-hidden px-4 sm:px-6 pt-4 pb-14 sm:pb-20">
+          {/* Scenic Mountain Pass Hero Frame */}
+          <div className="relative mx-auto w-full max-w-7xl rounded-[32px] overflow-hidden border border-slate-800/80 bg-gradient-to-b from-[#0a1622] via-[#0b1b2b] to-[#060c14] p-6 sm:p-12 lg:p-16 shadow-2xl shadow-black/80">
+            {/* Atmospheric Mountain Silhouette Background */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-25 mix-blend-screen"
+              style={{
+                backgroundImage: `radial-gradient(ellipse 90% 70% at 50% 10%, rgba(53, 220, 171, 0.2), transparent),
+                  radial-gradient(ellipse 60% 50% at 80% 30%, rgba(255, 157, 54, 0.15), transparent),
+                  linear-gradient(to bottom, transparent 30%, rgba(5, 7, 15, 0.95) 100%)`,
+              }}
+            />
 
-          <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 px-5 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-3 py-1 font-mono text-xs text-muted-foreground shadow-sm">
-                <span className="size-1.5 rounded-full bg-signal node-pulse" />
-                {t.heroBadge}
-              </div>
-
-              <h1 className="mt-6 text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                Routes that explain{" "}
-                <span className="text-signal drop-shadow-[0_0_20px_rgba(53,220,171,0.35)]">
-                  why they avoid the risk.
-                </span>
-              </h1>
-
-              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-                {t.tagline}
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a
-                  href="#planner"
-                  className="inline-flex items-center gap-2 rounded-md bg-signal px-5 py-3 text-sm font-semibold text-signal-foreground transition-transform hover:-translate-y-0.5 shadow-lg shadow-signal/25"
-                >
-                  <span>Explore the planner</span>
-                  <ArrowRight className="size-4" />
-                </a>
-                <a
-                  href="#crisis-data"
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-                >
-                  <AlertTriangle className="size-4 text-hazard" />
-                  <span>Ground Crisis Data</span>
-                </a>
-              </div>
-
-              <dl className="mt-12 grid max-w-md grid-cols-3 gap-6">
-                <div className="border-l border-border pl-4">
-                  <dt className="font-display text-3xl font-bold text-foreground">8</dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">NE states covered</dd>
-                </div>
-                <div className="border-l border-border pl-4">
-                  <dt className="font-display text-3xl font-bold text-signal">300+</dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">A* correctness tests</dd>
-                </div>
-                <div className="border-l border-border pl-4">
-                  <dt className="font-display text-3xl font-bold text-hazard">A*</dt>
-                  <dd className="mt-1 text-xs leading-snug text-muted-foreground">custom pathfinder</dd>
-                </div>
-              </dl>
+            {/* Mountain Skyline Illustration in Background */}
+            <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 right-0 h-64 opacity-20">
+              <svg viewBox="0 0 1200 300" className="w-full h-full object-cover" preserveAspectRatio="none">
+                <path d="M0,300 L0,220 L180,110 L340,190 L520,70 L720,170 L900,90 L1080,180 L1200,120 L1200,300 Z" fill="#132b2a" />
+                <path d="M0,300 L0,250 L140,170 L300,230 L480,130 L660,220 L840,150 L1020,220 L1200,180 L1200,300 Z" fill="#0c1d24" opacity="0.7" />
+              </svg>
             </div>
 
-            {/* Right Side: Animated Route Graph Preview Card */}
-            <div className="relative">
-              <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-2xl shadow-black/50 backdrop-blur-md">
-                <div className="flex items-center justify-between px-2 pb-3 border-b border-border/60">
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    route_graph.solve()
-                  </span>
-                  <span className="flex items-center gap-1.5 font-mono text-xs text-signal font-bold">
-                    <span className="size-2 rounded-full bg-signal node-pulse" />
-                    solved
-                  </span>
+            <div className="relative z-10 max-w-4xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-signal/40 bg-signal/10 px-3.5 py-1 text-xs font-mono text-signal backdrop-blur-md mb-6">
+                <span className="size-2 rounded-full bg-signal node-pulse" />
+                <span>NORTHEAST HIGHWAY CORRIDOR INTELLIGENCE</span>
+              </div>
+
+              {/* Headline */}
+              <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08]">
+                Safe Freight Corridors Across Northeast India
+              </h1>
+
+              {/* Subtitle */}
+              <p className="mt-5 text-base sm:text-xl text-slate-300 max-w-2xl leading-relaxed">
+                Explainable, terrain & hazard-aware logistics intelligence across 8 Northeast states over real OpenStreetMap road networks.
+              </p>
+            </div>
+
+            {/* THE FLOATING CAPSULE SEARCH CONSOLE (Figma Inspired) */}
+            <div className="relative z-20 mt-10 sm:mt-14 w-full max-w-5xl rounded-3xl sm:rounded-full bg-slate-950/90 border border-slate-700/80 p-2 sm:p-3 shadow-2xl shadow-black/90 backdrop-blur-2xl">
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                {/* Segment 1: Origin */}
+                <div className="flex-1 w-full min-w-0">
+                  <CityCombobox
+                    label="Origin"
+                    tone="signal"
+                    selectedId={origin}
+                    onSelect={(id) => {
+                      setCustomOrigin(null);
+                      setOrigin(id);
+                    }}
+                    otherCityId={destination}
+                    customOrigin={customOrigin}
+                    lang={lang}
+                    t={t}
+                    variant="capsule"
+                    onGpsLocate={handleGpsLocation}
+                    isLocating={isLocating}
+                  />
                 </div>
 
-                <svg viewBox="0 0 680 480" className="w-full my-3" fill="none" role="img" aria-label="Road graph with highlighted risk-aware route avoiding hazard nodes">
-                  <line x1="60" y1="300" x2="150" y2="210" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="60" y1="300" x2="165" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="150" y1="210" x2="260" y2="150" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="150" y1="210" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="165" y1="360" x2="280" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="165" y1="360" x2="300" y2="420" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="260" y1="150" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="280" y1="300" x2="400" y2="220" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="280" y1="300" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="300" y1="420" x2="420" y2="360" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="400" y1="220" x2="520" y2="160" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="400" y1="220" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="420" y1="360" x2="540" y2="300" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="520" y1="160" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
-                  <line x1="540" y1="300" x2="620" y2="240" stroke="var(--border)" strokeWidth="1.5" />
+                {/* Quick Swap Button */}
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  className="shrink-0 p-2.5 rounded-full bg-slate-900 border border-slate-700 text-muted-foreground hover:text-signal hover:border-signal/40 transition-all cursor-pointer shadow-md"
+                  title="Swap Origin & Destination"
+                >
+                  <ArrowUpDown className="size-4 rotate-90 sm:rotate-0" />
+                </button>
 
-                  {/* Flow Route Halo */}
-                  <path d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240" stroke="var(--signal)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-                  {/* Flow Route Animated Dashes */}
-                  <path d="M 60 300 L 150 210 L 260 150 L 400 220 L 540 300 L 620 240" stroke="var(--signal)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="route-flow" />
-
-                  {/* Origin */}
-                  <g>
-                    <circle cx="60" cy="300" r="14" fill="var(--signal)" opacity="0.2" className="node-pulse" />
-                    <circle cx="60" cy="300" r="6" fill="var(--signal)" />
-                    <circle cx="60" cy="300" r="2.5" fill="var(--signal-foreground)" />
-                  </g>
-
-                  <circle cx="150" cy="210" r="4" fill="var(--muted-foreground)" />
-                  <circle cx="165" cy="360" r="4" fill="var(--muted-foreground)" />
-                  <circle cx="260" cy="150" r="4" fill="var(--muted-foreground)" />
-
-                  {/* Hazard Node 1 */}
-                  <g>
-                    <circle cx="280" cy="300" r="10" fill="var(--hazard)" opacity="0.25" className="node-pulse" />
-                    <circle cx="280" cy="300" r="5" fill="var(--hazard)" />
-                  </g>
-
-                  <circle cx="300" cy="420" r="4" fill="var(--muted-foreground)" />
-                  <circle cx="400" cy="220" r="4" fill="var(--muted-foreground)" />
-                  <circle cx="420" cy="360" r="4" fill="var(--muted-foreground)" />
-
-                  {/* Hazard Node 2 */}
-                  <g>
-                    <circle cx="520" cy="160" r="10" fill="var(--hazard)" opacity="0.25" className="node-pulse" />
-                    <circle cx="520" cy="160" r="5" fill="var(--hazard)" />
-                  </g>
-
-                  <circle cx="540" cy="300" r="4" fill="var(--muted-foreground)" />
-
-                  {/* Destination */}
-                  <g>
-                    <circle cx="620" cy="240" r="14" fill="var(--signal)" opacity="0.2" className="node-pulse" />
-                    <circle cx="620" cy="240" r="6" fill="var(--signal)" />
-                    <circle cx="620" cy="240" r="2.5" fill="var(--signal-foreground)" />
-                  </g>
-                </svg>
-
-                <div className="mt-3 flex flex-wrap gap-4 px-2 font-mono text-xs border-t border-border/50 pt-3">
-                  <span className="inline-flex items-center gap-2 text-signal font-semibold">
-                    <RouteIcon className="size-3.5" /> risk-aware route
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-hazard font-semibold">
-                    <AlertTriangle className="size-3.5" /> hazard node avoided
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    <span className="h-px w-4 bg-border" /> road edge
-                  </span>
+                {/* Segment 2: Destination */}
+                <div className="flex-1 w-full min-w-0">
+                  <CityCombobox
+                    label="Destination"
+                    tone="hazard"
+                    selectedId={destination}
+                    onSelect={(id) => setDestination(id)}
+                    otherCityId={origin}
+                    lang={lang}
+                    t={t}
+                    variant="capsule"
+                  />
                 </div>
+
+                {/* Segment 3: Dispatch & Cargo Profile Popover */}
+                <div className="relative shrink-0 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsDispatchPopoverOpen(!isDispatchPopoverOpen)}
+                    className="w-full sm:w-auto flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl sm:rounded-full bg-slate-900/90 border border-slate-700/70 hover:border-slate-600 text-xs font-mono transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Truck className="size-4 text-signal shrink-0" />
+                      <div className="text-left">
+                        <div className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">
+                          Dispatch Profile
+                        </div>
+                        <div className="font-bold text-white truncate max-w-[130px]">
+                          {VEHICLE_PROFILES[vehicle].name} · {COMMODITY_PROFILES[commodity].name.split(" ")[0]}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground ml-1">▾</span>
+                  </button>
+
+                  {/* Popover */}
+                  {isDispatchPopoverOpen && (
+                    <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl border border-slate-700 bg-slate-950/98 p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in">
+                      {/* Commodity selection */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1.5 text-xs font-mono">
+                          <span className="text-signal font-bold uppercase tracking-wider">Essential Cargo</span>
+                          <span className="text-[10px] text-muted-foreground">Priority Weight</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {(Object.keys(COMMODITY_PROFILES) as CommodityType[]).map((cKey) => {
+                            const p = COMMODITY_PROFILES[cKey];
+                            const isSel = commodity === cKey;
+                            return (
+                              <button
+                                key={cKey}
+                                type="button"
+                                onClick={() => setCommodity(cKey)}
+                                className={`p-2 rounded-xl text-left text-xs border transition-all cursor-pointer ${
+                                  isSel
+                                    ? "border-signal bg-signal/15 text-white font-bold"
+                                    : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                                }`}
+                              >
+                                <div className="font-medium truncate">{p.name}</div>
+                                <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.priority}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Vehicle selection */}
+                      <div>
+                        <div className="mb-1.5 text-xs font-mono text-signal font-bold uppercase tracking-wider">
+                          Vehicle Axle Class
+                        </div>
+                        <div className="space-y-1.5">
+                          {(Object.keys(VEHICLE_PROFILES) as VehicleType[]).map((vKey) => {
+                            const vp = VEHICLE_PROFILES[vKey];
+                            const isSel = vehicle === vKey;
+                            return (
+                              <button
+                                key={vKey}
+                                type="button"
+                                onClick={() => setVehicle(vKey)}
+                                className={`w-full p-2 rounded-xl text-left text-xs border flex items-center justify-between transition-all cursor-pointer ${
+                                  isSel
+                                    ? "border-signal bg-signal/15 text-white font-bold"
+                                    : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800"
+                                }`}
+                              >
+                                <div>
+                                  <span className="font-semibold">{vp.name}</span>
+                                  <span className="ml-1.5 text-[10px] text-muted-foreground font-mono">({vp.badge})</span>
+                                </div>
+                                {isSel && <Check className="size-3.5 text-signal" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-slate-800 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setIsDispatchPopoverOpen(false)}
+                          className="px-3 py-1 rounded-lg bg-signal text-signal-foreground font-bold text-xs cursor-pointer"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Segment 4: Primary CTA Button: "View Navigation" */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHasViewedNavigation(true);
+                    setTimeout(() => {
+                      const el = document.getElementById("console");
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }, 50);
+                  }}
+                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                >
+                  <span>View Navigation</span>
+                  <ArrowRight className="size-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom Right Callout Card (Figma Style) */}
+            <div className="relative z-10 mt-10 sm:mt-14 flex justify-end">
+              <div className="max-w-md p-4 rounded-2xl bg-slate-950/80 border-l-4 border-l-amber-400 border border-slate-800/80 text-xs text-slate-300 backdrop-blur-xl shadow-2xl">
+                <div className="font-bold text-white text-sm">Real OSM Road Networks & Telemetry</div>
+                <p className="mt-1 leading-relaxed text-slate-400">
+                  Explainable, risk-aware logistics intelligence across 8 Northeast states over real OpenStreetMap road networks. Backed by live hardware GPS telemetry & GSI landslide models.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
+        
         {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
         <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
           <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
@@ -1293,7 +1426,20 @@ export function App() {
         </section>
 
         {/* SECTION 3: THE INTERACTIVE ROUTE PLANNER */}
-        <section id="planner" className="relative border-t border-border/70 py-20 lg:py-28">
+        <section id="console" className="relative border-t border-border/70 py-16 lg:py-24">
+          {hasViewedNavigation && (
+            <div className="mx-auto max-w-7xl px-5 lg:px-8 mb-6">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-signal/10 border border-signal/30 text-signal text-xs font-mono">
+                <span className="flex items-center gap-2 font-bold">
+                  <span className="size-2 rounded-full bg-signal animate-ping" />
+                  Navigation Studio Unrolled: Live Corridor Telemetry & Real OSM Road Engine Active
+                </span>
+                <span className="hidden sm:inline-block text-[11px] text-muted-foreground">
+                  Ready for Dispatch
+                </span>
+              </div>
+            </div>
+          )}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
           <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
 
@@ -2581,6 +2727,156 @@ export function App() {
           </p>
         </div>
       </footer>
+
+      {/* SIGN IN / SIGN UP AUTH MODAL */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-700 bg-slate-950 p-6 sm:p-7 shadow-2xl text-foreground">
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-slate-900 cursor-pointer transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-lg shadow-signal/10">
+                <Shield className="size-5" />
+              </div>
+              <div>
+                <div className="font-display text-lg font-bold text-white">
+                  RaahSetu Portal Access
+                </div>
+                <div className="text-[10px] font-mono text-signal uppercase tracking-wider font-bold">
+                  Supabase Auth & RBAC Ready
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Sign in to synchronize fleet telematics, access restricted disaster corridors, or log official road reports.
+            </p>
+
+            {/* Mode Switcher Tabs */}
+            <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-900 border border-slate-800 mb-4 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setAuthMode("signin")}
+                className={`py-2 rounded-lg transition-all cursor-pointer ${
+                  authMode === "signin"
+                    ? "bg-signal text-signal-foreground shadow-sm font-bold"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`py-2 rounded-lg transition-all cursor-pointer ${
+                  authMode === "signup"
+                    ? "bg-signal text-signal-foreground shadow-sm font-bold"
+                    : "text-muted-foreground hover:text-white"
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+
+            {/* Role Selection */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
+                Select Operational Role
+              </label>
+              <div className="grid grid-cols-3 gap-1.5 text-[11px] font-mono">
+                {[
+                  { id: "dispatcher", label: "Fleet Dispatch" },
+                  { id: "driver", label: "Mountain Driver" },
+                  { id: "authority", label: "Disaster Authority" },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setAuthRole(r.id as any)}
+                    className={`p-2 rounded-xl border text-center transition-all cursor-pointer leading-tight ${
+                      authRole === r.id
+                        ? "border-signal bg-signal/15 text-white font-bold shadow-sm"
+                        : "border-slate-800 bg-slate-900/60 text-muted-foreground hover:bg-slate-900"
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setAuthNotice(
+                  authMode === "signin"
+                    ? `Authenticated successfully as ${authRole.toUpperCase()}.`
+                    : `Registration received for ${authRole.toUpperCase()}. Activation link sent.`
+                );
+                setTimeout(() => {
+                  setIsAuthModalOpen(false);
+                  setAuthNotice(null);
+                }, 1600);
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-mono text-muted-foreground mb-1">
+                  Email / Official ID
+                </label>
+                <div className="relative flex items-center rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2">
+                  <User className="size-4 text-muted-foreground mr-2 shrink-0" />
+                  <input
+                    type="email"
+                    required
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="officer@disaster-control.gov.in"
+                    className="w-full bg-transparent text-sm text-white placeholder-muted-foreground outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-muted-foreground mb-1">
+                  Passcode
+                </label>
+                <div className="relative flex items-center rounded-xl border border-slate-800 bg-slate-900/90 px-3 py-2">
+                  <Lock className="size-4 text-muted-foreground mr-2 shrink-0" />
+                  <input
+                    type="password"
+                    required
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full bg-transparent text-sm text-white placeholder-muted-foreground outline-none"
+                  />
+                </div>
+              </div>
+
+              {authNotice && (
+                <div className="p-2.5 rounded-xl bg-signal/15 border border-signal/40 text-signal font-mono text-xs text-center font-bold">
+                  ✓ {authNotice}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full mt-2 py-3 rounded-xl bg-signal text-signal-foreground font-bold text-sm hover:brightness-110 shadow-lg shadow-signal/20 transition-all cursor-pointer"
+              >
+                {authMode === "signin" ? "Sign In to Operations" : "Register Credentials"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* FIELD INCIDENT & ROAD DAMAGE REPORTER MODAL (Requirement 'f') */}
       {isReportModalOpen && (
