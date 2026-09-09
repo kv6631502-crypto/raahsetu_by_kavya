@@ -622,7 +622,7 @@ export function App() {
   const [reportSuccessNotice, setReportSuccessNotice] = useState<string | null>(null);
   const [activeBlockageIdx, setActiveBlockageIdx] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
-  const [isNavMoving, setIsNavMoving] = useState(true);
+  const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
 
   // Auto-cycle Emergency Road Blockage Banner every 4.5 seconds
   useEffect(() => {
@@ -1185,7 +1185,7 @@ export function App() {
         lat: calLat,
         lon: calLon,
         accuracy: accuracy || 6, // Calibrated high precision fix
-        speedKmh: realSpeedKmh || 45,
+        speedKmh: realSpeedKmh, // Genuine speed only (0 if stationary)
         heading: heading || 0,
         placeName: calPlace,
         isWithinNer,
@@ -1195,7 +1195,6 @@ export function App() {
         source: "live_gps",
       });
       setIsNavigating(true);
-      setIsNavMoving(true);
       setIsBigScreenNav(true);
       setIsStartingNav(false);
       setNavProgressPct(0);
@@ -1315,47 +1314,7 @@ export function App() {
     }
   };
 
-  // Continuous Vehicle Movement Loop Along Calibrated Route Corridor
-  useEffect(() => {
-    if (!isNavigating || !isNavMoving) return;
-
-    const interval = setInterval(() => {
-      setNavProgressPct((prev) => {
-        if (prev >= 100) {
-          return 100;
-        }
-        // Smooth progression: ~45-60 km/h cruising advance
-        const totalDist = safeStats?.distance || 150;
-        const step = Math.max(0.12, Math.min(0.35, 42 / totalDist));
-        return Math.min(100, +(prev + step).toFixed(2));
-      });
-    }, 400);
-
-    return () => clearInterval(interval);
-  }, [isNavigating, isNavMoving, safeStats?.distance]);
-
-  // Update real-time GPS coordinates, calibrated speed & heading from route telemetry
-  useEffect(() => {
-    if (!isNavigating || !navTelemetry.activeLeg) return;
-
-    const isMountainPass = navTelemetry.activeLeg.terrainType === "High Mountain Pass" || (navTelemetry.activeLeg.note ? navTelemetry.activeLeg.note.includes("Ghat") : false);
-    const baseSpeed = isMountainPass ? 38 : 55;
-    const speedJitter = Math.sin(navProgressPct * 10) * 5;
-    const currentSpeed = Math.max(24, Math.round(baseSpeed + speedJitter));
-
-    setNavGpsCoords({
-      lat: navTelemetry.currentGeo.lat,
-      lon: navTelemetry.currentGeo.lon,
-      accuracy: 5, // Calibrated ±5m GPS lock
-      speedKmh: currentSpeed,
-      heading: navTelemetry.headingAngle,
-      placeName: `${navTelemetry.activeLeg.fromCity.name} ➔ ${navTelemetry.activeLeg.toCity.name} (${navTelemetry.activeLeg.note || navTelemetry.activeLeg.terrainType})`,
-      isWithinNer: true,
-      svgX: navTelemetry.currentSvg.x,
-      svgY: navTelemetry.currentSvg.y,
-      source: "live_gps",
-    });
-  }, [isNavigating, navProgressPct, navTelemetry]);
+  // Genuine GPS telemetry only (No simulated or artificial motion)
 
   // Close Big Screen Navigation on Escape key
   useEffect(() => {
@@ -2718,6 +2677,34 @@ export function App() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Normal View vs Satellite View Switcher Button */}
+                      <div className="flex items-center p-0.5 rounded-xl bg-slate-900 border border-slate-700 shadow-md">
+                        <button
+                          type="button"
+                          onClick={() => setMapMode("osm")}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                            mapMode === "osm"
+                              ? "bg-signal text-signal-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-white"
+                          }`}
+                          title="Switch to Normal Street Map (OpenStreetMap)"
+                        >
+                          <span>🗺️ Normal View</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMapMode("satellite")}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                            mapMode === "satellite"
+                              ? "bg-amber-500 text-slate-950 font-black shadow-sm"
+                              : "text-muted-foreground hover:text-white"
+                          }`}
+                          title="Switch to High-Resolution Satellite View (Aerial Imagery)"
+                        >
+                          <span>🛰️ Satellite View</span>
+                        </button>
+                      </div>
+
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs text-signal font-bold">
                         <span className="size-2 rounded-full bg-signal node-pulse" /> {isNavigating ? "tracking" : "solved"}
                       </span>
@@ -2768,6 +2755,8 @@ export function App() {
                       userGps={navGpsCoords}
                       isNavigating={isNavigating}
                       isBigScreen={isBigScreenNav}
+                      mapMode={mapMode}
+                      onMapModeChange={setMapMode}
                     />
                     {/* Google Maps Style Top Navigation HUD Overlay */}
                     {isNavigating && (

@@ -19,6 +19,8 @@ interface RealMapLeafletProps {
   } | null;
   isNavigating: boolean;
   isBigScreen: boolean;
+  mapMode?: "osm" | "satellite";
+  onMapModeChange?: (mode: "osm" | "satellite") => void;
 }
 
 export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
@@ -27,13 +29,21 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   routePath,
   userGps,
   isNavigating,
+  mapMode: externalMapMode,
+  onMapModeChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const gpsMarkerRef = useRef<L.Marker | null>(null);
   const gpsAccuracyCircleRef = useRef<L.Circle | null>(null);
-  const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
+  const [internalMapMode, setInternalMapMode] = useState<"osm" | "satellite">("osm");
+  const mapMode = externalMapMode !== undefined ? externalMapMode : internalMapMode;
+
+  const handleToggleMode = (mode: "osm" | "satellite") => {
+    setInternalMapMode(mode);
+    if (onMapModeChange) onMapModeChange(mode);
+  };
   const currentTileLayerRef = useRef<L.TileLayer | null>(null);
 
   // Initialize Leaflet Map with OpenStreetMap as the sole basemap
@@ -268,32 +278,32 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0 select-none">
-      {/* Basemap Switcher: Street (OSM) vs High-Resolution Satellite View */}
-      <div className="absolute top-3 left-3 z-[400] flex items-center p-1 rounded-xl bg-slate-950/85 border border-slate-700/80 shadow-2xl backdrop-blur-md text-xs font-mono">
+      {/* Prominent Basemap Switcher on the Map Canvas (Positioned at bottom-4 left-4 to never be blocked by HUD) */}
+      <div className="absolute bottom-4 left-4 z-[400] flex items-center p-1 rounded-2xl bg-slate-950/90 border-2 border-slate-700 shadow-2xl backdrop-blur-md text-xs font-mono">
         <button
           type="button"
-          onClick={() => setMapMode("osm")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+          onClick={() => handleToggleMode("osm")}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-black transition-all cursor-pointer ${
             mapMode === "osm"
-              ? "bg-signal text-signal-foreground shadow-sm"
+              ? "bg-signal text-signal-foreground shadow-md"
               : "text-muted-foreground hover:text-white"
           }`}
-          title="OpenStreetMap Standard Street Network"
+          title="Switch to Normal Street Map View"
         >
-          <span>🗺️ Street</span>
+          <span>🗺️ Normal View</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setMapMode("satellite")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+          onClick={() => handleToggleMode("satellite")}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-black transition-all cursor-pointer ${
             mapMode === "satellite"
-              ? "bg-amber-500 text-slate-950 shadow-sm font-bold"
+              ? "bg-amber-500 text-slate-950 shadow-md"
               : "text-muted-foreground hover:text-white"
           }`}
-          title="High-Resolution Satellite Topography Imagery"
+          title="Switch to High-Resolution Satellite View"
         >
-          <span>🛰️ Satellite</span>
+          <span>🛰️ Satellite View</span>
         </button>
       </div>
 
