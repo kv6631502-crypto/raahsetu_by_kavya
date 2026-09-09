@@ -7,6 +7,7 @@ import {
   Check,
   Clock,
   CloudRain,
+  CornerUpRight,
   Database,
   Download,
   FileText,
@@ -18,7 +19,11 @@ import {
   MapPin,
   Milestone,
   Mountain,
+  Navigation,
+  Pause,
+  Play,
   Radio,
+  RotateCcw,
   Route as RouteIcon,
   Search,
   Share2,
@@ -26,6 +31,8 @@ import {
   Sun,
   TriangleAlert,
   Truck,
+  Volume2,
+  VolumeX,
   Waypoints,
   Wifi,
   X,
@@ -328,6 +335,301 @@ export function App() {
   const activeRouteCityIds = useMemo(() => {
     return new Set(safe || []);
   }, [safe]);
+
+  // Google Maps Style Live Navigation & Driver Tracking State
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isStartingNav, setIsStartingNav] = useState(false);
+  const [navGpsCoords, setNavGpsCoords] = useState<{
+    lat: number;
+    lon: number;
+    accuracy?: number;
+    speedKmh: number;
+    heading: number;
+    placeName: string;
+    source: "live_gps" | "simulated";
+  } | null>(null);
+  const [navProgressPct, setNavProgressPct] = useState(0);
+  const [isSimulatingDrive, setIsSimulatingDrive] = useState(true);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
+  const [lastSpokenLeg, setLastSpokenLeg] = useState<number>(-1);
+  const navWatchRef = useRef<number | null>(null);
+  const mapCardRef = useRef<HTMLDivElement | null>(null);
+
+  // Turn-by-Turn Telemetry Computations
+  const navTelemetry = useMemo(() => {
+    if (!safeLegs || safeLegs.length === 0) {
+      return {
+        activeLegIndex: 0,
+        activeLeg: null,
+        legProgress: 0,
+        currentSvg: { x: 500, y: 280 },
+        currentGeo: { lat: 26.1445, lon: 91.7362 },
+        headingAngle: 0,
+        remainingDistKm: 0,
+        remainingHours: 0,
+        distToNextCheckpoint: 0,
+        nextCheckpointName: "",
+        nextInstruction: "",
+        etaTime: "--:--",
+        traveledDistKm: 0,
+      };
+    }
+
+    const totalDistance = safeStats?.distance || 1;
+    const traveledDistKm = Math.min(
+      totalDistance,
+      (navProgressPct / 100) * totalDistance
+    );
+    const remainingDistKm = Math.max(0, Math.round(totalDistance - traveledDistKm));
+    const remainingHours = Math.max(0, (safeStats?.hours || 0) * (1 - navProgressPct / 100));
+
+    // Find current active leg along safeLegs
+    let accDist = 0;
+    let activeLegIndex = 0;
+    let legProgress = 0;
+
+    for (let i = 0; i < safeLegs.length; i++) {
+      const leg = safeLegs[i];
+      if (traveledDistKm <= accDist + leg.dist || i === safeLegs.length - 1) {
+        activeLegIndex = i;
+        const distInLeg = Math.max(0, traveledDistKm - accDist);
+        legProgress = leg.dist > 0 ? Math.min(1, distInLeg / leg.dist) : 0;
+        break;
+      }
+      accDist += leg.dist;
+    }
+
+    const activeLeg = safeLegs[activeLegIndex];
+    const currentSvg = {
+      x: Math.round(activeLeg.fromCity.x + (activeLeg.toCity.x - activeLeg.fromCity.x) * legProgress),
+      y: Math.round(activeLeg.fromCity.y + (activeLeg.toCity.y - activeLeg.fromCity.y) * legProgress),
+    };
+    const currentGeo = {
+      lat: activeLeg.fromCity.lat + (activeLeg.toCity.lat - activeLeg.fromCity.lat) * legProgress,
+      lon: activeLeg.fromCity.lon + (activeLeg.toCity.lon - activeLeg.fromCity.lon) * legProgress,
+    };
+    const headingAngle = Math.round(
+      Math.atan2(
+        activeLeg.toCity.y - activeLeg.fromCity.y,
+        activeLeg.toCity.x - activeLeg.fromCity.x
+      ) * (180 / Math.PI)
+    );
+
+    const distToNextCheckpoint = Math.max(
+      1,
+      Math.round(activeLeg.dist * (1 - legProgress))
+    );
+    const nextCheckpointName = activeLeg.toCity.name;
+    const nextInstruction = activeLeg.note
+      ? `Caution: ${activeLeg.note}. Proceeding to ${activeLeg.toCity.name}`
+      : `Continue straight towards ${activeLeg.toCity.name} via highway corridor`;
+
+    const etaDate = new Date(Date.now() + remainingHours * 3600 * 1000);
+    const etaTime = etaDate.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return {
+      activeLegIndex,
+      activeLeg,
+      legProgress,
+      currentSvg,
+      currentGeo,
+      headingAngle,
+      remainingDistKm,
+      remainingHours,
+      distToNextCheckpoint,
+      nextCheckpointName,
+      nextInstruction,
+      etaTime,
+      traveledDistKm: Math.round(traveledDistKm),
+    };
+  }, [safeLegs, safeStats, navProgressPct]);
+
+  const speakGuidance = (text: string) => {
+    if (isVoiceMuted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.lang = "en-IN";
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Ignore speech errors
+    }
+  };
+
+  const handleStartNavigation = async () => {
+    if (isNavigating) {
+      handleStopNavigation();
+      return;
+    }
+
+    if (!safe || safe.length < 2) {
+      setLocationNotice("Please select a valid origin and destination corridor first.");
+      return;
+    }
+
+    setIsStartingNav(true);
+    setLocationNotice(null);
+
+    // Smooth scroll to map immediately
+    if (mapCardRef.current) {
+      mapCardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    const startTrip = (
+      lat: number,
+      lon: number,
+      placeName: string,
+      speed?: number,
+      heading?: number
+    ) => {
+      setNavGpsCoords({
+        lat,
+        lon,
+        speedKmh: speed && speed > 0 ? Math.round(speed * 3.6) : 52,
+        heading: heading || 0,
+        placeName,
+        source: "live_gps",
+      });
+      setIsNavigating(true);
+      setIsStartingNav(false);
+      setNavProgressPct(0);
+      setIsSimulatingDrive(true);
+
+      const destCityName = CITY_MAP[destination]?.name || "Destination";
+      speakGuidance(
+        `Navigation started towards ${destCityName}. Live GPS location acquired at ${placeName}.`
+      );
+    };
+
+    if (!navigator.geolocation) {
+      const originCity = CITY_MAP[origin];
+      startTrip(
+        originCity.lat,
+        originCity.lon,
+        `${originCity.name}, ${originCity.state} (Origin Hub)`
+      );
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, speed, heading } = pos.coords;
+        let placeTitle = `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=16`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const road = addr.road || addr.suburb || addr.neighbourhood;
+            const cityOrTown = addr.city || addr.town || addr.village || addr.county || addr.state_district;
+            if (road && cityOrTown) {
+              placeTitle = `${road}, ${cityOrTown}`;
+            } else if (cityOrTown) {
+              placeTitle = `${cityOrTown}, ${addr.state || "India"}`;
+            } else if (data.display_name) {
+              placeTitle = data.display_name.split(",").slice(0, 2).join(",");
+            }
+          }
+        } catch {
+          // Fallback to formatted coordinates
+        }
+
+        startTrip(latitude, longitude, placeTitle, speed || undefined, heading || undefined);
+
+        // Start GPS tracking
+        try {
+          if (navWatchRef.current !== null) {
+            navigator.geolocation.clearWatch(navWatchRef.current);
+          }
+          navWatchRef.current = navigator.geolocation.watchPosition(
+            (watchPos) => {
+              setNavGpsCoords((prev) => ({
+                lat: watchPos.coords.latitude,
+                lon: watchPos.coords.longitude,
+                speedKmh: watchPos.coords.speed ? Math.round(watchPos.coords.speed * 3.6) : (prev?.speedKmh || 52),
+                heading: watchPos.coords.heading || prev?.heading || 0,
+                placeName: prev?.placeName || `${watchPos.coords.latitude.toFixed(4)}°N, ${watchPos.coords.longitude.toFixed(4)}°E`,
+                source: "live_gps",
+              }));
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+          );
+        } catch {
+          // Ignore watch errors
+        }
+      },
+      (err) => {
+        const originCity = CITY_MAP[origin];
+        startTrip(
+          originCity.lat,
+          originCity.lon,
+          `${originCity.name}, ${originCity.state} (Origin Hub)`
+        );
+        setLocationNotice(
+          `GPS notice (${err.message}). Defaulted live navigation to ${originCity.name} corridor.`
+        );
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleStopNavigation = () => {
+    setIsNavigating(false);
+    setIsStartingNav(false);
+    setIsSimulatingDrive(false);
+    if (navWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(navWatchRef.current);
+      navWatchRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  // Smooth vehicle movement animation when navigating
+  useEffect(() => {
+    if (!isNavigating || !isSimulatingDrive) return;
+
+    const interval = setInterval(() => {
+      setNavProgressPct((prev) => {
+        if (prev >= 100) {
+          speakGuidance(`You have arrived at ${CITY_MAP[destination]?.name || "your destination"}.`);
+          setIsSimulatingDrive(false);
+          return 100;
+        }
+        return Math.min(100, prev + 0.65);
+      });
+    }, 600);
+
+    return () => clearInterval(interval);
+  }, [isNavigating, isSimulatingDrive, destination]);
+
+  // Voice announcements for upcoming waypoints
+  useEffect(() => {
+    if (
+      !isNavigating ||
+      navTelemetry.activeLegIndex === lastSpokenLeg ||
+      !navTelemetry.activeLeg
+    )
+      return;
+
+    setLastSpokenLeg(navTelemetry.activeLegIndex);
+    const leg = navTelemetry.activeLeg;
+    const msg = leg.note
+      ? `Caution ahead near ${leg.fromCity.name}. ${leg.note}. Heading to ${leg.toCity.name}.`
+      : `In ${leg.dist} kilometers, arrive at ${leg.toCity.name}.`;
+    speakGuidance(msg);
+  }, [isNavigating, navTelemetry.activeLegIndex, lastSpokenLeg, navTelemetry.activeLeg]);
 
   // Origin / Destination Quick-Swap
   const handleSwap = () => {
@@ -937,6 +1239,37 @@ export function App() {
                         {locationNotice}
                       </div>
                     )}
+
+                    {/* Google Maps Style Primary Start Navigation Button */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleStartNavigation}
+                        disabled={!safe || safe.length < 2 || isStartingNav}
+                        className={`w-full inline-flex items-center justify-center gap-2.5 rounded-xl font-bold py-3.5 px-4 text-sm transition-all shadow-lg cursor-pointer ${
+                          isNavigating
+                            ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 active:scale-95"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30 hover:scale-[1.01] active:scale-[0.99]"
+                        }`}
+                      >
+                        {isStartingNav ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            <span>Acquiring Live GPS & Calibrating Route...</span>
+                          </>
+                        ) : isNavigating ? (
+                          <>
+                            <X className="size-4" />
+                            <span>Exit Live Navigation Mode</span>
+                          </>
+                        ) : (
+                          <>
+                            <Navigation className="size-4 fill-slate-950" />
+                            <span>Start Navigation (Live GPS & OSM)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1228,7 +1561,35 @@ export function App() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleStartNavigation}
+                    disabled={!safe || safe.length < 2 || isStartingNav}
+                    className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs font-bold transition-all shadow-lg cursor-pointer ${
+                      isNavigating
+                        ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/25"
+                        : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/25"
+                    }`}
+                  >
+                    {isStartingNav ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Acquiring GPS...</span>
+                      </>
+                    ) : isNavigating ? (
+                      <>
+                        <X className="size-4" />
+                        <span>Exit Navigation</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="size-4 fill-slate-950" />
+                        <span>Start Navigation</span>
+                      </>
+                    )}
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleExportManifest}
@@ -1261,7 +1622,7 @@ export function App() {
               {/* Right Column: Interactive Map & Turn-by-Turn Leg Itinerary */}
               <div className="flex flex-col gap-5">
                 {/* The Map Card */}
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-4 shadow-2xl shadow-black/50 backdrop-blur-md">
+                <div id="route-map-viewport" ref={mapCardRef} className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-4 shadow-2xl shadow-black/50 backdrop-blur-md">
                   {/* Map Header & Controls */}
                   <div className="relative flex items-center justify-between px-2 pb-3 border-b border-border/60">
                     <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
@@ -1303,6 +1664,165 @@ export function App() {
 
                   {/* SVG Canvas */}
                   <div className="relative w-full aspect-[1000/560] max-h-[560px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40">
+                    {/* Google Maps Style Top Navigation HUD Overlay */}
+                    {isNavigating && (
+                      <div className="absolute top-3 left-3 right-3 z-30 flex flex-col gap-2 pointer-events-auto transition-all animate-in fade-in slide-in-from-top-3 duration-300">
+                        {/* Top Green Maneuver Banner */}
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-emerald-950/95 via-slate-900/95 to-emerald-950/95 border-2 border-emerald-500/50 p-2.5 sm:p-3.5 shadow-2xl shadow-emerald-950/80 backdrop-blur-md text-white">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex size-10 sm:size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30">
+                              <CornerUpRight className="size-5 sm:size-6 stroke-[2.5]" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-lg sm:text-2xl font-black tracking-tight text-white font-mono">
+                                  {navTelemetry.distToNextCheckpoint} km
+                                </span>
+                                <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
+                                  Next Hub
+                                </span>
+                              </div>
+                              <p className="truncate text-xs sm:text-sm font-semibold text-emerald-200">
+                                {navTelemetry.nextInstruction}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 pt-0.5 truncate">
+                                <MapPin className="size-3 text-emerald-400 shrink-0" />
+                                <span className="truncate">Approaching: <strong className="text-foreground">{navTelemetry.nextCheckpointName}</strong> (via NH corridor)</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Speed & Controls */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="hidden sm:flex flex-col items-center bg-black/50 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-mono">
+                              <span className="text-lg font-black text-emerald-400">{navGpsCoords?.speedKmh || 52}</span>
+                              <span className="text-[8px] uppercase tracking-widest text-muted-foreground">km/h</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setIsVoiceMuted(!isVoiceMuted)}
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                isVoiceMuted ? "bg-secondary text-muted-foreground border-border" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                              }`}
+                              title={isVoiceMuted ? "Unmute Voice Guidance" : "Mute Voice Guidance"}
+                            >
+                              {isVoiceMuted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleStopNavigation}
+                              className="p-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white shadow-lg transition-colors cursor-pointer"
+                              title="Exit Live Navigation"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Live Road Advisory Ticker if note exists */}
+                        {navTelemetry.activeLeg?.note && (
+                          <div className="flex items-center gap-2 rounded-lg bg-hazard/15 border border-hazard/40 px-2.5 py-1.5 text-xs text-hazard font-mono backdrop-blur-md shadow-lg">
+                            <TriangleAlert className="size-3.5 shrink-0 text-hazard animate-bounce" />
+                            <span className="truncate font-semibold">Live Sector Advisory: {navTelemetry.activeLeg.note}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom Floating Journey Bar */}
+                    {isNavigating && (
+                      <div className="absolute bottom-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-950/95 border border-emerald-500/40 p-2.5 sm:p-3 shadow-2xl backdrop-blur-md">
+                        {/* Left: ETA, Remaining Dist, Remaining Time */}
+                        <div className="flex items-center gap-3 sm:gap-5">
+                          <div>
+                            <div className="text-base sm:text-xl font-black text-emerald-400 font-mono">
+                              {formatHours(navTelemetry.remainingHours)}
+                            </div>
+                            <div className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono">
+                              Remaining Time
+                            </div>
+                          </div>
+
+                          <div className="h-6 w-px bg-border/80" />
+
+                          <div>
+                            <div className="text-sm sm:text-base font-bold text-foreground font-mono">
+                              {navTelemetry.remainingDistKm} km
+                            </div>
+                            <div className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono">
+                              Remaining Dist
+                            </div>
+                          </div>
+
+                          <div className="h-6 w-px bg-border/80" />
+
+                          <div>
+                            <div className="text-sm sm:text-base font-bold text-foreground font-mono">
+                              {navTelemetry.etaTime}
+                            </div>
+                            <div className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono">
+                              Estimated ETA
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: GPS Origin, Simulation Controls & Exit */}
+                        <div className="flex items-center gap-2">
+                          {navGpsCoords?.placeName && (
+                            <div className="hidden md:flex items-center gap-1.5 text-[10px] font-mono text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 rounded-md px-2 py-1 max-w-[200px] truncate" title={navGpsCoords.placeName}>
+                              <LocateFixed className="size-3 text-emerald-400 shrink-0" />
+                              <span className="truncate">{navGpsCoords.placeName}</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setIsSimulatingDrive(!isSimulatingDrive)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80 border border-border cursor-pointer transition-colors"
+                          >
+                            {isSimulatingDrive ? (
+                              <>
+                                <Pause className="size-3 text-signal" />
+                                <span>Pause</span>
+                              </>
+                            ) : (
+                              <>
+                                <Play className="size-3 text-signal" />
+                                <span>Drive</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setNavProgressPct(0)}
+                            className="p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border cursor-pointer"
+                            title="Restart Route"
+                          >
+                            <RotateCcw className="size-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleStopNavigation}
+                            className="inline-flex items-center gap-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1.5 text-xs font-bold shadow-lg shadow-rose-600/30 cursor-pointer transition-colors"
+                          >
+                            <span>Exit</span>
+                          </button>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-1 bg-secondary/80 rounded-full overflow-hidden mt-0.5">
+                          <div
+                            className="h-full bg-gradient-to-r from-signal to-emerald-400 transition-all duration-300"
+                            style={{ width: `${navProgressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <svg viewBox={svgViewBox} className="relative w-full h-full select-none cursor-crosshair">
                       <defs>
                         <filter id="glow-safe" x="-30%" y="-30%" width="160%" height="160%">
@@ -1469,6 +1989,55 @@ export function App() {
                           </g>
                         );
                       })()}
+
+                      {/* Live Navigating Driver Vehicle Beacon (Google Maps Style) */}
+                      {isNavigating && (
+                        <g transform={`translate(${navTelemetry.currentSvg.x}, ${navTelemetry.currentSvg.y})`} className="cursor-pointer">
+                          {/* Animated radar rings */}
+                          <circle r="26" fill="none" stroke="#10b981" strokeWidth="2" className="radar-ping" />
+                          <circle r="14" fill="rgba(16, 185, 129, 0.2)" stroke="#38bdf8" strokeWidth="1.5" />
+                          
+                          {/* Directional Heading indicator arrow */}
+                          <g transform={`rotate(${navTelemetry.headingAngle})`}>
+                            <polygon
+                              points="0,-16 10,10 0,5 -10,10"
+                              fill="#10b981"
+                              stroke="#022c22"
+                              strokeWidth="2"
+                              filter="drop-shadow(0 0 8px #10b981)"
+                            />
+                          </g>
+
+                          {/* Center core dot */}
+                          <circle r="3.5" fill="#ffffff" />
+
+                          {/* Floating Driver Badge */}
+                          <g transform="translate(0, -28)">
+                            <rect
+                              x="-65"
+                              y="-12"
+                              width="130"
+                              height="20"
+                              rx="5"
+                              fill="#022c22"
+                              stroke="#10b981"
+                              strokeWidth="1.2"
+                              filter="drop-shadow(0 2px 5px rgba(0,0,0,0.8))"
+                            />
+                            <text
+                              x="0"
+                              y="2"
+                              textAnchor="middle"
+                              fill="#6ee7b7"
+                              fontSize="10"
+                              fontFamily="monospace"
+                              fontWeight="bold"
+                            >
+                              🚗 ${navGpsCoords?.speedKmh || 52} km/h • DRIVER
+                            </text>
+                          </g>
+                        </g>
+                      )}
 
                       {/* City Nodes */}
                       {CITIES.map((city) => {
