@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
@@ -64,6 +65,7 @@ import {
   City,
   COMMODITY_PROFILES,
   CommodityType,
+  DISTRICT_CONNECTIVITY,
   STRATEGIC_CORRIDORS,
   SupportedLanguage,
   TranslationSchema,
@@ -622,6 +624,7 @@ export function App() {
   const [activeBlockageIdx, setActiveBlockageIdx] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
+  const [activeConsoleTab, setActiveConsoleTab] = useState<"planner" | "districts">("planner");
 
   // Auto-cycle Emergency Road Blockage Banner every 4.5 seconds
   useEffect(() => {
@@ -1533,6 +1536,19 @@ export function App() {
             </a>
             <button
               type="button"
+              onClick={() => {
+                setActiveConsoleTab("districts");
+                const el = document.getElementById("console");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="hover:text-signal transition-colors font-semibold flex items-center gap-1.5 cursor-pointer"
+            >
+              <Activity className="size-3.5 text-signal" />
+              <span>District Status</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-signal/20 text-signal text-[9px] font-mono font-bold">8</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setIsReportModalOpen(true)}
               className="hover:text-hazard transition-colors font-semibold flex items-center gap-1.5 cursor-pointer"
             >
@@ -2032,7 +2048,132 @@ export function App() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
           <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
 
-            
+            {/* CONSOLE VIEW TABS: OPTION 1 (SIH REQUIREMENT 'g' COMPLIANCE) */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-4">
+              <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setActiveConsoleTab("planner")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                    activeConsoleTab === "planner"
+                      ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Navigation className="size-3.5" />
+                  <span>Route Planner & Dispatch</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveConsoleTab("districts")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                    activeConsoleTab === "districts"
+                      ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Activity className="size-3.5 text-current" />
+                  <span>District Accessibility Matrix</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-bold">
+                    SIH-Req (g)
+                  </span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                <span className="size-2 rounded-full bg-signal animate-pulse" />
+                <span>8 NER State Networks Monitored Live</span>
+              </div>
+            </div>
+
+            {activeConsoleTab === "districts" ? (
+              /* DISTRICT-WISE CONNECTIVITY HEALTH DASHBOARD (SIH-26002 Requirement 'g') */
+              <div className="rounded-3xl border border-border bg-card/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70 pb-4 mb-6">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
+                        Accessibility Monitoring Dashboard · SIH-26002 Req (g)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-signal/15 text-signal text-[10px] font-mono font-bold">
+                        Live Network
+                      </span>
+                    </div>
+                    <h3 className="font-display text-2xl font-bold text-foreground mt-1">
+                      District-Wise Connectivity Status (8 NER States)
+                    </h3>
+                    <p className="text-xs text-muted-foreground font-mono mt-1">
+                      Real-time road access, transit delays, and incident risk across all eight North Eastern states.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-mono shrink-0">
+                    <span className="inline-flex items-center gap-1.5 text-signal bg-signal/10 px-2.5 py-1 rounded-full border border-signal/30">
+                      <span className="size-2 rounded-full bg-signal" /> Normal
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-hazard bg-hazard/10 px-2.5 py-1 rounded-full border border-hazard/30">
+                      <span className="size-2 rounded-full bg-hazard" /> Watch
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-destructive bg-destructive/10 px-2.5 py-1 rounded-full border border-destructive/30">
+                      <span className="size-2 rounded-full bg-destructive" /> Restricted
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {DISTRICT_CONNECTIVITY.map((dist) => (
+                    <div
+                      key={dist.district}
+                      className={`p-4 rounded-2xl border transition-all hover:scale-[1.01] ${
+                        dist.status === "RESTRICTED"
+                          ? "border-destructive/50 bg-destructive/10 shadow-lg shadow-destructive/5"
+                          : dist.status === "WATCH"
+                          ? "border-hazard/50 bg-hazard/10 shadow-lg shadow-hazard/5"
+                          : "border-border bg-secondary/30 shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted-foreground font-mono uppercase">{dist.state}</span>
+                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                          dist.status === "RESTRICTED"
+                            ? "bg-destructive text-destructive-foreground shadow-sm"
+                            : dist.status === "WATCH"
+                            ? "bg-hazard text-hazard-foreground shadow-sm"
+                            : "bg-signal text-signal-foreground shadow-sm"
+                        }`}>
+                          {dist.status}
+                        </span>
+                      </div>
+                      <div className="font-bold text-base text-foreground mt-2">{dist.district}</div>
+                      <div className="text-xs text-signal font-mono font-semibold mt-1">{dist.primaryHighway}</div>
+                      <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-xs font-mono">
+                        <span>Incidents: <strong className="text-foreground">{dist.incidentCount}</strong></span>
+                        <span className={dist.delayAvgMinutes > 60 ? "text-destructive font-bold" : "text-muted-foreground"}>
+                          Delay: +{dist.delayAvgMinutes}m
+                        </span>
+                      </div>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDestination(dist.hubId);
+                            setActiveConsoleTab("planner");
+                            setTimeout(() => {
+                              const mapEl = document.getElementById("route-map-viewport");
+                              if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                            }, 60);
+                          }}
+                          className="w-full py-1.5 px-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-signal text-xs font-mono font-bold text-signal hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                          <span>Route to District Hub</span>
+                          <ArrowRight className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
             <div className="max-w-2xl">
               <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
                 Try it — route planner
@@ -2998,6 +3139,8 @@ export function App() {
                 </div>
               </div>
             </div>
+              </>
+            )}
 
             <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <Milestone className="size-3.5" />
