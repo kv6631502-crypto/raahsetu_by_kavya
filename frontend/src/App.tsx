@@ -22,10 +22,7 @@ import {
   Minimize2,
   Mountain,
   Navigation,
-  Pause,
-  Play,
   Radio,
-  RotateCcw,
   Route as RouteIcon,
   Search,
   Share2,
@@ -42,6 +39,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { RealMapLeaflet } from "./RealMapLeaflet";
 import {
   CITIES,
   CITY_MAP,
@@ -342,6 +340,7 @@ export function App() {
   // Google Maps Style Live Navigation & Driver Tracking State
   const [isNavigating, setIsNavigating] = useState(false);
   const [isBigScreenNav, setIsBigScreenNav] = useState(false);
+  const [mapEngine, setMapEngine] = useState<"leaflet" | "svg">("leaflet");
   const [isStartingNav, setIsStartingNav] = useState(false);
   const [navGpsCoords, setNavGpsCoords] = useState<{
     lat: number;
@@ -357,7 +356,7 @@ export function App() {
     source: "live_gps" | "simulated";
   } | null>(null);
   const [navProgressPct, setNavProgressPct] = useState(0);
-  const [isSimulatingDrive, setIsSimulatingDrive] = useState(true);
+  
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
   const [lastSpokenLeg, setLastSpokenLeg] = useState<number>(-1);
   const navWatchRef = useRef<number | null>(null);
@@ -517,7 +516,7 @@ export function App() {
       setIsBigScreenNav(true);
       setIsStartingNav(false);
       setNavProgressPct(0);
-      setIsSimulatingDrive(true);
+      
 
       const destCityName = CITY_MAP[destination]?.name || "Destination";
       const originCityName = CITY_MAP[origin]?.name || "Origin";
@@ -626,7 +625,7 @@ export function App() {
     setIsNavigating(false);
     setIsBigScreenNav(false);
     setIsStartingNav(false);
-    setIsSimulatingDrive(false);
+    
     if (navWatchRef.current !== null) {
       navigator.geolocation.clearWatch(navWatchRef.current);
       navWatchRef.current = null;
@@ -647,23 +646,7 @@ export function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isBigScreenNav]);
 
-  // Smooth vehicle movement animation when navigating
-  useEffect(() => {
-    if (!isNavigating || !isSimulatingDrive) return;
-
-    const interval = setInterval(() => {
-      setNavProgressPct((prev) => {
-        if (prev >= 100) {
-          speakGuidance(`You have arrived at ${CITY_MAP[destination]?.name || "your destination"}.`);
-          setIsSimulatingDrive(false);
-          return 100;
-        }
-        return Math.min(100, prev + 0.65);
-      });
-    }, 600);
-
-    return () => clearInterval(interval);
-  }, [isNavigating, isSimulatingDrive, destination]);
+  // Live GPS tracking is purely real-time hardware driven (simulation removed)
 
   // Voice announcements for upcoming waypoints
   useEffect(() => {
@@ -1710,9 +1693,36 @@ export function App() {
                   {/* Map Header & Controls */}
                   <div className="relative flex items-center justify-between px-2 pb-3 border-b border-border/60">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
-                        {isBigScreenNav ? "raahsetu.live_navigation_cockpit" : "northeast_india.map"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-bold">
+                          {isBigScreenNav ? "raahsetu.live_navigation_cockpit" : "regional_map"}
+                        </span>
+                        {/* Map Mode Toggle: Real OpenStreetMap vs Schematic SVG */}
+                        <div className="flex items-center p-0.5 bg-secondary/80 rounded-lg border border-border text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setMapEngine("leaflet")}
+                            className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                              mapEngine === "leaflet"
+                                ? "bg-signal text-signal-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            🗺️ Real OpenStreetMap
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMapEngine("svg")}
+                            className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                              mapEngine === "svg"
+                                ? "bg-signal text-signal-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            ⚡ Schematic Grid
+                          </button>
+                        </div>
+                      </div>
                       {isBigScreenNav && (
                         <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[11px] text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
                           <span className="size-1.5 rounded-full bg-emerald-400 node-pulse" />
@@ -1781,14 +1791,26 @@ export function App() {
                     </div>
                   </div>
 
-                  {/* SVG Canvas */}
+                  {/* Map Canvas: Real Leaflet OSM or Calibrated SVG */}
                   <div
                     className={
                       isBigScreenNav
-                        ? "relative w-full flex-1 min-h-0 bg-background/80 rounded-2xl overflow-hidden my-2 border border-emerald-500/30 flex items-center justify-center shadow-2xl"
-                        : "relative w-full aspect-[1000/560] max-h-[560px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40"
+                        ? "relative w-full flex-1 min-h-0 bg-background/90 rounded-2xl overflow-hidden my-2 border border-emerald-500/30 flex items-center justify-center shadow-2xl"
+                        : "relative w-full aspect-[1000/560] min-h-[480px] max-h-[580px] bg-background/60 rounded-xl overflow-hidden my-3 border border-border/40"
                     }
                   >
+                    {/* Render Real OpenStreetMap when in Leaflet mode */}
+                    {mapEngine === "leaflet" && (
+                      <RealMapLeaflet
+                        originCity={CITY_MAP[origin]}
+                        destCity={CITY_MAP[destination]}
+                        routePath={safe}
+                        safeLegs={safeLegs}
+                        userGps={navGpsCoords}
+                        isNavigating={isNavigating}
+                        isBigScreen={isBigScreenNav}
+                      />
+                    )}
                     {/* Google Maps Style Top Navigation HUD Overlay */}
                     {isNavigating && (
                       <div className="absolute top-3 left-3 right-3 z-30 flex flex-col gap-2 pointer-events-auto transition-all animate-in fade-in slide-in-from-top-3 duration-300">
@@ -1821,10 +1843,10 @@ export function App() {
                           <div className="flex items-center gap-2 shrink-0">
                             <div className="hidden sm:flex flex-col items-center bg-black/50 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-mono">
                               <span className="text-lg font-black text-emerald-400">
-                                {isSimulatingDrive ? "48" : (navGpsCoords?.speedKmh || 0)}
+                                {navGpsCoords?.speedKmh || 0}
                               </span>
                               <span className="text-[8px] uppercase tracking-widest text-muted-foreground">
-                                {isSimulatingDrive ? "km/h (sim)" : "km/h (gps)"}
+                                km/h
                               </span>
                             </div>
 
@@ -1909,32 +1931,10 @@ export function App() {
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => setIsSimulatingDrive(!isSimulatingDrive)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-1.5 text-xs font-bold text-foreground hover:bg-secondary/80 border border-border cursor-pointer transition-colors"
-                          >
-                            {isSimulatingDrive ? (
-                              <>
-                                <Pause className="size-3 text-signal" />
-                                <span>Pause</span>
-                              </>
-                            ) : (
-                              <>
-                                <Play className="size-3 text-signal" />
-                                <span>Drive</span>
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setNavProgressPct(0)}
-                            className="p-1.5 rounded-lg bg-secondary text-muted-foreground hover:text-foreground border border-border cursor-pointer"
-                            title="Restart Route"
-                          >
-                            <RotateCcw className="size-3" />
-                          </button>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-xs font-mono text-emerald-300">
+                          <span className="size-2 rounded-full bg-emerald-400 node-pulse" />
+                          <span>{navGpsCoords && navGpsCoords.speedKmh > 0 ? `${navGpsCoords.speedKmh} km/h • IN MOTION` : "0 km/h • STATIONARY"}</span>
+                        </div>
 
                           <button
                             type="button"
@@ -1955,6 +1955,7 @@ export function App() {
                       </div>
                     )}
 
+                    {mapEngine === "svg" && (
                     <svg
                       viewBox={svgViewBox}
                       className={
@@ -2172,7 +2173,7 @@ export function App() {
                               fontFamily="monospace"
                               fontWeight="bold"
                             >
-                              ${isSimulatingDrive ? "🚗 48 km/h • CORRIDOR TRANSIT" : `📍 ${navGpsCoords?.speedKmh || 0} km/h • LIVE GPS`}
+                              📍 ${navGpsCoords?.speedKmh || 0} km/h • LIVE GPS
                             </text>
                           </g>
                         </g>
@@ -2271,6 +2272,7 @@ export function App() {
                         );
                       })}
                     </svg>
+                    )}
 
                     {hoveredCity && (
                       <div className="absolute bottom-3 left-3 rounded-xl border border-border bg-card/95 px-3 py-2 text-xs shadow-2xl backdrop-blur-md pointer-events-none">
