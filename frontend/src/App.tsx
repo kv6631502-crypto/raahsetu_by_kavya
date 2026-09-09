@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   Image as ImageIcon,
   Trash2,
   Upload,
@@ -45,7 +47,6 @@ import {
   Volume2,
   VolumeX,
   Waypoints,
-  Wifi,
   X,
   Zap,
 } from "lucide-react";
@@ -55,7 +56,6 @@ import {
   getLocalizedNavInstruction,
   getSpeechRecognitionLocale,
   matchCityFromVoice,
-  parseRouteVoiceCommand,
   speakMultilingual,
 } from "./voiceRecognition";
 import {
@@ -65,7 +65,6 @@ import {
   COMMODITY_PROFILES,
   CommodityType,
   DISTRICT_CONNECTIVITY,
-  REGIONAL_ALERTS,
   STRATEGIC_CORRIDORS,
   SupportedLanguage,
   TranslationSchema,
@@ -387,6 +386,81 @@ const DEFAULT_DRIVER_PROFILE: DriverProfile = {
   isRegistered: true,
 };
 
+
+export interface RoadBlockageAlert {
+  id: string;
+  road: string;
+  cities: string;
+  originId: string;
+  destinationId: string;
+  state: string;
+  exactSpot: string;
+  cause: string;
+  avoidInfo: string;
+  detourRoute: string;
+  severity: "CRITICAL" | "HIGH";
+  updatedTime: string;
+}
+
+export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
+  {
+    id: "BLK-NH10-SIKKIM",
+    road: "NH-10 National Highway",
+    cities: "Gangtok ⟷ Siliguri",
+    originId: "gangtok",
+    destinationId: "siliguri",
+    state: "Sikkim & West Bengal",
+    exactSpot: "29th Mile & Teesta Bazaar (km 42)",
+    cause: "Severe Monsoon Hill Landslide & Road Bed Sinking into Teesta River",
+    avoidInfo: "Strictly Avoid NH-10 Teesta River Corridor (Closed to all heavy freight)",
+    detourRoute: "Divert via Lava – Algarah – Kalimpong Bypass Corridor (Open & Motorable)",
+    severity: "CRITICAL",
+    updatedTime: "Live Telemetry · Verified by BRO & PWD",
+  },
+  {
+    id: "BLK-NH29-NAGALAND",
+    road: "NH-29 Lifeline Corridor",
+    cities: "Dimapur ⟷ Kohima",
+    originId: "dimapur",
+    destinationId: "kohima",
+    state: "Nagaland",
+    exactSpot: "Pagla Pahar Gorge (km 124)",
+    cause: "Active Mudslide, Heavy Hill Seepage & Boulder Collapse",
+    avoidInfo: "Avoid NH-29 Main Gorge section (Heavy multi-axle freight queued)",
+    detourRoute: "Divert via Niuland – Kohima Alternate Bypass Highway",
+    severity: "CRITICAL",
+    updatedTime: "GSI Real-Time Slope Sensor Active",
+  },
+  {
+    id: "BLK-NH13-ARUNACHAL",
+    road: "NH-13 Trans-Arunachal Highway",
+    cities: "Bomdila ⟷ Tawang",
+    originId: "bomdila",
+    destinationId: "tawang",
+    state: "Arunachal Pradesh",
+    exactSpot: "Sela Pass Summit (13,700 ft)",
+    cause: "Rockfall, Snow Avalanche & Freezing Black Ice",
+    avoidInfo: "Avoid High Sela Ridge Top without anti-skid tire chains",
+    detourRoute: "Use Sela Tunnel Lower Bypass with BRO Priority Convoy",
+    severity: "HIGH",
+    updatedTime: "High-Altitude Weather Station Alert",
+  },
+  {
+    id: "BLK-NH306-MIZORAM",
+    road: "NH-306 Lifeline",
+    cities: "Silchar ⟷ Aizawl",
+    originId: "silchar",
+    destinationId: "aizawl",
+    state: "Assam & Mizoram",
+    exactSpot: "Cachar-Kolasib Hairpin Border",
+    cause: "Ghat Road Subsidence & 18-Tonne Bailey Bridge Load Cap",
+    avoidInfo: "Avoid Direct Cachar Hairpin for trucks exceeding 18 tonnes",
+    detourRoute: "Stage at Dholai Depot & Route via Bhairabi Railhead Bypass",
+    severity: "HIGH",
+    updatedTime: "Weight Enforcement Telemetry",
+  },
+];
+
 export function App() {
   const [origin, setOrigin] = useState("guwahati");
   const [destination, setDestination] = useState("tawang");
@@ -421,17 +495,76 @@ export function App() {
       localStorage.setItem("raahsetu_lang_mode", mode);
     } catch {}
   };
-  const [isSmartVoiceListening, setIsSmartVoiceListening] = useState(false);
-  const [smartVoiceNotice, setSmartVoiceNotice] = useState<string | null>(null);
+
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportSuccessNotice, setReportSuccessNotice] = useState<string | null>(null);
+  const [activeBlockageIdx, setActiveBlockageIdx] = useState(0);
   const [reportPhoto, setReportPhoto] = useState<{
     dataUrl: string;
     name: string;
     sizeKb: number;
   } | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const startCamera = async () => {
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        setCameraStream(stream);
+        setIsCameraActive(true);
+      } else {
+        cameraInputRef.current?.click();
+      }
+    } catch (err) {
+      console.warn("Camera mediaDevices access failed, triggering file picker fallback:", err);
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      setReportPhoto({
+        dataUrl,
+        name: `incident_camera_${Date.now()}.jpg`,
+        sizeKb: Math.round((dataUrl.length * 3) / 4 / 1024),
+      });
+    }
+    stopCamera();
+  };
+
+  useEffect(() => {
+    if (isCameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch((err) => console.warn("Video play error:", err));
+    }
+  }, [isCameraActive, cameraStream]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -760,70 +893,7 @@ export function App() {
   }, [safeLegs, safeStats, navProgressPct]);
 
 
-  // Smart Multilingual Voice Route Assistant
-  const handleSmartVoiceRoute = () => {
-    if (typeof window === "undefined") return;
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
-      return;
-    }
-    if (isSmartVoiceListening) return;
 
-    try {
-      const recognition = new SpeechRec();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = getSpeechRecognitionLocale(lang);
-
-      recognition.onstart = () => {
-        setIsSmartVoiceListening(true);
-        setSmartVoiceNotice(t.listening);
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setSmartVoiceNotice(`"${transcript}"`);
-        const parsed = parseRouteVoiceCommand(transcript, CITIES);
-
-        if (parsed.isRoute && parsed.origin && parsed.destination) {
-          setCustomOrigin(null);
-          setOrigin(parsed.origin.id);
-          setDestination(parsed.destination.id);
-          speakMultilingual(`${parsed.origin.name} ${parsed.destination.name} ${t.voiceMatchedSuccess}`, lang);
-          setSmartVoiceNotice(`${parsed.origin.name} ➔ ${parsed.destination.name} ✓`);
-          setTimeout(() => {
-            setIsSmartVoiceListening(false);
-            setSmartVoiceNotice(null);
-          }, 1500);
-        } else if (parsed.origin) {
-          setCustomOrigin(null);
-          setOrigin(parsed.origin.id);
-          speakMultilingual(`${parsed.origin.name} ${t.voiceMatchedSuccess}`, lang);
-          setSmartVoiceNotice(`Origin: ${parsed.origin.name} ✓`);
-          setTimeout(() => {
-            setIsSmartVoiceListening(false);
-            setSmartVoiceNotice(null);
-          }, 1500);
-        }
-      };
-
-      recognition.onerror = () => {
-        setIsSmartVoiceListening(false);
-        setSmartVoiceNotice(null);
-      };
-
-      recognition.onend = () => {
-        setIsSmartVoiceListening(false);
-        setTimeout(() => setSmartVoiceNotice(null), 2000);
-      };
-
-      recognition.start();
-    } catch {
-      setIsSmartVoiceListening(false);
-      setSmartVoiceNotice(null);
-    }
-  };
 
   const speakGuidance = (text: string) => {
     if (isVoiceMuted) return;
@@ -1310,6 +1380,116 @@ export function App() {
               <div className="absolute inset-0 bg-gradient-to-r from-[#060c14] via-transparent to-[#060c14]/85" />
             </div>
 
+            {/* CRITICAL ROAD BLOCKAGE & DETOUR ADVISORY BANNER (First Page Hero Top) */}
+            <div className="relative z-20 mb-8 rounded-2xl border border-destructive/60 bg-gradient-to-r from-red-950/90 via-slate-950/90 to-amber-950/90 p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-900/50 pb-3 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex size-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-80"></span>
+                    <span className="relative inline-flex size-3 rounded-full bg-destructive"></span>
+                  </span>
+                  <span className="font-mono text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                    <Radio className="size-4 text-rose-400 animate-pulse" />
+                    CRITICAL ROAD BLOCKAGE ALERT · GSI & PWD TELEMETRY
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+                    {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].updatedTime}
+                  </span>
+                  {/* Prev / Next controls */}
+                  <div className="flex items-center gap-1 bg-black/60 rounded-lg p-1 border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveBlockageIdx((prev) =>
+                          prev === 0 ? ACTIVE_ROAD_BLOCKAGES.length - 1 : prev - 1
+                        )
+                      }
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                      title="Previous Blockage Alert"
+                    >
+                      <ChevronLeft className="size-3.5" />
+                    </button>
+                    <span className="text-[10px] font-mono px-1.5 text-slate-300 font-bold">
+                      {activeBlockageIdx + 1}/{ACTIVE_ROAD_BLOCKAGES.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveBlockageIdx((prev) =>
+                          (prev + 1) % ACTIVE_ROAD_BLOCKAGES.length
+                        )
+                      }
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                      title="Next Blockage Alert"
+                    >
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Blockage Details & Detour Route */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md bg-destructive text-white font-mono font-black text-[11px] tracking-wide uppercase">
+                      ROAD BLOCKED
+                    </span>
+                    <span className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
+                      <AlertTriangle className="size-4 text-amber-400 inline shrink-0" />
+                      <span>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cities}</span>
+                      <span className="text-slate-400 text-xs font-normal">({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state})</span>
+                    </span>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-500/30">
+                      📍 {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-rose-300 font-medium">
+                    <strong className="text-white">Cause:</strong> {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause}
+                  </div>
+
+                  {/* Which Way to Avoid & Safe Detour */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono text-xs">
+                    <div className="flex items-start gap-1.5 p-2 rounded-xl bg-red-950/60 border border-red-800/40 text-red-200">
+                      <span className="text-rose-400 font-bold shrink-0">⛔ AVOID:</span>
+                      <span className="text-[11px] leading-relaxed">{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].avoidInfo}</span>
+                    </div>
+                    <div className="flex items-start gap-1.5 p-2 rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-200">
+                      <span className="text-emerald-400 font-bold shrink-0">✅ DETOUR:</span>
+                      <span className="text-[11px] leading-relaxed">{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].detourRoute}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Action Button: Plan Safe Detour on Map */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
+                    setOrigin(blk.originId);
+                    setDestination(blk.destinationId);
+                    setHasViewedNavigation(true);
+                    handleStartNavigation();
+                    setTimeout(() => {
+                      const mapEl = document.getElementById("route-map-viewport");
+                      if (mapEl) {
+                        mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      }
+                    }, 100);
+                  }}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-400 to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                >
+                  <Navigation className="size-4 fill-slate-950" />
+                  <span>Plot Safe Detour</span>
+                  <ArrowRight className="size-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="max-w-3xl">
                 {/* Small Artifact Chips: Regional Telemetry & Landslide Defense */}
@@ -1607,62 +1787,7 @@ export function App() {
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
           <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
 
-            {/* LIVE REGIONAL EARLY-WARNING DISRUPTION TICKER (Requirements b & e) */}
-            <div className="rounded-2xl border border-border bg-card/95 p-4 shadow-2xl backdrop-blur-xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-2.5 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex size-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex size-2.5 rounded-full bg-destructive"></span>
-                  </span>
-                  <span className="font-mono text-xs font-bold uppercase tracking-wider text-destructive flex items-center gap-1.5">
-                    <Radio className="size-3.5 text-destructive animate-pulse" />
-                    NER Real-Time Road & Corridor Disruption Intelligence
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1 text-signal">
-                    <Wifi className="size-3" /> Live Feed Active
-                  </span>
-                  <span>·</span>
-                  <span>Auto-updated via GSI & Field Sync</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {REGIONAL_ALERTS.slice(0, 3).map((alt) => (
-                  <div
-                    key={alt.id}
-                    className={`p-3 rounded-xl border transition-all ${
-                      alt.severity === "CRITICAL"
-                        ? "border-destructive/40 bg-destructive/10"
-                        : alt.severity === "HIGH"
-                        ? "border-hazard/40 bg-hazard/10"
-                        : "border-signal/40 bg-signal/10"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-mono mb-1">
-                      <span className={`font-bold px-1.5 py-0.5 rounded ${
-                        alt.severity === "CRITICAL"
-                          ? "bg-destructive text-destructive-foreground"
-                          : alt.severity === "HIGH"
-                          ? "bg-hazard text-hazard-foreground"
-                          : "bg-signal text-signal-foreground"
-                      }`}>
-                        {alt.category}
-                      </span>
-                      <span className="text-muted-foreground">{alt.timestamp}</span>
-                    </div>
-                    <div className="font-semibold text-xs text-foreground mt-1 line-clamp-1">
-                      {alt.corridor}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                      {alt.detail}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            
             <div className="max-w-2xl">
               <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
                 Try it — route planner
@@ -1725,34 +1850,7 @@ export function App() {
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-xl">
                   <div className="grid gap-4">
                     
-                    {/* Multilingual Voice Route Assistant */}
-                    <div className="flex items-center justify-between p-2.5 rounded-xl border border-signal/30 bg-signal/5 mb-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <button
-                          type="button"
-                          onClick={handleSmartVoiceRoute}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-sm shrink-0 ${
-                            isSmartVoiceListening
-                              ? "bg-rose-500 text-white animate-pulse ring-2 ring-rose-500/40"
-                              : "bg-signal text-signal-foreground hover:bg-signal/90"
-                          }`}
-                          title={t.smartVoiceDesc}
-                        >
-                          <Mic className="size-3.5" />
-                          <span>{isSmartVoiceListening ? t.listening : t.voiceSearch}</span>
-                        </button>
-                        <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">
-                          {smartVoiceNotice ? (
-                            <strong className="text-signal font-mono">{smartVoiceNotice}</strong>
-                          ) : (
-                            t.smartVoiceDesc
-                          )}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono uppercase text-signal font-bold shrink-0 ml-2 px-1.5 py-0.5 rounded bg-signal/15 border border-signal/30">
-                        {lang.toUpperCase()}
-                      </span>
-                    </div>
+                    
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <CityCombobox
                         label="Origin"
@@ -3418,6 +3516,7 @@ export function App() {
                 } catch {}
                 setReportSuccessNotice("Incident report successfully logged to local geo-database and queued for central sync.");
                 setTimeout(() => {
+                  stopCamera();
                   setReportSuccessNotice(null);
                   setReportPhoto(null);
                   setIsReportModalOpen(false);
@@ -3489,14 +3588,16 @@ export function App() {
                   <span className="text-[10px] text-signal font-normal font-mono">Geo-Tagged Evidence</span>
                 </label>
 
-                {/* Hidden File Inputs */}
+                {/* Hidden File Inputs for native camera / gallery with reset on click */}
                 <input
                   ref={cameraInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={handlePhotoUpload}
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = "";
+                  }}
                 />
                 <input
                   ref={galleryInputRef}
@@ -3504,9 +3605,48 @@ export function App() {
                   accept="image/*"
                   className="hidden"
                   onChange={handlePhotoUpload}
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = "";
+                  }}
                 />
 
-                {reportPhoto ? (
+                {isCameraActive ? (
+                  /* Live In-Browser Camera Viewfinder */
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-signal bg-black p-2 space-y-2">
+                    <div className="relative h-56 w-full rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/80 text-signal border border-signal/40 font-mono text-[10px] font-bold">
+                        <span className="size-2 rounded-full bg-signal animate-ping" />
+                        <span>LIVE CAMERA STREAM</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <Camera className="size-4 text-slate-950" />
+                        <span>Click to Capture</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-muted-foreground font-semibold text-xs transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : reportPhoto ? (
+                  /* Attached Photo with GPS Stamping */
                   <div className="relative rounded-2xl overflow-hidden border border-border bg-slate-900 p-2 group">
                     <div className="relative h-40 sm:h-48 w-full rounded-xl overflow-hidden">
                       <img
@@ -3546,6 +3686,7 @@ export function App() {
                     </div>
                   </div>
                 ) : (
+                  /* Idle Camera / Gallery Triggers */
                   <div className="rounded-2xl border-2 border-dashed border-border/80 p-4 bg-secondary/30 text-center space-y-3">
                     <div className="flex justify-center items-center gap-3">
                       <span className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30">
@@ -3568,19 +3709,19 @@ export function App() {
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-signal text-signal-foreground font-bold text-xs hover:brightness-110 shadow-md cursor-pointer transition-all"
+                        onClick={startCamera}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-signal text-signal-foreground font-bold text-xs hover:brightness-110 shadow-md cursor-pointer transition-all"
                       >
-                        <Camera className="size-3.5" />
+                        <Camera className="size-4" />
                         <span>Take Photo (Camera)</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => galleryInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs cursor-pointer transition-all"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-xs cursor-pointer transition-all"
                       >
-                        <Upload className="size-3.5 text-muted-foreground" />
+                        <Upload className="size-4 text-muted-foreground" />
                         <span>Choose from Gallery</span>
                       </button>
                     </div>
@@ -3605,7 +3746,10 @@ export function App() {
               <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
                 <button
                   type="button"
-                  onClick={() => setIsReportModalOpen(false)}
+                  onClick={() => {
+                    stopCamera();
+                    setIsReportModalOpen(false);
+                  }}
                   className="px-4 py-2 rounded-xl border border-border text-muted-foreground hover:bg-secondary cursor-pointer"
                 >
                   Cancel
