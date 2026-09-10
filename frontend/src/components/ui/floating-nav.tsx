@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Home, Search, Bell, User, Settings, Bookmark } from "lucide-react";
+import { Home, Route, Bell, User, Settings, Bookmark } from "lucide-react";
 
 export interface FloatingNavProps {
   onSelect?: (index: number, label: string) => void;
@@ -17,7 +17,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({ onSelect, className = 
 
   const items = [
     { id: 0, icon: <Home size={22} />, label: "Home" },
-    { id: 1, icon: <Search size={22} />, label: "Search" },
+    { id: 1, icon: <Route size={22} />, label: "Routes" },
     { id: 2, icon: <Bell size={22} />, label: "Alerts" },
     { id: 3, icon: <User size={22} />, label: "Profile" },
     { id: 4, icon: <Bookmark size={22} />, label: "Saved" },

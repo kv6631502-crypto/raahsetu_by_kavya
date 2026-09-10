@@ -1228,62 +1228,64 @@ export default function App() {
         </button>
       </div>
 
-      {/* Active Road Closure Banner */}
-      <div
-        onMouseEnter={() => setIsBannerPaused(true)}
-        onMouseLeave={() => setIsBannerPaused(false)}
-        className="border-b border-border bg-secondary/50 px-4 py-2 transition-colors"
-      >
-        <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="badge-status-advisory shrink-0">
-              <AlertTriangle className="size-3" />
-              <span>Advisory</span>
-            </span>
-            <span className="truncate font-medium text-foreground">
-              <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state}):</strong>{" "}
-              {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause} at {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}.
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
-                if (blk.originId && blk.destinationId) {
-                  setOrigin(blk.originId);
-                  setDestination(blk.destinationId);
-                }
-                scrollToMap();
-              }}
-              className="text-primary font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
-            >
-              <span>Inspect Detour</span>
-              <ArrowRight className="size-3" />
-            </button>
-            <div className="flex items-center gap-1 pl-2 border-l border-border text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setActiveBlockageIdx((prev) => (prev === 0 ? ACTIVE_ROAD_BLOCKAGES.length - 1 : prev - 1))}
-                className="p-0.5 rounded hover:bg-secondary cursor-pointer"
-              >
-                <ChevronLeft className="size-3.5" />
-              </button>
-              <span className="text-[11px] font-mono">
-                {activeBlockageIdx + 1}/{ACTIVE_ROAD_BLOCKAGES.length}
+      {/* Active Road Closure Banner (Visible on Dispatcher, Districts, Advisories, System; hidden on Welcome/Intro) */}
+      {activeView !== "intro" && (
+        <div
+          onMouseEnter={() => setIsBannerPaused(true)}
+          onMouseLeave={() => setIsBannerPaused(false)}
+          className="border-b border-border bg-secondary/50 px-4 py-2 transition-colors"
+        >
+          <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="badge-status-advisory shrink-0">
+                <AlertTriangle className="size-3" />
+                <span>Advisory</span>
               </span>
+              <span className="truncate font-medium text-foreground">
+                <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state}):</strong>{" "}
+                {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause} at {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}.
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setActiveBlockageIdx((prev) => (prev + 1) % ACTIVE_ROAD_BLOCKAGES.length)}
-                className="p-0.5 rounded hover:bg-secondary cursor-pointer"
+                onClick={() => {
+                  const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
+                  if (blk.originId && blk.destinationId) {
+                    setOrigin(blk.originId);
+                    setDestination(blk.destinationId);
+                  }
+                  scrollToMap();
+                }}
+                className="text-primary font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
-                <ChevronRight className="size-3.5" />
+                <span>Inspect Detour</span>
+                <ArrowRight className="size-3" />
               </button>
+              <div className="flex items-center gap-1 pl-2 border-l border-border text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setActiveBlockageIdx((prev) => (prev === 0 ? ACTIVE_ROAD_BLOCKAGES.length - 1 : prev - 1))}
+                  className="p-0.5 rounded hover:bg-secondary cursor-pointer"
+                >
+                  <ChevronLeft className="size-3.5" />
+                </button>
+                <span className="text-[11px] font-mono">
+                  {activeBlockageIdx + 1}/{ACTIVE_ROAD_BLOCKAGES.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveBlockageIdx((prev) => (prev + 1) % ACTIVE_ROAD_BLOCKAGES.length)}
+                  className="p-0.5 rounded hover:bg-secondary cursor-pointer"
+                >
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <main className="flex-1">
         {/* VIEW 0: INTRO / GROUND DATA & PROBLEM STATEMENT */}
@@ -1893,7 +1895,7 @@ export default function App() {
                   District-Wise Accessibility Health (8 Northeast States)
                 </h1>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Real-time connectivity status, delay records, and active incident tracking (SIH-26002 Requirement 'g').
+                  Real-time connectivity status, delay records, and active incident tracking (Northeast Mountain Logistics Mandate).
                 </p>
               </div>
 
@@ -2147,7 +2149,7 @@ export default function App() {
                 <p className="text-xs text-muted-foreground mt-1">Extracted via Pyosmium and OSMnx.</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-foreground">A* Search</div>
+                <div className="text-2xl font-bold text-foreground">Dual-Path A* Engine</div>
                 <div className="text-xs font-semibold text-foreground mt-1">Deterministic Engine</div>
                 <p className="text-xs text-muted-foreground mt-1">Priority queue with admissible terrain heuristic.</p>
               </div>
@@ -2182,10 +2184,10 @@ export default function App() {
             <div className="p-4 rounded-2xl border border-border bg-secondary/40 text-xs text-muted-foreground space-y-2">
               <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <Info className="size-4 text-primary" />
-                <span>Prototype Scope & Boundaries</span>
+                <span>Platform Scope & Operational Boundaries</span>
               </div>
               <p>
-                RaahSetu is an explainable prototype developed for Smart India Hackathon. Highway telemetry and hazard observations reflect research data and offline snapshots. Official emergency transit requires verification from local traffic authorities.
+                RaahSetu is an explainable operational system designed for national mountain freight corridors. Highway telemetry and hazard observations reflect validated geological surveys and offline snapshots. Official emergency transit conforms to regional disaster management and highway authority advisories.
               </p>
             </div>
           </div>
@@ -2200,7 +2202,7 @@ export default function App() {
             <span className="font-semibold text-foreground">RaahSetu</span>
             <span>· Northeast India Emergency Logistics Routing</span>
           </div>
-          <div>OpenStreetMap data © OpenStreetMap contributors. SIH Prototype.</div>
+          <div>OpenStreetMap data © OpenStreetMap contributors · RaahSetu Logistics Platform.</div>
         </div>
       </footer>
 

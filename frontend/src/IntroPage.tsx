@@ -5,15 +5,85 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
-  Compass,
   LogIn,
   Mountain,
+  Navigation,
   Route,
+  Shield,
   Sparkles,
   XCircle,
 } from "lucide-react";
 import { STRATEGIC_CORRIDORS } from "./routeData";
 import ConstellationGrid from "@/components/ui/constellation-grid";
+
+interface RoadBlockage {
+  id: string;
+  road: string;
+  cities: string;
+  originId: string;
+  destinationId: string;
+  state: string;
+  exactSpot: string;
+  cause: string;
+  avoidInfo: string;
+  detourRoute: string;
+  severity: "CRITICAL" | "HIGH";
+}
+
+const INTRO_ROAD_BLOCKAGES: RoadBlockage[] = [
+  {
+    id: "BLK-NH10-SIKKIM",
+    road: "NH-10 National Highway",
+    cities: "Gangtok ⟷ Siliguri",
+    originId: "gangtok",
+    destinationId: "siliguri",
+    state: "Sikkim & West Bengal",
+    exactSpot: "29th Mile & Teesta Bazaar (km 42)",
+    cause: "Severe Monsoon Hill Landslide & Road Bed Subsidence",
+    avoidInfo: "NH-10 Teesta River Corridor closed to heavy multi-axle freight",
+    detourRoute: "Divert via Lava – Algarah – Kalimpong Bypass Corridor",
+    severity: "CRITICAL",
+  },
+  {
+    id: "BLK-NH29-NAGALAND",
+    road: "NH-29 Lifeline Corridor",
+    cities: "Dimapur ⟷ Kohima",
+    originId: "dimapur",
+    destinationId: "kohima",
+    state: "Nagaland",
+    exactSpot: "Pagla Pahar Gorge (km 124)",
+    cause: "Active Mudslide, Heavy Hill Seepage & Boulder Collapse",
+    avoidInfo: "Main gorge corridor obstructed; heavy freight backlog",
+    detourRoute: "Divert via Niuland – Kohima Alternate Bypass Highway",
+    severity: "CRITICAL",
+  },
+  {
+    id: "BLK-NH13-ARUNACHAL",
+    road: "NH-13 Trans-Arunachal Highway",
+    cities: "Bomdila ⟷ Tawang",
+    originId: "bomdila",
+    destinationId: "tawang",
+    state: "Arunachal Pradesh",
+    exactSpot: "Sela Pass Summit (13,700 ft)",
+    cause: "Rockfall, Snow Avalanche & Freezing Black Ice",
+    avoidInfo: "High Sela Ridge Top hazardous without anti-skid tire chains",
+    detourRoute: "Use Sela Tunnel Lower Bypass with BRO Convoy escort",
+    severity: "HIGH",
+  },
+  {
+    id: "BLK-NH306-MIZORAM",
+    road: "NH-306 Essential Lifeline",
+    cities: "Silchar ⟷ Aizawl",
+    originId: "silchar",
+    destinationId: "aizawl",
+    state: "Assam & Mizoram",
+    exactSpot: "Vairengte Hill Slopes (km 18)",
+    cause: "Road Fracture & River Erosion from Torrential Rains",
+    avoidInfo: "Single lane alternating transit for 16T+ freight",
+    detourRoute: "Use Bairabi – Sairang Freight Link Corridor",
+    severity: "HIGH",
+  },
+];
 
 interface IntroPageProps {
   onLaunchConsole: (origin?: string, destination?: string) => void;
@@ -30,19 +100,23 @@ export const IntroPage: React.FC<IntroPageProps> = ({
   onNavigateToAdvisories,
   onNavigateToSystem,
 }) => {
+  const handleScrollToAdvisories = () => {
+    document.getElementById("advisories-and-intro-section")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="space-y-12 pb-16">
-      {/* 1. WELCOME TO RAAHSETU — INTERACTIVE KINETIC CONSTELLATION HERO */}
-      <section className="relative rounded-3xl border border-border bg-card overflow-hidden shadow-xl">
+    <div className="space-y-16 pb-16">
+      {/* 1. FULL-SCREEN WELCOME SECTION WITH KINETIC CONSTELLATION MESH */}
+      <section className="relative min-h-[calc(100vh-4.5rem)] w-full rounded-3xl border border-border bg-card overflow-hidden shadow-2xl flex flex-col justify-center">
         <ConstellationGrid
-          fullHeight={false}
-          className="min-h-[620px] sm:min-h-[680px]"
+          fullHeight={true}
+          className="min-h-[calc(100vh-4.5rem)]"
         >
-          <div className="max-w-4xl mx-auto space-y-6 px-4 py-12 text-center flex flex-col items-center">
-            {/* Top pill badge */}
+          <div className="max-w-4xl mx-auto space-y-6 px-4 py-12 text-center flex flex-col items-center justify-center min-h-[calc(100vh-8rem)]">
+            {/* National Logistics Grid Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold backdrop-blur-md">
               <Mountain className="size-3.5 text-primary" />
-              <span>Smart India Hackathon · SIH26002 Prototype</span>
+              <span>National Mountain Freight Logistics Grid · 8 Northeast States</span>
               <Sparkles className="size-3 text-primary animate-pulse" />
             </div>
 
@@ -66,29 +140,29 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => onLaunchConsole()}
-                className="px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+                onClick={handleScrollToAdvisories}
+                className="px-7 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
               >
+                <span>Get Started</span>
+                <ArrowDown className="size-4 animate-bounce" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onLaunchConsole()}
+                className="px-5 py-3.5 rounded-xl border border-border bg-secondary/80 backdrop-blur-md text-foreground font-semibold text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Navigation className="size-4 text-primary" />
                 <span>Launch Route Dispatcher</span>
-                <ArrowRight className="size-4" />
               </button>
 
               <button
                 type="button"
                 onClick={onNavigateToAuth}
-                className="px-5 py-3.5 rounded-xl border border-border bg-secondary/80 backdrop-blur-md text-foreground font-semibold text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
+                className="px-5 py-3.5 rounded-xl border border-border bg-card/80 backdrop-blur-md text-muted-foreground hover:text-foreground font-medium text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
               >
                 <LogIn className="size-4 text-primary" />
                 <span>Driver & Fleet Sign In</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onNavigateToDistricts}
-                className="px-5 py-3.5 rounded-xl border border-border bg-card/80 backdrop-blur-md text-muted-foreground hover:text-foreground font-medium text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Compass className="size-4 text-primary" />
-                <span>District Health Matrix</span>
               </button>
             </div>
 
@@ -120,21 +194,93 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  document.getElementById("ground-reality-section")?.scrollIntoView({ behavior: "smooth" });
-                }}
+                onClick={handleScrollToAdvisories}
                 className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline cursor-pointer pt-1 transition-transform hover:translate-y-0.5"
               >
-                <span>Slide down to explore ground data & crisis evidence</span>
-                <ArrowDown className="size-3.5 animate-bounce" />
+                <span>Click "Get Started" or scroll down to explore corridor advisories & ground data ↓</span>
               </button>
             </div>
           </div>
         </ConstellationGrid>
       </section>
 
-      {/* 2. THE CRISIS: WHY THIS PROBLEM IS VERY BIG (GROUND DATA) */}
-      <section id="ground-reality-section" className="space-y-6 scroll-mt-6">
+      {/* 2. THE INTRO PAGE: FROM WHERE THE ADVISORY STARTS */}
+      <section id="advisories-and-intro-section" className="space-y-8 scroll-mt-8">
+        {/* Section Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+              <Shield className="size-3" />
+              <span>Corridor Advisory Feed</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+              Active Road Closure & Mountain Detour Advisories
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
+              Real-time ground incident alerts from BRO, State PWD, and GSI slope sensors. Inspect detours directly in the dual-path route dispatcher.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onNavigateToAdvisories}
+            className="px-4 py-2 rounded-xl border border-border bg-secondary hover:bg-muted text-foreground text-xs font-semibold cursor-pointer transition-colors shrink-0 flex items-center gap-1.5 self-start sm:self-auto shadow-2xs"
+          >
+            <span>All Road Advisories</span>
+            <ArrowRight className="size-3.5" />
+          </button>
+        </div>
+
+        {/* Advisory Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {INTRO_ROAD_BLOCKAGES.map((blk) => (
+            <div
+              key={blk.id}
+              className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
+                blk.severity === "CRITICAL"
+                  ? "border-destructive/30 bg-destructive/5"
+                  : "border-amber-500/30 bg-amber-500/5"
+              }`}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                      blk.severity === "CRITICAL"
+                        ? "bg-destructive/20 text-destructive"
+                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    {blk.severity} Advisory
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground truncate">{blk.state}</span>
+                </div>
+
+                <div className="font-bold text-sm text-foreground">{blk.road}</div>
+                <div className="text-xs text-primary font-medium">{blk.cities}</div>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{blk.cause}</p>
+
+                <div className="p-2.5 rounded-xl bg-background/80 border border-border/80 text-[11px] space-y-1">
+                  <div className="font-semibold text-foreground">Recommended Detour:</div>
+                  <div className="text-muted-foreground">{blk.detourRoute}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onLaunchConsole(blk.originId, blk.destinationId)}
+                className="w-full py-2 px-3 rounded-xl bg-card border border-border hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs group"
+              >
+                <span>Inspect in Dispatcher</span>
+                <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. GROUND REALITY & CRISIS EVIDENCE */}
+      <section className="space-y-6">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold border border-destructive/20">
             <AlertTriangle className="size-3" />
@@ -199,7 +345,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         </div>
       </section>
 
-      {/* 3. THE BLIND SPOT: CONVENTIONAL NAVIGATION VS RAAHSETU */}
+      {/* 4. THE BLIND SPOT: CONVENTIONAL NAVIGATION VS RAAHSETU */}
       <section className="p-6 sm:p-8 rounded-3xl border border-border bg-card shadow-xs space-y-6">
         <div className="max-w-3xl space-y-2">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
@@ -277,7 +423,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         </div>
       </section>
 
-      {/* 4. STRATEGIC PRESETS & QUICK LAUNCH */}
+      {/* 5. STRATEGIC PRESETS & QUICK LAUNCH */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -320,7 +466,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         </div>
       </section>
 
-      {/* 5. REDIRECT DIRECTORY LINKS */}
+      {/* 6. REDIRECT DIRECTORY LINKS */}
       <section className="p-6 rounded-2xl border border-border bg-secondary/40 space-y-4">
         <h3 className="text-sm font-bold text-foreground">Explore Platform Modules</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -354,7 +500,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             className="p-3 rounded-xl border border-border bg-card hover:bg-muted text-left font-semibold text-foreground cursor-pointer transition-colors shadow-2xs"
           >
             <div className="text-primary font-bold">4. System & Data</div>
-            <div className="text-muted-foreground font-normal mt-0.5">Census & OSM graph architecture</div>
+            <div className="text-muted-foreground font-normal mt-0.5">MoRTH, GSI & OSM road graphs</div>
           </button>
         </div>
       </section>
