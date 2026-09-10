@@ -12,6 +12,8 @@ import {
   Waypoints,
 } from "lucide-react";
 
+import { SupportedLanguage, TRANSLATIONS } from "./translations";
+
 interface AuthPageProps {
   onSuccess: (profile: {
     driverName: string;
@@ -22,9 +24,11 @@ interface AuthPageProps {
     commodity: "medical" | "agro" | "pds" | "fuel" | "construction";
   }) => void;
   onBackToHome: () => void;
+  lang?: SupportedLanguage;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) => {
+export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lang = "en" }) => {
+  const t = TRANSLATIONS[lang];
   const [email, setEmail] = useState("driver@raahsetu.in");
   const [password, setPassword] = useState("SafeTransit@2026");
   const [trustedPersonNo, setTrustedPersonNo] = useState("+91 94350 99881");
@@ -123,7 +127,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
 
     // Validate Captcha
     if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
-      setCaptchaError("Invalid captcha code. Please enter the characters shown.");
+      setCaptchaError(t.captchaError);
       refreshCaptcha();
       return;
     }
@@ -158,7 +162,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
               <div className="size-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
                 <Waypoints className="size-4" />
               </div>
-              <span className="font-bold tracking-tight text-base">RaahSetu</span>
+              <span className="font-bold tracking-tight text-base">{t.brandName}</span>
             </div>
 
             <button
@@ -166,7 +170,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
               onClick={onBackToHome}
               className="px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition-colors cursor-pointer flex items-center gap-1"
             >
-              <span>Back to website</span>
+              <span>{t.backToPlatform}</span>
               <ArrowRight className="size-3" />
             </button>
           </div>
@@ -176,13 +180,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/30 border border-primary/40 text-primary-foreground text-[10px] font-bold uppercase tracking-wider mb-2">
                 <Shield className="size-3" />
-                <span>Verified Dispatcher Portal</span>
+                <span>{t.authBadge}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
-                Navigating Lifelines, Safeguarding Freight.
+                {t.brandSubtitle}
               </h2>
               <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                Autonomous terrain routing & emergency distress coordination across the 8 Northeast Himalayan states.
+                {t.heroDescription}
               </p>
             </div>
           </div>
@@ -194,10 +198,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
             {/* Header */}
             <div className="space-y-1">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Sign In to RaahSetu
+                {t.authTitle}
               </h1>
               <p className="text-xs text-muted-foreground">
-                Enter your credentials, trusted emergency contact, and security captcha to access the logistics console.
+                {t.authSubtitle}
               </p>
             </div>
 
@@ -206,7 +210,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
               {/* 1. Email ID */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
-                  Email ID
+                  {t.emailLabel}
                 </label>
                 <div className="relative flex items-center">
                   <Mail className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
@@ -215,7 +219,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="driver@raahsetu.in or fleet@logistics.gov.in"
+                    placeholder={t.emailPlaceholder}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
                   />
                 </div>
@@ -224,7 +228,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
               {/* 2. Password */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
-                  Password
+                  {t.passwordLabel}
                 </label>
                 <div className="relative flex items-center">
                   <Lock className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
@@ -233,7 +237,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter security password"
+                    placeholder={t.passwordPlaceholder}
                     className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
                   />
                   <button
@@ -250,7 +254,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
               {/* 3. Trusted Person No */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
-                  Trusted Person No (Emergency SOS Contact)
+                  {t.trustedPersonLabel}
                 </label>
                 <div className="relative flex items-center">
                   <Phone className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
@@ -259,19 +263,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                     required
                     value={trustedPersonNo}
                     onChange={(e) => setTrustedPersonNo(e.target.value)}
-                    placeholder="+91 94350 99881 (Base Dispatch / Family)"
+                    placeholder={t.trustedPersonPlaceholder}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono"
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-                  Designated trusted contact for emergency distress coordination and SOS beacons in zero-network hill passes.
+                  {t.trustedPersonHelp}
                 </p>
               </div>
 
               {/* 4. Security Captcha */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
-                  Security Captcha
+                  {t.captchaLabel}
                 </label>
                 <div className="flex items-center gap-3">
                   <canvas
@@ -285,7 +289,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                     type="button"
                     onClick={refreshCaptcha}
                     className="p-2.5 rounded-xl border border-border bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-2xs"
-                    title="Refresh Captcha"
+                    title={t.captchaHelp}
                   >
                     <RefreshCw className={`size-4 ${isRefreshingCaptcha ? "animate-spin" : ""}`} />
                   </button>
@@ -298,7 +302,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                       setCaptchaInput(e.target.value);
                       if (captchaError) setCaptchaError(null);
                     }}
-                    placeholder="Enter captcha"
+                    placeholder={t.captchaPlaceholder}
                     className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono uppercase tracking-wider"
                   />
                 </div>
@@ -315,7 +319,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                 type="submit"
                 className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:opacity-95 transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
               >
-                <span>Sign In to Dispatcher</span>
+                <span>{t.signInBtn}</span>
                 <ArrowRight className="size-4" />
               </button>
             </form>

@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CITIES, CITY_MAP, City, RouteLeg } from "./routeData";
 import { LocateFixed } from "lucide-react";
+import { SupportedLanguage, TRANSLATIONS, getCityName, getStateName } from "./translations";
 
 interface RealMapLeafletProps {
   originCity?: City | null;
@@ -21,6 +22,7 @@ interface RealMapLeafletProps {
   isBigScreen: boolean;
   mapMode?: "osm" | "satellite";
   onMapModeChange?: (mode: "osm" | "satellite") => void;
+  lang?: SupportedLanguage;
 }
 
 export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
@@ -31,6 +33,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   isNavigating,
   mapMode: externalMapMode,
   onMapModeChange,
+  lang = "en",
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -154,9 +157,12 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
         fillOpacity: isOrigin || isDest ? 1 : isOnRoute ? 0.9 : 0.45,
       });
 
+      const cityName = getCityName(c.id, lang, c.name);
+      const stateName = getStateName(c.state, lang);
+
       circle.bindTooltip(
         `<div style="font-family: monospace; font-size: 11px; font-weight: bold; color: #f8fafc;">
-          ${c.name} (${c.state})<br/>
+          ${cityName} (${stateName})<br/>
           <span style="font-size: 9px; color: #94a3b8;">${c.lat.toFixed(4)}°N, ${c.lon.toFixed(4)}°E</span>
         </div>`,
         { permanent: false, direction: "top", className: "rs-leaflet-tooltip" }
@@ -200,7 +206,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
         }
       }
     }
-  }, [originCity, destCity, routePath, isNavigating]);
+  }, [originCity, destCity, routePath, isNavigating, lang]);
 
   // Update Real GPS Hardware Marker
   useEffect(() => {
@@ -290,6 +296,8 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
     }
   };
 
+  const t = TRANSLATIONS[lang || "en"];
+
   return (
     <div className="relative w-full h-full flex flex-col min-h-0 select-none">
       {/* Prominent Basemap Switcher on the Map Canvas (Positioned at bottom-4 left-4 to never be blocked by HUD) */}
@@ -302,9 +310,9 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
               ? "bg-signal text-signal-foreground shadow-md"
               : "text-muted-foreground hover:text-white"
           }`}
-          title="Switch to Normal Street Map View"
+          title={t.roadNetwork}
         >
-          <span>🗺️ Normal View</span>
+          <span>🗺️ {t.roadNetwork}</span>
         </button>
 
         <button
@@ -315,9 +323,9 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
               ? "bg-amber-500 text-slate-950 shadow-md"
               : "text-muted-foreground hover:text-white"
           }`}
-          title="Switch to High-Resolution Satellite View"
+          title={t.satelliteView}
         >
-          <span>🛰️ Satellite View</span>
+          <span>🛰️ {t.satelliteView}</span>
         </button>
       </div>
 
@@ -327,10 +335,10 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
           type="button"
           onClick={handleRecenterOnGps}
           className="inline-flex items-center gap-1.5 bg-slate-950/85 hover:bg-slate-900 text-foreground border border-border px-2.5 py-1.5 rounded-xl shadow-xl text-xs font-bold cursor-pointer transition-colors backdrop-blur-md"
-          title="Recenter Map on Real Location"
+          title={t.snapOriginLiveGps || "Snap to GPS"}
         >
           <LocateFixed className="size-3.5 text-signal" />
-          <span>Snap to GPS</span>
+          <span>{t.snapOriginLiveGps || "Snap to GPS"}</span>
         </button>
       </div>
 

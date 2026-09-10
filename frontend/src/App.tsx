@@ -52,8 +52,6 @@ import {
   CommodityType,
   DISTRICT_CONNECTIVITY,
   STRATEGIC_CORRIDORS,
-  SupportedLanguage,
-  UI_TRANSLATIONS,
   VEHICLE_PROFILES,
   VehicleType,
   WEATHER_PROFILES,
@@ -65,6 +63,12 @@ import {
   getRouteLegs,
   solvePath,
 } from "./routeData";
+import {
+  SupportedLanguage,
+  TRANSLATIONS,
+  getCityName,
+  getStateName,
+} from "./translations";
 
 // Clean City Combobox
 function CityCombobox({
@@ -76,6 +80,7 @@ function CityCombobox({
   lang,
   onGpsLocate,
   isLocating,
+  isOrigin,
 }: {
   label: string;
   selectedId: string;
@@ -85,7 +90,9 @@ function CityCombobox({
   lang: SupportedLanguage;
   onGpsLocate?: () => void;
   isLocating?: boolean;
+  isOrigin?: boolean;
 }) {
+  const t = TRANSLATIONS[lang];
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -177,7 +184,7 @@ function CityCombobox({
           <MapPin className="size-3.5 text-primary" />
           <span>{label}</span>
         </label>
-        {label === "Departure Hub" && onGpsLocate && (
+        {isOrigin && onGpsLocate && (
           <button
             type="button"
             onClick={onGpsLocate}
@@ -185,7 +192,7 @@ function CityCombobox({
             className="text-[11px] font-medium text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
             {isLocating ? <Loader2 className="size-3 animate-spin" /> : <LocateFixed className="size-3" />}
-            <span>Use Device GPS</span>
+            <span>{t.snapOriginLiveGps}</span>
           </button>
         )}
       </div>
@@ -203,7 +210,7 @@ function CityCombobox({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Type city or state..."
+              placeholder={t.searchCity}
               className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none"
               autoFocus
             />
@@ -217,19 +224,19 @@ function CityCombobox({
               className="flex w-full items-center justify-between text-left text-sm cursor-pointer truncate"
             >
               <span className="font-semibold text-foreground truncate">
-                {customOrigin && label === "Departure Hub" ? (
+                {customOrigin && isOrigin ? (
                   <span className="text-primary font-bold">📍 {customOrigin.name}</span>
                 ) : selectedCity ? (
                   <>
-                    <span>{selectedCity.name}</span>
+                    <span>{getCityName(selectedCity.id, lang, selectedCity.name)}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                      ({selectedCity.state})
+                      ({getStateName(selectedCity.state, lang)})
                     </span>
                   </>
                 ) : (
                   <span className="text-primary font-semibold flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-primary animate-pulse" />
-                    <span>Click to choose {label}...</span>
+                    <span>{isOrigin ? t.selectOriginPlaceholder : t.selectDestPlaceholder}...</span>
                   </span>
                 )}
               </span>
@@ -244,7 +251,7 @@ function CityCombobox({
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
               isListening ? "bg-rose-500/20 text-rose-500 animate-pulse" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
-            title="Voice Search"
+            title={t.voiceInput}
           >
             <Mic className="size-3.5" />
           </button>
@@ -269,7 +276,7 @@ function CityCombobox({
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-lg">
           <div className="px-2.5 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            {filtered.length} Locations Available
+            {filtered.length} {t.locationsAvailable}
           </div>
           {filtered.map((city) => (
             <button
@@ -286,8 +293,8 @@ function CityCombobox({
                   : "text-foreground hover:bg-secondary"
               }`}
             >
-              <span>{city.name}</span>
-              <span className="text-xs text-muted-foreground">{city.state}</span>
+              <span>{getCityName(city.id, lang, city.name)}</span>
+              <span className="text-xs text-muted-foreground">{getStateName(city.state, lang)}</span>
             </button>
           ))}
         </div>
@@ -522,7 +529,7 @@ export default function App() {
     } catch {}
     return detectPhoneNativeLanguage().lang;
   });
-  const t = UI_TRANSLATIONS[lang];
+  const t = TRANSLATIONS[lang];
 
   const handleSelectLanguage = (selectedLang: SupportedLanguage, mode: "auto" | "manual" = "manual") => {
     setLang(selectedLang);
@@ -1019,10 +1026,10 @@ export default function App() {
             </div>
             <div>
               <div className="font-bold text-base tracking-tight leading-none text-foreground">
-                RaahSetu
+                {t.brandName}
               </div>
               <div className="text-[11px] text-muted-foreground font-medium mt-0.5">
-                Northeast Logistics Intelligence
+                {t.brandSubtitle}
               </div>
             </div>
           </button>
@@ -1039,7 +1046,7 @@ export default function App() {
               }`}
             >
               <FileText className="size-3.5" />
-              <span>Problem & Crisis</span>
+              <span>{t.navOverview}</span>
             </button>
             <button
               type="button"
@@ -1051,7 +1058,7 @@ export default function App() {
               }`}
             >
               <Navigation className="size-3.5" />
-              <span>Route Dispatcher</span>
+              <span>{t.navDispatcher}</span>
             </button>
             <button
               type="button"
@@ -1063,7 +1070,7 @@ export default function App() {
               }`}
             >
               <Activity className="size-3.5" />
-              <span>District Health</span>
+              <span>{t.navDistricts}</span>
             </button>
             <button
               type="button"
@@ -1075,7 +1082,7 @@ export default function App() {
               }`}
             >
               <AlertTriangle className="size-3.5" />
-              <span>Road Advisories</span>
+              <span>{t.tabAdvisories}</span>
             </button>
             <button
               type="button"
@@ -1087,7 +1094,7 @@ export default function App() {
               }`}
             >
               <Database className="size-3.5" />
-              <span>System & Data</span>
+              <span>{t.navArchitecture}</span>
             </button>
           </nav>
 
@@ -1098,7 +1105,7 @@ export default function App() {
               type="button"
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
               className="p-2 rounded-xl border border-border bg-card hover:bg-secondary text-foreground transition-colors cursor-pointer"
-              title={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+              title={`Switch to ${theme === "light" ? t.darkMode : t.lightMode}`}
             >
               {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4 text-amber-400" />}
             </button>
@@ -1119,7 +1126,7 @@ export default function App() {
               {isLangDropdownOpen && (
                 <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-border bg-card p-1 shadow-xl z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {langMode === "auto" ? "Auto-Detected (System)" : "Select Language"}
+                    {langMode === "auto" ? t.autoDetected : t.selectLanguage}
                   </div>
                   {[
                     { id: "en", label: "English", native: "English" },
@@ -1159,7 +1166,7 @@ export default function App() {
               }`}
             >
               <Truck className="size-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : "Sign In"}</span>
+              <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : t.navSignIn}</span>
             </button>
 
             {/* Emergency SOS Button */}
@@ -1173,7 +1180,7 @@ export default function App() {
               title="Emergency SOS to NDRF & Trusted Contact"
             >
               <Siren className="size-3.5" />
-              <span>SOS</span>
+              <span>{t.emergencySos}</span>
             </button>
           </div>
         </div>
@@ -1188,7 +1195,7 @@ export default function App() {
             activeView === "intro" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
           }`}
         >
-          Problem
+          {t.tabProblem}
         </button>
         <button
           type="button"
@@ -1197,7 +1204,7 @@ export default function App() {
             activeView === "dispatcher" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
           }`}
         >
-          Dispatcher
+          {t.tabDispatcher}
         </button>
         <button
           type="button"
@@ -1206,7 +1213,7 @@ export default function App() {
             activeView === "districts" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
           }`}
         >
-          Districts
+          {t.tabDistricts}
         </button>
         <button
           type="button"
@@ -1215,7 +1222,7 @@ export default function App() {
             activeView === "advisories" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
           }`}
         >
-          Advisories
+          {t.tabAdvisories}
         </button>
         <button
           type="button"
@@ -1224,7 +1231,7 @@ export default function App() {
             activeView === "system" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
           }`}
         >
-          System & Data
+          {t.tabSystem}
         </button>
       </div>
 
@@ -1239,10 +1246,10 @@ export default function App() {
             <div className="flex items-center gap-2 min-w-0">
               <span className="badge-status-advisory shrink-0">
                 <AlertTriangle className="size-3" />
-                <span>Advisory</span>
+                <span>{t.tabAdvisories}</span>
               </span>
               <span className="truncate font-medium text-foreground">
-                <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state}):</strong>{" "}
+                <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({getStateName(ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state, lang)}):</strong>{" "}
                 {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause} at {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}.
               </span>
             </div>
@@ -1260,7 +1267,7 @@ export default function App() {
                 }}
                 className="text-primary font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
-                <span>Inspect Detour</span>
+                <span>{t.inspect}</span>
                 <ArrowRight className="size-3" />
               </button>
               <div className="flex items-center gap-1 pl-2 border-l border-border text-muted-foreground">
@@ -1493,8 +1500,9 @@ export default function App() {
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
                   <div className="space-y-3">
                     <CityCombobox
-                      label="Departure Hub"
+                      label={t.departureHub}
                       selectedId={origin}
+                      isOrigin={true}
                       onSelect={(id) => {
                         setCustomOrigin(null);
                         setOrigin(id);
@@ -1502,7 +1510,7 @@ export default function App() {
                       otherCityId={destination}
                       customOrigin={customOrigin}
                       lang={lang}
-                          onGpsLocate={handleGpsLocation}
+                      onGpsLocate={handleGpsLocation}
                       isLocating={isLocating}
                     />
 
@@ -1511,19 +1519,19 @@ export default function App() {
                         type="button"
                         onClick={handleSwap}
                         className="p-1.5 rounded-full border border-border bg-secondary text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-xs"
-                        title="Swap Origin and Destination"
+                        title={t.swap}
                       >
                         <ArrowUpDown className="size-3.5" />
                       </button>
                     </div>
 
                     <CityCombobox
-                      label="Arrival Destination"
+                      label={t.arrivalDestination}
                       selectedId={destination}
                       onSelect={(id) => setDestination(id)}
                       otherCityId={origin}
                       lang={lang}
-                        />
+                    />
                   </div>
 
                   {locationNotice && (
@@ -1819,6 +1827,7 @@ export default function App() {
                       isBigScreen={isBigScreenNav}
                       mapMode={mapMode}
                       onMapModeChange={setMapMode}
+                      lang={lang}
                     />
                   </div>
                 </div>

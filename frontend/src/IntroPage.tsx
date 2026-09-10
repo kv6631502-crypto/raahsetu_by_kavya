@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { STRATEGIC_CORRIDORS } from "./routeData";
 import ConstellationGrid from "@/components/ui/constellation-grid";
+import { SupportedLanguage, TRANSLATIONS, getCityName, getStateName } from "./translations";
 
 interface RoadBlockage {
   id: string;
@@ -37,7 +38,7 @@ const INTRO_ROAD_BLOCKAGES: RoadBlockage[] = [
     cities: "Gangtok ⟷ Siliguri",
     originId: "gangtok",
     destinationId: "siliguri",
-    state: "Sikkim & West Bengal",
+    state: "Sikkim",
     exactSpot: "29th Mile & Teesta Bazaar (km 42)",
     cause: "Severe Monsoon Hill Landslide & Road Bed Subsidence",
     avoidInfo: "NH-10 Teesta River Corridor closed to heavy multi-axle freight",
@@ -76,7 +77,7 @@ const INTRO_ROAD_BLOCKAGES: RoadBlockage[] = [
     cities: "Silchar ⟷ Aizawl",
     originId: "silchar",
     destinationId: "aizawl",
-    state: "Assam & Mizoram",
+    state: "Mizoram",
     exactSpot: "Vairengte Hill Slopes (km 18)",
     cause: "Road Fracture & River Erosion from Torrential Rains",
     avoidInfo: "Single lane alternating transit for 16T+ freight",
@@ -91,6 +92,7 @@ interface IntroPageProps {
   onNavigateToDistricts: () => void;
   onNavigateToAdvisories: () => void;
   onNavigateToSystem: () => void;
+  lang?: SupportedLanguage;
 }
 
 export const IntroPage: React.FC<IntroPageProps> = ({
@@ -99,7 +101,9 @@ export const IntroPage: React.FC<IntroPageProps> = ({
   onNavigateToDistricts,
   onNavigateToAdvisories,
   onNavigateToSystem,
+  lang = "en",
 }) => {
+  const t = TRANSLATIONS[lang];
   const handleScrollToAdvisories = () => {
     document.getElementById("advisories-and-intro-section")?.scrollIntoView({ behavior: "smooth" });
   };
@@ -116,23 +120,30 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             {/* National Logistics Grid Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold backdrop-blur-md">
               <Mountain className="size-3.5 text-primary" />
-              <span>National Mountain Freight Logistics Grid · 8 Northeast States</span>
+              <span>{t.heroBadge}</span>
               <Sparkles className="size-3 text-primary animate-pulse" />
             </div>
 
             {/* Main Welcome Heading */}
             <div className="space-y-3">
               <div className="text-xs sm:text-sm font-mono tracking-widest text-muted-foreground uppercase">
-                Welcome to
+                {t.welcomeTo}
               </div>
               <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.08]">
-                RaahSetu{" "}
-                <span className="text-primary font-serif font-normal text-3xl sm:text-5xl md:text-6xl block sm:inline">
-                  (राहसेतु)
-                </span>
+                {t.brandName}{" "}
+                {lang !== "en" && (
+                  <span className="text-primary font-serif font-normal text-3xl sm:text-5xl md:text-6xl block sm:inline">
+                    (RaahSetu)
+                  </span>
+                )}
+                {lang === "en" && (
+                  <span className="text-primary font-serif font-normal text-3xl sm:text-5xl md:text-6xl block sm:inline">
+                    (राहसेतु)
+                  </span>
+                )}
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Autonomous, terrain-aware freight routing intelligence for the high-risk mountain corridors of the Northeast. Navigating where ordinary GPS costs human lives.
+                {t.heroDescription}
               </p>
             </div>
 
@@ -143,7 +154,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 onClick={handleScrollToAdvisories}
                 className="px-7 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
               >
-                <span>Get Started</span>
+                <span>{t.getStarted}</span>
                 <ArrowDown className="size-4 animate-bounce" />
               </button>
 
@@ -153,7 +164,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 className="px-5 py-3.5 rounded-xl border border-border bg-secondary/80 backdrop-blur-md text-foreground font-semibold text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
               >
                 <Navigation className="size-4 text-primary" />
-                <span>Launch Route Dispatcher</span>
+                <span>{t.launchDispatcher}</span>
               </button>
 
               <button
@@ -162,7 +173,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 className="px-5 py-3.5 rounded-xl border border-border bg-card/80 backdrop-blur-md text-muted-foreground hover:text-foreground font-medium text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
               >
                 <LogIn className="size-4 text-primary" />
-                <span>Driver & Fleet Sign In</span>
+                <span>{t.driverLogin}</span>
               </button>
             </div>
 
@@ -170,34 +181,30 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl pt-4">
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">111</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Strategic Hubs & Towns</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statBeacons}</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-primary">34%</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Avg Risk Reduction</div>
+                <div className="text-2xl sm:text-3xl font-bold text-primary">{t.statSolvers}</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statSolversSub}</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">400+</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Monsoon Landslides GSI</div>
+                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{t.statHazards}</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statHazardsSub}</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-foreground">8 States</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Full Northeast Grid</div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">{t.statStates}</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statStatesSub}</div>
               </div>
             </div>
 
             {/* Interactive Kinetic Mesh Tip & Slide Down Prompt */}
             <div className="pt-2 flex flex-col items-center gap-2">
-              <div className="text-[11px] font-mono text-muted-foreground/80 flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-cyan-500 animate-ping" />
-                <span>Sweep cursor on canvas to unleash kinetic shockwaves</span>
-              </div>
               <button
                 type="button"
                 onClick={handleScrollToAdvisories}
                 className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline cursor-pointer pt-1 transition-transform hover:translate-y-0.5"
               >
-                <span>Click "Get Started" or scroll down to explore corridor advisories & ground data ↓</span>
+                <span>{t.getStarted} ↓</span>
               </button>
             </div>
           </div>
@@ -211,13 +218,13 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
               <Shield className="size-3" />
-              <span>Corridor Advisory Feed</span>
+              <span>{t.liveHighwayAdvisory}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              Active Road Closure & Mountain Detour Advisories
+              {t.advisoriesTitle}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-              Real-time ground incident alerts from BRO, State PWD, and GSI slope sensors. Inspect detours directly in the dual-path route dispatcher.
+              {t.advisoriesSubtitle}
             </p>
           </div>
 
@@ -226,7 +233,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             onClick={onNavigateToAdvisories}
             className="px-4 py-2 rounded-xl border border-border bg-secondary hover:bg-muted text-foreground text-xs font-semibold cursor-pointer transition-colors shrink-0 flex items-center gap-1.5 self-start sm:self-auto shadow-2xs"
           >
-            <span>All Road Advisories</span>
+            <span>{t.tabAdvisories}</span>
             <ArrowRight className="size-3.5" />
           </button>
         </div>
@@ -251,17 +258,19 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                         : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
                     }`}
                   >
-                    {blk.severity} Advisory
+                    {blk.severity === "CRITICAL" ? t.critical : t.high}
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground truncate">{blk.state}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground truncate">{getStateName(blk.state, lang)}</span>
                 </div>
 
                 <div className="font-bold text-sm text-foreground">{blk.road}</div>
-                <div className="text-xs text-primary font-medium">{blk.cities}</div>
+                <div className="text-xs text-primary font-medium">
+                  {getCityName(blk.originId, lang)} ⟷ {getCityName(blk.destinationId, lang)}
+                </div>
                 <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{blk.cause}</p>
 
                 <div className="p-2.5 rounded-xl bg-background/80 border border-border/80 text-[11px] space-y-1">
-                  <div className="font-semibold text-foreground">Recommended Detour:</div>
+                  <div className="font-semibold text-foreground">{t.recommendedDetour}:</div>
                   <div className="text-muted-foreground">{blk.detourRoute}</div>
                 </div>
               </div>
@@ -271,7 +280,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 onClick={() => onLaunchConsole(blk.originId, blk.destinationId)}
                 className="w-full py-2 px-3 rounded-xl bg-card border border-border hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs group"
               >
-                <span>Inspect in Dispatcher</span>
+                <span>{t.inspectInDispatcher}</span>
                 <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
@@ -350,13 +359,13 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         <div className="max-w-3xl space-y-2">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
             <Route className="size-3" />
-            <span>Algorithmic Failure vs Terrain Intelligence</span>
+            <span>{t.whyRaahSetu}</span>
           </div>
           <h2 className="text-2xl font-bold text-foreground">
-            Why Standard Commercial GPS Fails in the Mountains
+            {t.problemTitle}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Consumer mapping applications are optimized for light passenger cars on urban highways. When applied to commercial transport in Himalayan terrain, their naive assumptions break down.
+            {t.problemDesc}
           </p>
         </div>
 
@@ -366,7 +375,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-destructive font-bold text-sm">
                 <XCircle className="size-4" />
-                <span>Conventional GPS (Google Maps / Apple Maps)</span>
+                <span>Conventional Consumer Navigation</span>
               </div>
               <span className="text-[10px] font-mono text-destructive uppercase px-2 py-0.5 rounded bg-destructive/10">Naive Distance</span>
             </div>
@@ -396,7 +405,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-primary font-bold text-sm">
                 <CheckCircle2 className="size-4" />
-                <span>RaahSetu Explainable Engine</span>
+                <span>{t.solutionTitle}</span>
               </div>
               <span className="text-[10px] font-mono text-primary uppercase px-2 py-0.5 rounded bg-primary/10">Terrain Dual-Solve</span>
             </div>
@@ -404,19 +413,15 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <ul className="space-y-2.5 text-xs text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-primary font-bold shrink-0">✓</span>
-                <span>Runs dual A* pathfinding: outputs both Nominal Shortest and Risk-Aware Safe corridor side-by-side.</span>
+                <span><strong>{t.pillar1Title}:</strong> {t.pillar1Desc}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary font-bold shrink-0">✓</span>
-                <span>Penalizes steep mountain passes (SRTM-30M elevation model) and active monsoonal precipitation zones.</span>
+                <span><strong>{t.pillar2Title}:</strong> {t.pillar2Desc}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary font-bold shrink-0">✓</span>
-                <span>Enforces strict axle-load constraints: 28T multi-axle freight vs 16T cargo vs 4x4 utility dispatch.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-primary font-bold shrink-0">✓</span>
-                <span>Specialized cargo tolerances: zero-choke paths for cold-chain medicines and flammable petroleum.</span>
+                <span><strong>{t.pillar3Title}:</strong> {t.pillar3Desc}</span>
               </li>
             </ul>
           </div>
@@ -427,15 +432,15 @@ export const IntroPage: React.FC<IntroPageProps> = ({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-foreground">Featured Strategic Mountain Corridors</h3>
-            <p className="text-xs text-muted-foreground">Click any corridor to open the Route Dispatcher with pre-configured endpoints.</p>
+            <h3 className="text-lg font-bold text-foreground">{t.strategicCorridorsTitle}</h3>
+            <p className="text-xs text-muted-foreground">{t.strategicCorridorsSubtitle}</p>
           </div>
           <button
             type="button"
             onClick={() => onLaunchConsole()}
             className="text-primary font-semibold text-xs hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
-            <span>Custom Route Dispatcher</span>
+            <span>{t.navDispatcher}</span>
             <ArrowRight className="size-3.5" />
           </button>
         </div>
@@ -450,7 +455,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                  {c.title}
+                  {getCityName(c.origin, lang)} ➔ {getCityName(c.destination, lang)}
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground">
                   {c.tag}
@@ -458,7 +463,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               </div>
               <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{c.description}</p>
               <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-[11px] text-primary font-medium">
-                <span>Configure & Dispatch Route</span>
+                <span>{t.inspectInDispatcher}</span>
                 <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </button>
@@ -475,32 +480,32 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             onClick={() => onLaunchConsole()}
             className="p-3 rounded-xl border border-border bg-card hover:bg-muted text-left font-semibold text-foreground cursor-pointer transition-colors shadow-2xs"
           >
-            <div className="text-primary font-bold">1. Route Dispatcher</div>
-            <div className="text-muted-foreground font-normal mt-0.5">Origin to destination A* solver</div>
+            <div className="text-primary font-bold">1. {t.navDispatcher}</div>
+            <div className="text-muted-foreground font-normal mt-0.5">{t.compareRoutes}</div>
           </button>
           <button
             type="button"
             onClick={onNavigateToDistricts}
             className="p-3 rounded-xl border border-border bg-card hover:bg-muted text-left font-semibold text-foreground cursor-pointer transition-colors shadow-2xs"
           >
-            <div className="text-primary font-bold">2. District Matrix</div>
-            <div className="text-muted-foreground font-normal mt-0.5">8 Northeast states connectivity</div>
+            <div className="text-primary font-bold">2. {t.navDistricts}</div>
+            <div className="text-muted-foreground font-normal mt-0.5">{t.districtHealthSubtitle}</div>
           </button>
           <button
             type="button"
             onClick={onNavigateToAdvisories}
             className="p-3 rounded-xl border border-border bg-card hover:bg-muted text-left font-semibold text-foreground cursor-pointer transition-colors shadow-2xs"
           >
-            <div className="text-primary font-bold">3. Road Advisories</div>
-            <div className="text-muted-foreground font-normal mt-0.5">Verified blockages & detours</div>
+            <div className="text-primary font-bold">3. {t.tabAdvisories}</div>
+            <div className="text-muted-foreground font-normal mt-0.5">{t.advisoriesSubtitle}</div>
           </button>
           <button
             type="button"
             onClick={onNavigateToSystem}
             className="p-3 rounded-xl border border-border bg-card hover:bg-muted text-left font-semibold text-foreground cursor-pointer transition-colors shadow-2xs"
           >
-            <div className="text-primary font-bold">4. System & Data</div>
-            <div className="text-muted-foreground font-normal mt-0.5">MoRTH, GSI & OSM road graphs</div>
+            <div className="text-primary font-bold">4. {t.navArchitecture}</div>
+            <div className="text-muted-foreground font-normal mt-0.5">{t.dataPageTitle}</div>
           </button>
         </div>
       </section>
