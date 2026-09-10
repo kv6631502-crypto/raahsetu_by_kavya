@@ -43,6 +43,7 @@ import {
   Share2,
   Snowflake,
   Sun,
+  Moon,
   TriangleAlert,
   Truck,
   Volume2,
@@ -815,6 +816,32 @@ export function App() {
     return `🚨 EMERGENCY SOS from RaahSetu! Driver ${driverProfile.driverName} (Vehicle ${driverProfile.vehicleNo}) reported a distress emergency on ${corridor}. Current GPS: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E. Map: https://maps.google.com/?q=${lat},${lon}. Driver Contact: ${driverProfile.driverMobile}. Trusted contact alerted. Please call immediately!`;
   };
 
+  // Persistent Light / Dark Theme State
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    try {
+      const saved = localStorage.getItem("raahsetu_theme");
+      if (saved === "light" || saved === "dark") return saved;
+      if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: light)").matches) {
+        return "light";
+      }
+    } catch {}
+    return "dark";
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    } else {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    }
+    try {
+      localStorage.setItem("raahsetu_theme", theme);
+    } catch {}
+  }, [theme]);
+
   // New UI Navigation & Auth States
   const [hasViewedNavigation, setHasViewedNavigation] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -1328,6 +1355,22 @@ export function App() {
     }
   };
 
+  // Dedicated helper to redirect and center smoothly on Route Map Viewport
+  const scrollToMap = (startNav = false) => {
+    setHasViewedNavigation(true);
+    setActiveConsoleTab("planner");
+    if (startNav) {
+      handleStartNavigation();
+    }
+    setTimeout(() => {
+      const mapEl = document.getElementById("route-map-viewport") || document.getElementById("console");
+      if (mapEl) {
+        mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.dispatchEvent(new Event("resize"));
+      }
+    }, 120);
+  };
+
   // Genuine GPS telemetry only (No simulated or artificial motion)
 
   // Close Big Screen Navigation on Escape key
@@ -1526,23 +1569,17 @@ export function App() {
             <a href="#top" className="hover:text-signal transition-colors font-semibold">
               Home
             </a>
-            <a
-              href="#route-map-viewport"
+            <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
-                setHasViewedNavigation(true);
-                setTimeout(() => {
-                  const mapEl = document.getElementById("route-map-viewport");
-                  if (mapEl) {
-                    mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }
-                }, 80);
+                scrollToMap();
               }}
-              className="hover:text-signal transition-colors font-semibold flex items-center gap-1"
+              className="hover:text-signal transition-colors font-semibold flex items-center gap-1 cursor-pointer"
             >
               <span>Map & Console</span>
               <span className="size-1.5 rounded-full bg-signal animate-pulse" />
-            </a>
+            </button>
             <a href="#crisis-data" className="hover:text-signal transition-colors font-semibold">
               Crisis Data
             </a>
@@ -1562,8 +1599,35 @@ export function App() {
             </button>
           </nav>
 
-          {/* Right Controls: Multilingual Selector & Sign In/Up */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Right Controls: Navigation, Multilingual Selector, Theme Switcher & SOS */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Quick Navigation Button (Desktop & Mobile Accessible) */}
+            <button
+              type="button"
+              onClick={() => scrollToMap()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-full border border-signal/40 bg-signal/15 text-signal hover:bg-signal hover:text-signal-foreground transition-all text-xs font-mono font-bold shadow-md cursor-pointer"
+              title="Jump directly to Navigation & Interactive Map"
+            >
+              <Navigation className="size-3.5 fill-current" />
+              <span className="hidden sm:inline">Navigation</span>
+              <span className="size-1.5 rounded-full bg-signal animate-pulse" />
+            </button>
+
+            {/* Theme Switcher (Dark / Light) */}
+            <button
+              type="button"
+              onClick={() => setTheme((prev) => (prev === "dark" ? "light" : "dark"))}
+              className="flex items-center justify-center size-8 sm:size-9 rounded-full border border-slate-700/80 bg-slate-900/90 hover:border-signal/50 text-slate-200 transition-all shadow-md cursor-pointer shrink-0"
+              title={`Switch to ${theme === "dark" ? "Light" : "Dark"} Mode`}
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <Sun className="size-4 text-amber-400 hover:rotate-45 transition-transform" />
+              ) : (
+                <Moon className="size-4 text-sky-400 hover:-rotate-12 transition-transform" />
+              )}
+            </button>
+
             {/* Multilingual Selector */}
             <div className="flex items-center rounded-full border border-slate-700/80 bg-slate-900/90 p-1 text-xs font-mono shadow-md backdrop-blur-md">
               <Globe className="size-3.5 text-muted-foreground ml-1.5 mr-1 shrink-0" />
@@ -1748,6 +1812,29 @@ export function App() {
                     <span className="text-[11px] leading-relaxed">{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].detourRoute}</span>
                   </div>
                 </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-red-900/30">
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Live telemetry from Border Roads Organisation (BRO) & NHIDCL
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
+                      if (blk.originId && blk.destinationId) {
+                        setOrigin(blk.originId);
+                        setDestination(blk.destinationId);
+                      }
+                      scrollToMap();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    title="Plot blocked corridor on map and calculate safe risk-aware detour"
+                  >
+                    <Navigation className="size-3" />
+                    <span>Plot Corridor & Detour on Map</span>
+                    <ArrowRight className="size-3" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1852,21 +1939,14 @@ export function App() {
                   />
                 </div>
 
-                {/* Primary CTA Button: "Start Navigation" -> Redirects directly to Map Viewport */}
+                {/* Primary CTA Button: "View Navigation" -> Redirects directly to Map Viewport */}
                 <button
                   type="button"
                   onClick={() => {
-                    setHasViewedNavigation(true);
-                    handleStartNavigation();
-                    setTimeout(() => {
-                      const consoleEl = document.getElementById("console");
-                      if (consoleEl) {
-                        consoleEl.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }
-                    }, 80);
+                    scrollToMap();
                   }}
                   className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
-                  title="Start Live Navigation & Focus Map"
+                  title="View Navigation & Open Map"
                 >
                   <Navigation className="size-4 fill-slate-950" />
                   <span>View Navigation</span>

@@ -1,12 +1,183 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    --background: #071018;
+    --foreground: #eaeff3;
+    --card: #0f1a23;
+    --card-foreground: #eaeff3;
+    --popover: #0a151e;
+    --popover-foreground: #eaeff3;
+    --primary: #35dcab;
+    --primary-foreground: #031a1b;
+    --secondary: #1c2832;
+    --secondary-foreground: #eaeff3;
+    --muted: #19232c;
+    --muted-foreground: #8e9aa4;
+    --accent: #132b2a;
+    --accent-foreground: #eaeff3;
+    --destructive: #e64343;
+    --border: #2f3a418c;
+    --input: #2f3a4199;
+    --ring: #35dcab;
+    --signal: #35dcab;
+    --signal-foreground: #031a1b;
+    --hazard: #ff9d36;
+    --hazard-foreground: #231103;
+  }
+
+  html.light, .light {
+    color-scheme: light;
+    --background: #f8fafc;
+    --foreground: #09131d;
+    --card: #ffffff;
+    --card-foreground: #09131d;
+    --popover: #ffffff;
+    --popover-foreground: #09131d;
+    --primary: #059669;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #475569;
+    --accent: #e0f2fe;
+    --accent-foreground: #0369a1;
+    --destructive: #dc2626;
+    --border: #cbd5e1;
+    --input: #cbd5e1;
+    --ring: #059669;
+    --signal: #059669;
+    --signal-foreground: #ffffff;
+    --hazard: #d97706;
+    --hazard-foreground: #ffffff;
+  }
+
+  html.dark, .dark {
+    color-scheme: dark;
+    --background: #071018;
+    --foreground: #eaeff3;
+    --card: #0f1a23;
+    --card-foreground: #eaeff3;
+    --popover: #0a151e;
+    --popover-foreground: #eaeff3;
+    --primary: #35dcab;
+    --primary-foreground: #031a1b;
+    --secondary: #1c2832;
+    --secondary-foreground: #eaeff3;
+    --muted: #19232c;
+    --muted-foreground: #8e9aa4;
+    --accent: #132b2a;
+    --accent-foreground: #eaeff3;
+    --destructive: #e64343;
+    --border: #2f3a418c;
+    --input: #2f3a4199;
+    --ring: #35dcab;
+    --signal: #35dcab;
+    --signal-foreground: #031a1b;
+    --hazard: #ff9d36;
+    --hazard-foreground: #231103;
+  }
+
   body {
-    background-color: #05070f;
-    color: #f1f5f9;
+    background-color: var(--background);
+    color: var(--foreground);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
+
+/* Light Mode Overrides for High-Contrast Clean Aesthetics */
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light header {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85) !important;
+}
+
+html.light .bg-slate-950,
+html.light .bg-slate-950\/90,
+html.light .bg-slate-950\/85,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/98 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html.light .bg-slate-900,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/60 {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+}
+
+html.light .bg-slate-800,
+html.light .bg-slate-800\/80 {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .border-slate-800,
+html.light .border-slate-800\/80,
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-slate-700\/70 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-300,
+html.light .text-slate-400 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-500,
+html.light .text-slate-600 {
+  color: #64748b !important;
+}
+
+html.light .shadow-black\/80,
+html.light .shadow-black\/90,
+html.light .shadow-black\/50 {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Retain high-contrast alert & action button colors in light mode */
+html.light .bg-signal,
+html.light button.bg-signal,
+html.light .text-signal-foreground,
+html.light .bg-rose-600,
+html.light .bg-rose-600 .text-white,
+html.light .bg-destructive,
+html.light .bg-destructive .text-white {
+  color: #ffffff !important;
+}
+
+html.light .text-signal {
+  color: #059669 !important;
+}
+
+html.light .bg-signal\/10,
+html.light .bg-signal\/15 {
+  background-color: rgba(5, 150, 105, 0.12) !important;
+}
+
+html.light .border-signal\/30,
+html.light .border-signal\/40 {
+  border-color: rgba(5, 150, 105, 0.4) !important;
+}
+
+html.light .glass-panel {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.92) 100%) !important;
+  border: 1px solid rgba(203, 213, 225, 0.9) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+}
+
 
 /* Vibrant Cyber-Logistics Palettes & Neon Accents */
 .glow-emerald {
