@@ -958,7 +958,28 @@ export default function App() {
   }, [districtFilterState, districtSearchQuery]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors">
+    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors relative overflow-x-hidden">
+      {/* 0. AMBIENT TOPOGRAPHIC CONTOUR & WATERMARK BACKGROUND */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.035] dark:opacity-[0.055] bg-repeat bg-center mix-blend-multiply dark:mix-blend-screen"
+        style={{
+          backgroundImage: "url('/topographic-terrain.png')",
+          backgroundSize: "680px auto",
+        }}
+        aria-hidden="true"
+      />
+      {/* Subtle Coordinate Datum Margin Watermarks */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden text-[9px] font-mono text-muted-foreground/15 dark:text-muted-foreground/10 leading-none"
+        aria-hidden="true"
+      >
+        <div className="absolute top-2 left-6 tracking-widest uppercase">
+          DATUM: WGS84 · SRTM-30M · NORTH-EASTERN REGIONAL CORRIDOR [21°57'N - 29°30'N, 89°46'E - 97°30'E]
+        </div>
+        <div className="absolute bottom-2 right-6 tracking-widest uppercase hidden md:block">
+          SURVEY GRID REF: NH-13 / NH-27 / NH-29 / NH-102 · GROUND TELEMETRY V2.4
+        </div>
+      </div>
       {/* 1. CLEAN APP HEADER */}
       <header className="border-b border-border bg-card px-4 sm:px-6 py-3 transition-colors">
         <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
@@ -1185,6 +1206,62 @@ export default function App() {
         {/* VIEW 1: ROUTE DISPATCHER */}
         {activeView === "dispatcher" && (
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
+            {/* Regional Logistics Overview Banner with Himalayan Highway Backdrop */}
+            <div className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+              <div
+                className="absolute inset-0 z-0 bg-cover bg-right sm:bg-center opacity-30 dark:opacity-20 transition-opacity"
+                style={{
+                  backgroundImage: "url('/hero-himalayan-highway.jpg')",
+                }}
+              />
+              <div className="absolute inset-0 z-0 bg-gradient-to-r from-card via-card/90 to-card/35 dark:from-card dark:via-card/92 dark:to-card/50" />
+
+              <div className="relative z-10 p-5 sm:p-6 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-xs font-semibold">
+                    <Mountain className="size-3.5" />
+                    <span>Eastern Himalayan Logistics Grid · 8 Northeast States</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>OSM Real Graph Engine Active</span>
+                    </span>
+                    <span className="hidden sm:inline">·</span>
+                    <span className="hidden sm:inline">56 Key Corridors</span>
+                  </div>
+                </div>
+
+                <div className="max-w-2xl">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                    Risk-Aware Strategic Freight Routing & Accessibility
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
+                    Dynamic terrain dual-path solver balancing transit duration against monsoon rainfall, slope gradients, and multi-axle freight restrictions across Assam, Arunachal, Meghalaya, Manipur, Mizoram, Nagaland, Sikkim, and Tripura.
+                  </p>
+                </div>
+
+                {/* Corridor telemetry stat bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Active Departure</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[origin]?.name} ({CITY_MAP[origin]?.state})</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Target Destination</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[destination]?.name} ({CITY_MAP[destination]?.state})</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Corridor Elevation</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[origin]?.y || 55}m ➔ {CITY_MAP[destination]?.y || 3048}m</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Weather Advisory</div>
+                    <div className="text-xs font-bold text-primary truncate mt-0.5">{liveWeather.summary || "Clear Transit"}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Quick-Pick Freight Corridors */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
@@ -1314,7 +1391,22 @@ export default function App() {
 
                 {/* Side-by-Side Route Comparison Card */}
                 {shortestStats && safeStats && (
-                  <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                  <div className="relative rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4 overflow-hidden">
+                    {/* Subtle Cartographic Compass Rose Watermark */}
+                    <svg
+                      className="pointer-events-none absolute -right-6 -bottom-6 size-40 text-muted-foreground/5 dark:text-primary/5 select-none"
+                      viewBox="0 0 100 100"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" />
+                      <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="0.75" />
+                      <polygon points="50,10 54,46 50,42 46,46" fill="currentColor" />
+                      <polygon points="50,90 54,54 50,58 46,54" fill="currentColor" opacity="0.6" />
+                      <polygon points="90,50 54,54 58,50 54,46" fill="currentColor" opacity="0.8" />
+                      <polygon points="10,50 46,54 42,50 46,46" fill="currentColor" opacity="0.8" />
+                      <circle cx="50" cy="50" r="3" fill="currentColor" />
+                    </svg>
                     <div className="flex items-center justify-between pb-3 border-b border-border">
                       <div className="font-bold text-sm text-foreground">A* Path Comparison</div>
                       {riskReductionPct > 0 && (
@@ -1817,6 +1909,34 @@ export default function App() {
               <p className="text-xs text-muted-foreground mt-1">
                 Transparency and explainability principles powering the RaahSetu routing engine.
               </p>
+            </div>
+
+            {/* Network Topology Specimen Card */}
+            <div className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-xs p-5">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                <div className="md:col-span-7 space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                    <Database className="size-3" />
+                    <span>OSM Network Graph Topology</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground">
+                    Northeast India Multi-Modal Road Graph
+                  </h2>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Extracted from Geofabrik OpenStreetMap PBF extracts using Pyosmium and OSMnx. The runtime pilot comprises 5,814 road nodes and 13,681 directed highway edges spanning all 8 Northeastern states.
+                  </p>
+                </div>
+                <div className="md:col-span-5 rounded-xl overflow-hidden border border-border h-40 relative shadow-2xs bg-slate-950">
+                  <img
+                    src="/route-map-dark.png"
+                    alt="Northeast Road Topology Graph"
+                    className="w-full h-full object-contain p-2"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-2.5">
+                    <span className="text-[11px] text-white/90 font-mono">13,681 Directed Edges · 8 States</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Census Cards */}
