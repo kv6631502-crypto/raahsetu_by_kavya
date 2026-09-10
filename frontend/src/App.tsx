@@ -633,7 +633,9 @@ export function App() {
   const [activeBlockageIdx, setActiveBlockageIdx] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
   const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
-  const [activeConsoleTab, setActiveConsoleTab] = useState<"planner" | "districts">("planner");
+  const [activeView, setActiveView] = useState<"dispatcher" | "districts" | "advisories" | "system">("dispatcher");
+  const [districtFilterState, setDistrictFilterState] = useState<string>("ALL");
+  const [districtSearchQuery, setDistrictSearchQuery] = useState<string>("");
 
   // Auto-cycle Emergency Road Blockage Banner every 4.5 seconds
   useEffect(() => {
@@ -843,7 +845,6 @@ export function App() {
   }, [theme]);
 
   // New UI Navigation & Auth States
-  const [hasViewedNavigation, setHasViewedNavigation] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authRole, setAuthRole] = useState<"dispatcher" | "driver" | "authority">("dispatcher");
@@ -1357,13 +1358,12 @@ export function App() {
 
   // Dedicated helper to redirect and center smoothly on Route Map Viewport
   const scrollToMap = (startNav = false) => {
-    setHasViewedNavigation(true);
-    setActiveConsoleTab("planner");
+    setActiveView("dispatcher");
     if (startNav) {
       handleStartNavigation();
     }
     setTimeout(() => {
-      const mapEl = document.getElementById("route-map-viewport") || document.getElementById("console");
+      const mapEl = document.getElementById("route-map-viewport");
       if (mapEl) {
         mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
         window.dispatchEvent(new Event("resize"));
@@ -1543,59 +1543,100 @@ export function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Filtered districts for the District Accessibility Matrix
+  const filteredDistricts = useMemo(() => {
+    return DISTRICT_CONNECTIVITY.filter((dist) => {
+      const matchesState =
+        districtFilterState === "ALL" ||
+        dist.state.toLowerCase() === districtFilterState.toLowerCase();
+      const matchesSearch =
+        !districtSearchQuery.trim() ||
+        dist.district.toLowerCase().includes(districtSearchQuery.toLowerCase()) ||
+        dist.state.toLowerCase().includes(districtSearchQuery.toLowerCase()) ||
+        dist.primaryHighway.toLowerCase().includes(districtSearchQuery.toLowerCase());
+      return matchesState && matchesSearch;
+    });
+  }, [districtFilterState, districtSearchQuery]);
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-signal/30 selection:text-signal">
-      {/* Sticky Header Navbar */}
-            {/* FIGMA-INSPIRED NOTCH TOP BAR */}
-      <header className="sticky top-0 z-50 w-full px-4 sm:px-6 pt-3 pb-2 bg-gradient-to-b from-[#05070f] via-[#05070f]/90 to-transparent backdrop-blur-md">
+      {/* Clean Humanized Header Navbar */}
+      <header className="sticky top-0 z-50 w-full px-4 sm:px-6 py-2.5 bg-card/90 border-b border-border/80 backdrop-blur-md transition-colors">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
           {/* Brand Logo & Name */}
-          <a href="#top" className="flex items-center gap-2.5 shrink-0 group">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-lg shadow-signal/15 group-hover:scale-105 transition-transform">
+          <button
+            type="button"
+            onClick={() => setActiveView("dispatcher")}
+            className="flex items-center gap-2.5 shrink-0 group cursor-pointer text-left"
+          >
+            <span className="flex size-9 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-sm group-hover:scale-105 transition-transform">
               <Waypoints className="size-5" />
             </span>
             <span className="flex flex-col leading-none">
-              <span className="font-display text-lg font-bold tracking-tight text-white flex items-center gap-1">
+              <span className="font-display text-lg font-bold tracking-tight text-foreground flex items-center gap-1">
                 RaahSetu<span className="text-signal font-mono text-xs">.ai</span>
               </span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-signal font-bold">
-                Logistics Intelligence
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+                Logistics Intelligence · Northeast India
               </span>
             </span>
-          </a>
+          </button>
 
-          {/* Figma Center Notch Hanging Tab */}
-          <nav className="hidden md:flex items-center gap-6 px-7 py-2 rounded-full bg-slate-900/90 border border-slate-700/70 shadow-2xl backdrop-blur-xl font-mono text-xs uppercase tracking-wider text-slate-300">
-            <a href="#top" className="hover:text-signal transition-colors font-semibold">
-              Home
-            </a>
+          {/* Navigation Views Switcher */}
+          <nav className="hidden lg:flex items-center gap-1 p-1 rounded-xl bg-secondary/80 border border-border text-xs font-mono backdrop-blur-md shadow-sm">
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                scrollToMap();
-              }}
-              className="hover:text-signal transition-colors font-semibold flex items-center gap-1 cursor-pointer"
+              onClick={() => setActiveView("dispatcher")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                activeView === "dispatcher"
+                  ? "bg-signal text-signal-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
             >
-              <span>Map & Console</span>
-              <span className="size-1.5 rounded-full bg-signal animate-pulse" />
+              <Navigation className="size-3.5 fill-current" />
+              <span>Route Dispatcher</span>
             </button>
-            <a href="#crisis-data" className="hover:text-signal transition-colors font-semibold">
-              Crisis Data
-            </a>
 
             <button
               type="button"
-              onClick={() => setIsReportModalOpen(true)}
-              className="hover:text-hazard transition-colors font-semibold flex items-center gap-1.5 cursor-pointer"
+              onClick={() => setActiveView("districts")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                activeView === "districts"
+                  ? "bg-signal text-signal-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
             >
-              <Camera className="size-3.5 text-hazard" />
-              <span>Report Incident</span>
-              {offlineReportsCount > 0 && (
-                <span className="rounded-full bg-hazard text-hazard-foreground px-1.5 py-0.2 text-[9px] font-mono font-bold">
-                  {offlineReportsCount}
-                </span>
-              )}
+              <Activity className="size-3.5" />
+              <span>Districts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView("advisories")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                activeView === "advisories"
+                  ? "bg-signal text-signal-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <AlertTriangle className="size-3.5 text-hazard" />
+              <span>Road Advisories</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-hazard/20 text-hazard text-[10px] font-mono font-black">
+                {ACTIVE_ROAD_BLOCKAGES.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView("system")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer font-bold ${
+                activeView === "system"
+                  ? "bg-signal text-signal-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              }`}
+            >
+              <Info className="size-3.5" />
+              <span>System & Data</span>
             </button>
           </nav>
 
@@ -1693,495 +1734,177 @@ export function App() {
       </header>
 
       <main>
-        {/* SECTION 1: FIGMA-INSPIRED HERO WITH MOUNTAIN BACKDROP & FLOATING CAPSULE CONSOLE */}
-        <section id="top" className="relative overflow-hidden px-4 sm:px-6 pt-4 pb-14 sm:pb-20">
-          {/* Scenic Mountain Pass Hero Frame */}
-          <div className="relative mx-auto w-full max-w-7xl rounded-[32px] overflow-hidden border border-slate-800/80 bg-gradient-to-b from-[#0a1622] via-[#0b1b2b] to-[#060c14] p-6 sm:p-12 lg:p-16 shadow-2xl shadow-black/80">
-            {/* Realistic Himalayan Mountain Freight Corridor Background */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <img
-                src="/hero-himalayan-highway.jpg"
-                alt="Northeast Himalayan Mountain Freight Corridor"
-                className="w-full h-full object-cover object-center opacity-35 mix-blend-luminosity scale-105 transition-transform duration-1000"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#060c14] via-[#060c14]/75 to-[#0a1622]/85" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#060c14] via-transparent to-[#060c14]/85" />
+        {/* Mobile Sub-Navigation Bar */}
+        <div className="lg:hidden border-b border-border bg-card/95 backdrop-blur-md px-3 py-2 sticky top-[57px] z-30 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveView("dispatcher")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeView === "dispatcher"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <Navigation className="size-3.5" />
+            <span>Route Dispatcher</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("districts")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeView === "districts"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <Activity className="size-3.5" />
+            <span>Districts (8)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("advisories")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeView === "advisories"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <AlertTriangle className="size-3.5" />
+            <span>Advisories ({ACTIVE_ROAD_BLOCKAGES.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("system")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeView === "system"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            }`}
+          >
+            <Database className="size-3.5" />
+            <span>System & Data</span>
+          </button>
+        </div>
+
+        {/* Real-time Highway Notice Strip */}
+        <div onMouseEnter={() => setIsBannerPaused(true)} onMouseLeave={() => setIsBannerPaused(false)} className="border-b border-border/80 bg-secondary/30 px-4 sm:px-6 py-2.5">
+          <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold text-[11px] shrink-0 border border-amber-500/30">
+                <AlertTriangle className="size-3" />
+                HIGHWAY ADVISORY
+              </span>
+              <span className="truncate font-medium text-foreground">
+                <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state}):</strong>{" "}
+                {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause} at {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}.
+              </span>
             </div>
-
-            {/* CRITICAL ROAD BLOCKAGE & DETOUR ADVISORY BANNER (First Page Hero Top - Auto-Moving) */}
-            <div
-              onMouseEnter={() => setIsBannerPaused(true)}
-              onMouseLeave={() => setIsBannerPaused(false)}
-              className="relative z-20 mb-8 rounded-2xl border border-destructive/60 bg-gradient-to-r from-red-950/95 via-slate-950/95 to-amber-950/95 p-4 sm:p-5 shadow-2xl backdrop-blur-xl transition-all duration-500"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-900/50 pb-3 mb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="relative flex size-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-80"></span>
-                    <span className="relative inline-flex size-3 rounded-full bg-destructive"></span>
-                  </span>
-                  <span className="font-mono text-xs font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                    <Radio className="size-4 text-rose-400 animate-pulse" />
-                    CRITICAL ROAD BLOCKAGE ALERT · LIVE AUTO-FEED
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
-                    {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].updatedTime}
-                  </span>
-
-                  {/* Dot Indicators for auto-moving blockages */}
-                  <div className="flex items-center gap-1.5">
-                    {ACTIVE_ROAD_BLOCKAGES.map((blk, idx) => (
-                      <button
-                        key={blk.id}
-                        type="button"
-                        onClick={() => setActiveBlockageIdx(idx)}
-                        className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                          idx === activeBlockageIdx
-                            ? "w-6 bg-rose-400 shadow-sm shadow-rose-400/50"
-                            : "w-2 bg-slate-700 hover:bg-slate-500"
-                        }`}
-                        title={`Jump to ${blk.cities}`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Manual Prev / Next arrows */}
-                  <div className="flex items-center gap-1 bg-black/60 rounded-lg p-0.5 border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveBlockageIdx((prev) =>
-                          prev === 0 ? ACTIVE_ROAD_BLOCKAGES.length - 1 : prev - 1
-                        )
-                      }
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                      title="Previous Blockage Alert"
-                    >
-                      <ChevronLeft className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveBlockageIdx((prev) =>
-                          (prev + 1) % ACTIVE_ROAD_BLOCKAGES.length
-                        )
-                      }
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                      title="Next Blockage Alert"
-                    >
-                      <ChevronRight className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Blockage Details & Detour Route (No plot button, full width layout) */}
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-md bg-destructive text-white font-mono font-black text-[11px] tracking-wider uppercase shadow-md shadow-destructive/30">
-                    ROAD BLOCKED
-                  </span>
-                  <span className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5">
-                    <AlertTriangle className="size-4 text-amber-400 inline shrink-0" />
-                    <span>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cities}</span>
-                    <span className="text-slate-400 text-xs font-normal">({ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state})</span>
-                  </span>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-900/90 text-amber-300 border border-amber-500/40">
-                    📍 {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}
-                  </span>
-                  <span className="text-[11px] font-mono text-rose-300 ml-auto hidden md:inline">
-                    {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road}
-                  </span>
-                </div>
-
-                <div className="text-xs text-rose-200 font-medium">
-                  <strong className="text-white">Cause:</strong> {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause}
-                </div>
-
-                {/* Which Way to Avoid & Safe Detour Guidance */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 font-mono text-xs">
-                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-950/70 border border-red-800/50 text-red-200">
-                    <span className="text-rose-400 font-bold shrink-0">⛔ AVOID:</span>
-                    <span className="text-[11px] leading-relaxed">{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].avoidInfo}</span>
-                  </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-800/50 text-emerald-200">
-                    <span className="text-emerald-400 font-bold shrink-0">✅ DETOUR:</span>
-                    <span className="text-[11px] leading-relaxed">{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].detourRoute}</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-red-900/30">
-                  <span className="text-[11px] font-mono text-slate-400">
-                    Live telemetry from Border Roads Organisation (BRO) & NHIDCL
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
-                      if (blk.originId && blk.destinationId) {
-                        setOrigin(blk.originId);
-                        setDestination(blk.destinationId);
-                      }
-                      scrollToMap();
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm"
-                    title="Plot blocked corridor on map and calculate safe risk-aware detour"
-                  >
-                    <Navigation className="size-3" />
-                    <span>Plot Corridor & Detour on Map</span>
-                    <ArrowRight className="size-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="max-w-3xl">
-                {/* Small Artifact Chips: Regional Telemetry & Landslide Defense */}
-                <div className="flex flex-wrap items-center gap-2.5 mb-6">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-signal/40 bg-signal/10 px-3.5 py-1 text-xs font-mono text-signal backdrop-blur-md shadow-sm">
-                    <span className="size-2 rounded-full bg-signal node-pulse" />
-                    <span>NORTHEAST HIGHWAY CORRIDOR INTELLIGENCE</span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-hazard/40 backdrop-blur-md text-xs font-mono shadow-sm">
-                    <span className="size-2 rounded-full bg-hazard animate-pulse" />
-                    <span className="text-hazard font-bold">GSI Landslide Defense</span>
-                    <span className="text-slate-500">|</span>
-                    <span className="text-slate-300">Sela & Sonapur Pass Active</span>
-                  </div>
-                </div>
-
-              {/* Headline */}
-              <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08]">
-                Safe Freight Corridors Across Northeast India
-              </h1>
-
-              {/* Subtitle */}
-              <p className="mt-5 text-base sm:text-xl text-slate-300 max-w-2xl leading-relaxed">
-                Explainable, terrain & hazard-aware logistics intelligence across 8 Northeast states over real OpenStreetMap road networks.
-              </p>
-            </div>
-
-            {/* Small Floating Telemetry Artifact Card */}
-            <div className="hidden lg:flex flex-col gap-2.5 shrink-0 self-start">
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-950/80 border border-slate-700/70 backdrop-blur-xl shadow-2xl">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-signal/15 text-signal border border-signal/30 shadow-md">
-                  <Radio className="size-5 text-signal animate-pulse" />
-                </div>
-                <div className="text-left font-mono">
-                  <div className="flex items-center gap-1.5 text-[10px] text-signal font-bold uppercase tracking-wider">
-                    <span className="size-1.5 rounded-full bg-signal animate-ping" />
-                    Live Telemetry Node
-                  </div>
-                  <div className="text-xs font-bold text-white">5,814 OSM Network Edges</div>
-                  <div className="text-[10px] text-slate-400">Pure Hardware GPS · 0 Sim</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] font-mono text-slate-400 backdrop-blur-md">
-                <span className="text-signal font-bold">8 States Linked</span>
-                <span>·</span>
-                <span>111 Road Hubs</span>
-                <span>·</span>
-                <span className="text-emerald-400">✓ Calibrated</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
+                  if (blk.originId && blk.destinationId) {
+                    setOrigin(blk.originId);
+                    setDestination(blk.destinationId);
+                  }
+                  setActiveView("dispatcher");
+                  setTimeout(() => {
+                    const mapEl = document.getElementById("route-map-viewport");
+                    if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 60);
+                }}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline text-xs cursor-pointer"
+              >
+                <span>Inspect Detour</span>
+                <ArrowRight className="size-3" />
+              </button>
+              <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveBlockageIdx((prev) => (prev === 0 ? ACTIVE_ROAD_BLOCKAGES.length - 1 : prev - 1))}
+                  className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Previous Advisory"
+                >
+                  <ChevronLeft className="size-3.5" />
+                </button>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {activeBlockageIdx + 1}/{ACTIVE_ROAD_BLOCKAGES.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveBlockageIdx((prev) => (prev + 1) % ACTIVE_ROAD_BLOCKAGES.length)}
+                  className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Next Advisory"
+                >
+                  <ChevronRight className="size-3.5" />
+                </button>
               </div>
             </div>
           </div>
+        </div>
 
-            {/* THE FLOATING CAPSULE SEARCH CONSOLE (Figma Inspired) */}
-            <div className="relative z-20 mt-10 sm:mt-14 w-full max-w-5xl rounded-3xl sm:rounded-full bg-slate-950/90 border border-slate-700/80 p-2 sm:p-3 shadow-2xl shadow-black/90 backdrop-blur-2xl">
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                {/* Segment 1: Origin */}
-                <div className="flex-1 w-full min-w-0">
-                  <CityCombobox
-                    label="Origin"
-                    tone="signal"
-                    selectedId={origin}
-                    onSelect={(id) => {
-                      setCustomOrigin(null);
-                      setOrigin(id);
-                    }}
-                    otherCityId={destination}
-                    customOrigin={customOrigin}
-                    lang={lang}
-                    t={t}
-                    variant="capsule"
-                    onGpsLocate={handleGpsLocation}
-                    isLocating={isLocating}
-                  />
-                </div>
-
-                {/* Quick Swap Button */}
-                <button
-                  type="button"
-                  onClick={handleSwap}
-                  className="shrink-0 p-2.5 rounded-full bg-slate-900 border border-slate-700 text-muted-foreground hover:text-signal hover:border-signal/40 transition-all cursor-pointer shadow-md"
-                  title="Swap Origin & Destination"
-                >
-                  <ArrowUpDown className="size-4 rotate-90 sm:rotate-0" />
-                </button>
-
-                {/* Segment 2: Destination */}
-                <div className="flex-1 w-full min-w-0">
-                  <CityCombobox
-                    label="Destination"
-                    tone="hazard"
-                    selectedId={destination}
-                    onSelect={(id) => setDestination(id)}
-                    otherCityId={origin}
-                    lang={lang}
-                    t={t}
-                    variant="capsule"
-                  />
-                </div>
-
-                {/* Primary CTA Button: "View Navigation" -> Redirects directly to Map Viewport */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    scrollToMap();
-                  }}
-                  className="w-full sm:w-auto px-7 py-3.5 rounded-2xl sm:rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-emerald-500/30 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0"
-                  title="View Navigation & Open Map"
-                >
-                  <Navigation className="size-4 fill-slate-950" />
-                  <span>View Navigation</span>
-                  <ArrowRight className="size-4 stroke-[2.5]" />
-                </button>
-              </div>
-            </div>
-
-            {/* Registered Vehicle Status Bar & Emergency SOS Quick Trigger */}
-            <div className="relative z-10 mt-3 max-w-5xl flex flex-wrap items-center justify-between gap-3 px-3 py-2 rounded-2xl bg-slate-950/70 border border-slate-800/80 text-xs font-mono backdrop-blur-md">
-              <div className="flex items-center gap-2 text-slate-300 flex-wrap">
-                <Truck className="size-4 text-signal shrink-0" />
-                <span>
-                  Registered Vehicle: <strong className="text-signal font-mono font-bold">{driverProfile.vehicleNo}</strong> ({(VEHICLE_PROFILES[driverProfile.vehicleType] || VEHICLE_PROFILES.standard).name})
-                </span>
-                <span className="text-slate-600 hidden sm:inline">|</span>
-                <span className="hidden sm:inline text-slate-300">
-                  Driver: <strong className="text-white">{driverProfile.driverName}</strong> ({driverProfile.driverMobile})
-                </span>
-                <span className="text-slate-600 hidden md:inline">|</span>
-                <span className="hidden md:inline text-slate-400">
-                  Trusted Contact: <strong className="text-amber-400">{driverProfile.trustedContactMobile}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsRegistrationModalOpen(true)}
-                  className="ml-1 text-[11px] text-signal hover:underline cursor-pointer font-bold"
-                >
-                  [Edit Details]
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSosModalOpen(true);
-                    triggerEmergencySos();
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600/20 border border-rose-500/60 text-rose-300 hover:bg-rose-600 hover:text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-                >
-                  <Siren className="size-3.5 text-rose-400" />
-                  <span>EMERGENCY SOS</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Bottom Right Callout Card with Sensor Thumbnail Artifact (Figma Style) */}
-            <div className="relative z-10 mt-10 sm:mt-14 flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Left Micro-Pill: Active Lifeline Corridor Status */}
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/70 border border-slate-800 text-[11px] font-mono text-slate-300 backdrop-blur-md">
-                <span className="size-2 rounded-full bg-signal animate-pulse" />
-                <span>Active Corridor Watch: <strong>NH-6, NH-10, NH-29, NH-13</strong></span>
-              </div>
-
-              {/* Right Showcase Card with Image Preview */}
-              <div className="max-w-md p-3 rounded-2xl bg-slate-950/85 border-l-4 border-l-amber-400 border border-slate-800/80 text-xs text-slate-300 backdrop-blur-xl shadow-2xl flex items-center gap-3">
-                <img
-                  src="/hazard-monitoring-station.jpg"
-                  alt="Geotechnical Early-Warning Sensor"
-                  className="size-16 rounded-xl object-cover border border-slate-700/80 shrink-0 shadow-md"
-                />
-                <div className="min-w-0">
-                  <div className="font-bold text-white text-sm truncate">Real OSM Road Networks & Telemetry</div>
-                  <p className="mt-0.5 leading-relaxed text-slate-400 text-[11px] line-clamp-2">
-                    Explainable, risk-aware routing across 8 Northeast states over verified OpenStreetMap road networks.
-                  </p>
-                  <span className="text-[10px] font-mono text-signal font-semibold">GSI Ground Truth · 100% Free OSM</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        
-{hasViewedNavigation && (
-        <section id="console" className="relative border-t border-border/70 py-16 lg:py-24 animate-in fade-in duration-500">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 grid-lines opacity-[0.18]" />
-          <div className="relative mx-auto w-full max-w-7xl px-5 lg:px-8 space-y-8">
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-signal/10 border border-signal/30 text-signal text-xs font-mono shadow-sm">
-                  <span className="flex items-center gap-2 font-bold">
-                    <span className="size-2 rounded-full bg-signal animate-ping" />
-                    Live Corridor Telemetry, Hardware GPS & Real OSM Network Studio Active
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setHasViewedNavigation(false)}
-                    className="text-[11px] font-mono text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800"
-                    title="Minimize studio to clean view"
-                  >
-                    <Minimize2 className="size-3" />
-                    <span>Clean View</span>
-                  </button>
-                </div>
-
-                {/* CONSOLE VIEW TABS: ROUTE PLANNER vs DISTRICT ACCESSIBILITY MATRIX */}
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/80 pb-4">
-                  <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 backdrop-blur-md shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => setActiveConsoleTab("planner")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                        activeConsoleTab === "planner"
-                          ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
+        {/* VIEW 1: PRIMARY DISPATCHER WORKBENCH */}
+        {activeView === "dispatcher" && (
+          <section id="dispatcher" className="relative py-6 sm:py-8 animate-in fade-in duration-300">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+              {/* Workbench Header & Registered Vehicle Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-signal/15 text-signal font-mono text-xs font-bold border border-signal/30">
                       <Navigation className="size-3.5" />
-                      <span>Route Planner & Dispatch</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveConsoleTab("districts")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                        activeConsoleTab === "districts"
-                          ? "bg-signal text-signal-foreground shadow-md shadow-signal/20"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Activity className="size-3.5 text-current" />
-                      <span>District Accessibility Matrix</span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-hazard/20 text-hazard text-[10px] font-mono font-bold">
-                        SIH-Req (g)
-                      </span>
-                    </button>
+                      ROUTE DISPATCHER
+                    </span>
+                    <span className="text-xs text-muted-foreground">· 8 Northeast States Network</span>
                   </div>
-
-                  <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                    <span className="size-2 rounded-full bg-signal animate-pulse" />
-                    <span>8 NER State Networks Monitored Live</span>
-                  </div>
+                  <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-1">
+                    Mountain Freight Routing & Risk Analysis
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    Compare fastest vs. hazard-penalized routes over real OpenStreetMap road graphs with terrain elevation and axle limits.
+                  </p>
                 </div>
 
-            {activeConsoleTab === "districts" ? (
-              /* DISTRICT-WISE CONNECTIVITY HEALTH DASHBOARD (SIH-26002 Requirement 'g') */
-              <div className="rounded-3xl border border-border bg-card/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl animate-in fade-in duration-300">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70 pb-4 mb-6">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
-                        Accessibility Monitoring Dashboard · SIH-26002 Req (g)
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-signal/15 text-signal text-[10px] font-mono font-bold">
-                        Live Network
-                      </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl border border-border bg-card shadow-sm">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-secondary text-foreground">
+                      <Truck className="size-4" />
                     </div>
-                    <h3 className="font-display text-2xl font-bold text-foreground mt-1">
-                      District-Wise Connectivity Status (8 NER States)
-                    </h3>
-                    <p className="text-xs text-muted-foreground font-mono mt-1">
-                      Real-time road access, transit delays, and incident risk across all eight North Eastern states.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs font-mono shrink-0">
-                    <span className="inline-flex items-center gap-1.5 text-signal bg-signal/10 px-2.5 py-1 rounded-full border border-signal/30">
-                      <span className="size-2 rounded-full bg-signal" /> Normal
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-hazard bg-hazard/10 px-2.5 py-1 rounded-full border border-hazard/30">
-                      <span className="size-2 rounded-full bg-hazard" /> Watch
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-destructive bg-destructive/10 px-2.5 py-1 rounded-full border border-destructive/30">
-                      <span className="size-2 rounded-full bg-destructive" /> Restricted
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {DISTRICT_CONNECTIVITY.map((dist) => (
-                    <div
-                      key={dist.district}
-                      className={`p-4 rounded-2xl border transition-all hover:scale-[1.01] ${
-                        dist.status === "RESTRICTED"
-                          ? "border-destructive/50 bg-destructive/10 shadow-lg shadow-destructive/5"
-                          : dist.status === "WATCH"
-                          ? "border-hazard/50 bg-hazard/10 shadow-lg shadow-hazard/5"
-                          : "border-border bg-secondary/30 shadow-sm"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-muted-foreground font-mono uppercase">{dist.state}</span>
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                          dist.status === "RESTRICTED"
-                            ? "bg-destructive text-destructive-foreground shadow-sm"
-                            : dist.status === "WATCH"
-                            ? "bg-hazard text-hazard-foreground shadow-sm"
-                            : "bg-signal text-signal-foreground shadow-sm"
-                        }`}>
-                          {dist.status}
-                        </span>
+                    <div className="text-xs">
+                      <div className="font-semibold text-foreground flex items-center gap-1.5">
+                        <span>{driverProfile.vehicleNo}</span>
+                        <span className="text-muted-foreground font-normal">({(VEHICLE_PROFILES[driverProfile.vehicleType] || VEHICLE_PROFILES.standard).name})</span>
                       </div>
-                      <div className="font-bold text-base text-foreground mt-2">{dist.district}</div>
-                      <div className="text-xs text-signal font-mono font-semibold mt-1">{dist.primaryHighway}</div>
-                      <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-xs font-mono">
-                        <span>Incidents: <strong className="text-foreground">{dist.incidentCount}</strong></span>
-                        <span className={dist.delayAvgMinutes > 60 ? "text-destructive font-bold" : "text-muted-foreground"}>
-                          Delay: +{dist.delayAvgMinutes}m
-                        </span>
-                      </div>
-                      <div className="mt-3">
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                        <span>{driverProfile.driverName}</span>
                         <button
                           type="button"
-                          onClick={() => {
-                            setDestination(dist.hubId);
-                            setActiveConsoleTab("planner");
-                            setTimeout(() => {
-                              const mapEl = document.getElementById("route-map-viewport");
-                              if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                            }, 60);
-                          }}
-                          className="w-full py-1.5 px-3 rounded-xl bg-slate-900 border border-slate-700 hover:border-signal text-xs font-mono font-bold text-signal hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                          onClick={() => setIsRegistrationModalOpen(true)}
+                          className="text-primary hover:underline font-semibold cursor-pointer"
                         >
-                          <span>Route to District Hub</span>
-                          <ArrowRight className="size-3.5" />
+                          Edit
                         </button>
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSosModalOpen(true);
+                      triggerEmergencySos();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                    title="One-Click Emergency SOS"
+                  >
+                    <Siren className="size-3.5 text-white" />
+                    <span>SOS</span>
+                  </button>
                 </div>
               </div>
-            ) : (
-              <>
-            <div className="max-w-2xl">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-signal font-bold">
-                Try it — route planner
-              </span>
-              <h2 className="mt-4 text-balance font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Enter an origin and destination
-              </h2>
-              <p className="mt-4 text-pretty leading-relaxed text-muted-foreground">
-                Pick two cities across the eight Northeast states. RaahSetu solves both the fastest and the risk-aware
-                path over the road graph and shows you exactly what the safer option trades and avoids.
-              </p>
-            </div>
 
-            {/* Strategic Mountain Freight Corridors Quick-Picks Ribbon */}
+              {/* Strategic Mountain Freight Corridors Quick-Picks Ribbon */}
             <div className="rounded-2xl border border-border bg-card/90 p-4 shadow-xl backdrop-blur-md">
               <div className="mb-2.5 flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 font-mono uppercase tracking-wider text-signal font-bold">
@@ -3133,19 +2856,319 @@ export function App() {
                 </div>
               </div>
             </div>
-              </>
-            )}
 
             <p className="mt-6 flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <Milestone className="size-3.5" />
               Demo graph with representative road-risk weights. The production engine runs the same A* search over full OpenStreetMap networks and live hazard reports.
-              <ArrowRight className="size-3.5" />
             </p>
+
+            {/* Bottom Quick-Jump Rail */}
+            <div className="mt-8 pt-6 border-t border-border/80 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <button
+                type="button"
+                onClick={() => setActiveView("districts")}
+                className="p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-primary flex items-center gap-1.5">
+                    <Activity className="size-3.5" />
+                    DISTRICT ACCESSIBILITY
+                  </span>
+                  <ArrowRight className="size-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <div className="font-semibold text-sm text-foreground mt-1.5">8 Northeast States Matrix</div>
+                <p className="text-xs text-muted-foreground mt-0.5">Explore district-wise road access, delays, and incident records.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveView("advisories")}
+                className="p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-amber-500 flex items-center gap-1.5">
+                    <AlertTriangle className="size-3.5" />
+                    ROAD ADVISORIES
+                  </span>
+                  <ArrowRight className="size-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <div className="font-semibold text-sm text-foreground mt-1.5">Active Blockages & Detours</div>
+                <p className="text-xs text-muted-foreground mt-0.5">Live landslide alerts with verified detour recommendations.</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveView("system")}
+                className="p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-muted-foreground flex items-center gap-1.5">
+                    <Database className="size-3.5" />
+                    SYSTEM & EVIDENCE
+                  </span>
+                  <ArrowRight className="size-3.5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <div className="font-semibold text-sm text-foreground mt-1.5">MoRTH Census & A* Architecture</div>
+                <p className="text-xs text-muted-foreground mt-0.5">Review data sources, explainable algorithms, and platform blueprints.</p>
+              </button>
+            </div>
           </div>
         </section>
         )}
 
+        {/* VIEW 2: DISTRICT-WISE CONNECTIVITY HEALTH MATRIX (SIH-26002 Req 'g') */}
+        {activeView === "districts" && (
+          <section id="districts" className="relative py-8 sm:py-12 animate-in fade-in duration-300">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-signal/15 text-signal font-mono text-xs font-bold border border-signal/30">
+                      <Activity className="size-3.5" />
+                      SIH-26002 REQ (G)
+                    </span>
+                    <span className="text-xs text-muted-foreground">· 8 Northeast States Connectivity</span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-1">
+                    District-Wise Accessibility Matrix
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    Real-time highway transit health, incident alerts, and estimated delays across all eight northeastern states.
+                  </p>
+                </div>
 
+                <div className="flex items-center gap-2 text-xs font-mono shrink-0">
+                  <span className="badge-status-normal">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    {DISTRICT_CONNECTIVITY.filter((d) => d.status === "NORMAL").length} Normal
+                  </span>
+                  <span className="badge-status-advisory">
+                    <span className="size-1.5 rounded-full bg-amber-500" />
+                    {DISTRICT_CONNECTIVITY.filter((d) => d.status === "WATCH").length} Watch
+                  </span>
+                  <span className="badge-status-restricted">
+                    <span className="size-1.5 rounded-full bg-rose-500" />
+                    {DISTRICT_CONNECTIVITY.filter((d) => d.status === "RESTRICTED").length} Restricted
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter and Search Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl border border-border bg-card">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                  {["ALL", "Assam", "Arunachal", "Meghalaya", "Nagaland", "Manipur", "Mizoram", "Tripura", "Sikkim"].map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setDistrictFilterState(st)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                        districtFilterState === st
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative flex items-center min-w-[220px]">
+                  <Search className="absolute left-3 size-3.5 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={districtSearchQuery}
+                    onChange={(e) => setDistrictSearchQuery(e.target.value)}
+                    placeholder="Search district or highway..."
+                    className="w-full pl-9 pr-7 py-1.5 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {districtSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setDistrictSearchQuery("")}
+                      className="absolute right-2 text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid of filtered districts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {filteredDistricts.map((dist) => (
+                  <div
+                    key={dist.district}
+                    className={`p-4 rounded-xl border transition-all ${
+                      dist.status === "RESTRICTED"
+                        ? "border-rose-500/40 bg-rose-500/[0.04]"
+                        : dist.status === "WATCH"
+                        ? "border-amber-500/40 bg-amber-500/[0.04]"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-muted-foreground font-mono uppercase">{dist.state}</span>
+                      <span className={
+                        dist.status === "RESTRICTED"
+                          ? "badge-status-restricted"
+                          : dist.status === "WATCH"
+                          ? "badge-status-advisory"
+                          : "badge-status-normal"
+                      }>
+                        {dist.status}
+                      </span>
+                    </div>
+                    <div className="font-bold text-base text-foreground mt-2">{dist.district}</div>
+                    <div className="text-xs text-primary font-mono font-medium mt-1">{dist.primaryHighway}</div>
+                    <div className="mt-4 pt-3 border-t border-border/70 flex items-center justify-between text-xs font-mono">
+                      <span>Incidents: <strong className="text-foreground">{dist.incidentCount}</strong></span>
+                      <span className={dist.delayAvgMinutes > 60 ? "text-rose-500 font-bold" : "text-muted-foreground"}>
+                        Delay: +{dist.delayAvgMinutes}m
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDestination(dist.hubId);
+                          setActiveView("dispatcher");
+                          setTimeout(() => {
+                            const mapEl = document.getElementById("route-map-viewport");
+                            if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 60);
+                        }}
+                        className="w-full py-1.5 px-3 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-xs font-semibold text-foreground transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Route to Hub</span>
+                        <ArrowRight className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {filteredDistricts.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  No districts found matching "{districtSearchQuery}".
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* VIEW 3: ROAD ADVISORIES & DETOUR GUIDANCE */}
+        {activeView === "advisories" && (
+          <section id="advisories" className="relative py-8 sm:py-12 animate-in fade-in duration-300">
+            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/80">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono text-xs font-bold border border-amber-500/30">
+                      <AlertTriangle className="size-3.5" />
+                      SITUATIONAL AWARENESS
+                    </span>
+                    <span className="text-xs text-muted-foreground">· Verified Field Reports</span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mt-1">
+                    Active Road Advisories & Landslide Closures
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    Live corridor telemetry and hazard notices verified by BRO, PWD, and GSI monitoring teams.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow-sm hover:opacity-90 cursor-pointer shrink-0"
+                >
+                  <Camera className="size-3.5" />
+                  <span>Report Road Hazard</span>
+                  {offlineReportsCount > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-mono">
+                      {offlineReportsCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {ACTIVE_ROAD_BLOCKAGES.map((blk) => (
+                  <div
+                    key={blk.id}
+                    className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                            blk.severity === "CRITICAL"
+                              ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          }`}>
+                            {blk.severity} CLOSURE
+                          </span>
+                          <span className="text-xs font-semibold text-muted-foreground">{blk.state}</span>
+                        </div>
+                        <span className="text-[11px] font-mono text-muted-foreground">{blk.updatedTime}</span>
+                      </div>
+
+                      <div>
+                        <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                          <span>{blk.cities}</span>
+                          <span className="text-xs font-mono font-normal text-muted-foreground">({blk.road})</span>
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <strong>Location:</strong> {blk.exactSpot}
+                        </p>
+                      </div>
+
+                      <div className="text-xs text-foreground bg-secondary/50 p-2.5 rounded-lg border border-border">
+                        <strong className="text-rose-500">Incident Cause:</strong> {blk.cause}
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="p-2.5 rounded-lg bg-rose-500/[0.06] border border-rose-500/20 text-foreground">
+                          <span className="font-bold text-rose-500">Avoid: </span>
+                          <span>{blk.avoidInfo}</span>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/20 text-foreground">
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">Recommended Detour: </span>
+                          <span>{blk.detourRoute}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-border flex items-center justify-between">
+                      <span className="text-[11px] font-mono text-muted-foreground">ID: {blk.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (blk.originId && blk.destinationId) {
+                            setOrigin(blk.originId);
+                            setDestination(blk.destinationId);
+                          }
+                          setActiveView("dispatcher");
+                          setTimeout(() => {
+                            const mapEl = document.getElementById("route-map-viewport");
+                            if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 60);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow-sm hover:opacity-90 cursor-pointer"
+                      >
+                        <span>Apply Detour in Dispatcher</span>
+                        <ArrowRight className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* VIEW 4: SYSTEM ARCHITECTURE & EVIDENCE */}
+        {activeView === "system" && (
+          <div className="animate-in fade-in duration-300">
         {/* SECTION 2: GROUND CRISIS & FATALITY DATA */}
         <section id="crisis-data" className="relative border-t border-border/70 py-20 lg:py-28 bg-card/40">
           <div className="mx-auto w-full max-w-7xl px-5 lg:px-8">
@@ -3523,6 +3546,8 @@ export function App() {
             </div>
           </div>
         </section>
+              </div>
+        )}
       </main>
 
       {/* Footer */}
