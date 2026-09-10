@@ -1,15 +1,19 @@
 import React from "react";
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
+  Compass,
   LogIn,
   Mountain,
   Route,
+  Sparkles,
   XCircle,
 } from "lucide-react";
 import { STRATEGIC_CORRIDORS } from "./routeData";
+import ConstellationGrid from "@/components/ui/constellation-grid";
 
 interface IntroPageProps {
   onLaunchConsole: (origin?: string, destination?: string) => void;
@@ -28,87 +32,109 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 }) => {
   return (
     <div className="space-y-12 pb-16">
-      {/* 1. HERO SECTION */}
-      <section className="relative rounded-3xl border border-border bg-card overflow-hidden shadow-xs">
-        {/* Ambient Highway Photography Background with Gradient Mask */}
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-right sm:bg-center opacity-30 dark:opacity-20 transition-opacity"
-          style={{ backgroundImage: "url('/hero-himalayan-highway.jpg')" }}
-        />
-        <div className="absolute inset-0 z-0 bg-gradient-to-r from-card via-card/95 to-card/40 dark:from-card dark:via-card/95 dark:to-card/60" />
-
-        <div className="relative z-10 p-6 sm:p-10 lg:p-12 max-w-4xl space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold">
-            <Mountain className="size-3.5" />
-            <span>SIH26002 · High-Risk Terrain Freight Navigation Prototype</span>
-          </div>
-
-          <div className="space-y-3">
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
-              Navigating the mountain corridors where{" "}
-              <span className="text-primary underline decoration-primary/30 underline-offset-4">
-                ordinary GPS costs human lives.
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-              Standard commercial navigation apps blindly steer 28-tonne heavy freight trailers onto collapsing single-lane ghats, extreme-gradient hairpins, and monsoon landslide slips just to save 5 kilometers.
-              <strong className="text-foreground font-semibold"> RaahSetu</strong> introduces terrain-aware, multi-criteria logistics intelligence that balances distance against elevation gradients, bridge weight limits, and live monsoonal risk.
-            </p>
-          </div>
-
-          {/* Primary Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => onLaunchConsole()}
-              className="px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-xs hover:opacity-95 transition-all cursor-pointer flex items-center gap-2"
-            >
-              <span>Launch Route Dispatcher</span>
-              <ArrowRight className="size-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={onNavigateToAuth}
-              className="px-5 py-3 rounded-xl border border-border bg-secondary text-foreground font-semibold text-sm hover:bg-muted transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <LogIn className="size-4 text-primary" />
-              <span>Driver & Fleet Sign In</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onNavigateToDistricts}
-              className="px-5 py-3 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground font-medium text-sm hover:bg-secondary transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <span>District Health Matrix</span>
-            </button>
-          </div>
-
-          {/* Core Metric Highlights */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-border">
-            <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-              <div className="text-2xl font-bold text-foreground">111</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Strategic Hubs & Towns</div>
+      {/* 1. WELCOME TO RAAHSETU — INTERACTIVE KINETIC CONSTELLATION HERO */}
+      <section className="relative rounded-3xl border border-border bg-card overflow-hidden shadow-xl">
+        <ConstellationGrid
+          fullHeight={false}
+          className="min-h-[620px] sm:min-h-[680px]"
+        >
+          <div className="max-w-4xl mx-auto space-y-6 px-4 py-12 text-center flex flex-col items-center">
+            {/* Top pill badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold backdrop-blur-md">
+              <Mountain className="size-3.5 text-primary" />
+              <span>Smart India Hackathon · SIH26002 Prototype</span>
+              <Sparkles className="size-3 text-primary animate-pulse" />
             </div>
-            <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-              <div className="text-2xl font-bold text-primary">34%</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Average Risk Reduction</div>
+
+            {/* Main Welcome Heading */}
+            <div className="space-y-3">
+              <div className="text-xs sm:text-sm font-mono tracking-widest text-muted-foreground uppercase">
+                Welcome to
+              </div>
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-foreground leading-[1.08]">
+                RaahSetu{" "}
+                <span className="text-primary font-serif font-normal text-3xl sm:text-5xl md:text-6xl block sm:inline">
+                  (राहसेतु)
+                </span>
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Autonomous, terrain-aware freight routing intelligence for the high-risk mountain corridors of the Northeast. Navigating where ordinary GPS costs human lives.
+              </p>
             </div>
-            <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">400+</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Monsoon Landslides GSI</div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => onLaunchConsole()}
+                className="px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-md hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2"
+              >
+                <span>Launch Route Dispatcher</span>
+                <ArrowRight className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={onNavigateToAuth}
+                className="px-5 py-3.5 rounded-xl border border-border bg-secondary/80 backdrop-blur-md text-foreground font-semibold text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
+              >
+                <LogIn className="size-4 text-primary" />
+                <span>Driver & Fleet Sign In</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onNavigateToDistricts}
+                className="px-5 py-3.5 rounded-xl border border-border bg-card/80 backdrop-blur-md text-muted-foreground hover:text-foreground font-medium text-sm hover:bg-secondary transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Compass className="size-4 text-primary" />
+                <span>District Health Matrix</span>
+              </button>
             </div>
-            <div className="p-3 rounded-xl bg-secondary/50 border border-border">
-              <div className="text-2xl font-bold text-foreground">8 States</div>
-              <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Full Northeast Grid</div>
+
+            {/* Telemetry Bar (3D Glassmorphic Cards) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl pt-4">
+              <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">111</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Strategic Hubs & Towns</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-primary">34%</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Avg Risk Reduction</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">400+</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Monsoon Landslides GSI</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">8 States</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Full Northeast Grid</div>
+              </div>
+            </div>
+
+            {/* Interactive Kinetic Mesh Tip & Slide Down Prompt */}
+            <div className="pt-2 flex flex-col items-center gap-2">
+              <div className="text-[11px] font-mono text-muted-foreground/80 flex items-center gap-1.5">
+                <span className="size-1.5 rounded-full bg-cyan-500 animate-ping" />
+                <span>Sweep cursor on canvas to unleash kinetic shockwaves</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById("ground-reality-section")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline cursor-pointer pt-1 transition-transform hover:translate-y-0.5"
+              >
+                <span>Slide down to explore ground data & crisis evidence</span>
+                <ArrowDown className="size-3.5 animate-bounce" />
+              </button>
             </div>
           </div>
-        </div>
+        </ConstellationGrid>
       </section>
 
       {/* 2. THE CRISIS: WHY THIS PROBLEM IS VERY BIG (GROUND DATA) */}
-      <section className="space-y-6">
+      <section id="ground-reality-section" className="space-y-6 scroll-mt-6">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold border border-destructive/20">
             <AlertTriangle className="size-3" />
@@ -124,8 +150,8 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Stat 1 */}
-          <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3">
-            <div className="text-3xl font-black text-destructive">1,68,491</div>
+          <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
+            <div className="text-3xl font-black text-destructive group-hover:scale-105 transition-transform origin-left">1,68,491</div>
             <div className="text-xs font-bold text-foreground">Annual Fatalities Nationwide</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Per MoRTH official census, mountain ghat sections have an accident fatality rate of <strong className="text-destructive">45.2%</strong>—nearly double plain highway crashes.
@@ -136,8 +162,8 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           </div>
 
           {/* Stat 2 */}
-          <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3">
-            <div className="text-3xl font-black text-amber-600 dark:text-amber-400">400+</div>
+          <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
+            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform origin-left">400+</div>
             <div className="text-xs font-bold text-foreground">Major Landslides Annually</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               GSI landslide databases record over 400 severe rockfall and debris slips each monsoon, completely severing lifelines like NH-6, NH-2, and NH-13 for weeks.
@@ -148,8 +174,8 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           </div>
 
           {/* Stat 3 */}
-          <div className="p-5 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
-            <div className="text-3xl font-black text-foreground">6,200+</div>
+          <div className="p-5 rounded-2xl border border-border bg-card space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
+            <div className="text-3xl font-black text-foreground group-hover:scale-105 transition-transform origin-left">6,200+</div>
             <div className="text-xs font-bold text-foreground">Northeast Corridor Lives Lost</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Truck drivers, co-drivers, and passengers have lost their lives across the Northeast mountain belt over the past decade due to brake fade, extreme slopes, and edge drop-offs.
@@ -160,8 +186,8 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           </div>
 
           {/* Stat 4 */}
-          <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5 space-y-3">
-            <div className="text-3xl font-black text-primary">₹3,500 Cr</div>
+          <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
+            <div className="text-3xl font-black text-primary group-hover:scale-105 transition-transform origin-left">₹3,500 Cr</div>
             <div className="text-xs font-bold text-foreground">Annual Economic Freight Delay</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Convoys carrying life-saving pharmaceuticals, oxygen cylinders, food rations, and farm produce remain stranded at Sela Pass and Sonapur tunnel chokepoints.
@@ -190,7 +216,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card: Conventional GPS */}
-          <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-4">
+          <div className="p-6 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-4 shadow-xs hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-destructive font-bold text-sm">
                 <XCircle className="size-4" />
@@ -199,7 +225,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               <span className="text-[10px] font-mono text-destructive uppercase px-2 py-0.5 rounded bg-destructive/10">Naive Distance</span>
             </div>
 
-            <ul className="space-y-2 text-xs text-muted-foreground">
+            <ul className="space-y-2.5 text-xs text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-destructive font-bold shrink-0">✕</span>
                 <span>Minimizes pure linear distance (km), frequently choosing dangerous unpaved shortcut tracks.</span>
@@ -220,7 +246,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           </div>
 
           {/* Card: RaahSetu Engine */}
-          <div className="p-5 rounded-2xl border border-primary/40 bg-primary/5 space-y-4">
+          <div className="p-6 rounded-2xl border border-primary/40 bg-primary/5 space-y-4 shadow-xs hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-primary font-bold text-sm">
                 <CheckCircle2 className="size-4" />
@@ -229,7 +255,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
               <span className="text-[10px] font-mono text-primary uppercase px-2 py-0.5 rounded bg-primary/10">Terrain Dual-Solve</span>
             </div>
 
-            <ul className="space-y-2 text-xs text-muted-foreground">
+            <ul className="space-y-2.5 text-xs text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-primary font-bold shrink-0">✓</span>
                 <span>Runs dual A* pathfinding: outputs both Nominal Shortest and Risk-Aware Safe corridor side-by-side.</span>
