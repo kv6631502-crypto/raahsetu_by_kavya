@@ -960,7 +960,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors">
       {/* 1. CLEAN APP HEADER */}
-      <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-md px-4 sm:px-6 py-3 transition-colors">
+      <header className="border-b border-border bg-card px-4 sm:px-6 py-3 transition-colors">
         <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
           {/* Brand */}
           <div className="flex items-center gap-3">
