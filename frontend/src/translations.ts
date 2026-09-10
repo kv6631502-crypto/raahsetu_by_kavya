@@ -164,6 +164,25 @@ export interface Translations {
   signingIn: string;
   backToPlatform: string;
 
+  // Email Verification System
+  verificationTitle: string;
+  verificationSubtitle: string;
+  verificationCodeLabel: string;
+  verificationCodePlaceholder: string;
+  verifyAndSignInBtn: string;
+  resendCodeBtn: string;
+  resendIn: string;
+  changeEmail: string;
+  codeSentNotice: string;
+  codeSentSuccess: string;
+  invalidCode: string;
+  codeExpired: string;
+  simulatedEmailNotice: string;
+  clickToFill: string;
+  calibratedGpsTelemetry: string;
+  headingLabel: string;
+  terminalAdvisoryLabel: string;
+
   // Modals & SOS
   reportIncidentTitle: string;
   incidentType: string;
@@ -503,6 +522,23 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     signingIn: "Verifying Credentials...",
     backToPlatform: "Back to Platform",
 
+    verificationTitle: "Verify Your Email",
+    verificationSubtitle: "Enter the 6-digit verification code sent to",
+    verificationCodeLabel: "Verification Code (OTP)",
+    verificationCodePlaceholder: "Enter 6-digit code",
+    verifyAndSignInBtn: "Verify & Complete Sign In",
+    resendCodeBtn: "Resend Code",
+    resendIn: "Resend code in",
+    changeEmail: "Change Email",
+    codeSentNotice: "A 6-digit security code has been sent to your email address.",
+    codeSentSuccess: "New verification code sent!",
+    invalidCode: "Incorrect verification code. Please check your inbox and try again.",
+    codeExpired: "Code expired. Please request a new verification code.",
+    simulatedEmailNotice: "Simulated Live Email Dispatch / Test Code:",
+    clickToFill: "Click to Auto-fill",
+    calibratedGpsTelemetry: "CALIBRATED GPS TELEMETRY",
+    headingLabel: "Heading",
+    terminalAdvisoryLabel: "Terminal Advisory",
     reportIncidentTitle: "Report Mountain Road Incident",
     incidentType: "Incident Type",
     incidentLandslide: "Landslide / Rockfall",
@@ -870,6 +906,23 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     signingIn: "प्रमाणपत्र सत्यापित किए जा रहे हैं...",
     backToPlatform: "प्लेटफ़ॉर्म पर वापस जाएं",
 
+    verificationTitle: "ईमेल सत्यापित करें",
+    verificationSubtitle: "पर भेजा गया 6-अंकीय सत्यापन कोड दर्ज करें",
+    verificationCodeLabel: "सत्यापन कोड (OTP)",
+    verificationCodePlaceholder: "6-अंकीय कोड दर्ज करें",
+    verifyAndSignInBtn: "सत्यापित करें और साइन इन करें",
+    resendCodeBtn: "कोड पुनः भेजें",
+    resendIn: "पुनः भेजने का समय",
+    changeEmail: "ईमेल बदलें",
+    codeSentNotice: "आपकी ईमेल पर 6-अंकीय सुरक्षा कोड भेज दिया गया है।",
+    codeSentSuccess: "नया सत्यापन कोड भेज दिया गया!",
+    invalidCode: "गलत सत्यापन कोड। कृपया अपना इनबॉक्स जांचें और पुनः प्रयास करें।",
+    codeExpired: "कोड समाप्त हो गया। कृपया नया कोड मंगवाएं।",
+    simulatedEmailNotice: "लाइव ईमेल डिस्पैच सिमुलेशन / परीक्षण कोड:",
+    clickToFill: "ऑटो-फिल करने के लिए क्लिक करें",
+    calibratedGpsTelemetry: "कैलिब्रेटेड जीपीएस टेलीमेट्री",
+    headingLabel: "दिशा",
+    terminalAdvisoryLabel: "टर्मिनल सलाह",
     reportIncidentTitle: "पर्वतीय सड़क दुर्घटना / खतरा रिपोर्ट करें",
     incidentType: "घटना का प्रकार",
     incidentLandslide: "भूस्खलन / चट्टान गिरना",
@@ -1237,6 +1290,23 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     signingIn: "তথ্য পৰীক্ষা কৰা হৈছে...",
     backToPlatform: "প্লেটফৰ্মলৈ উভতি যাওক",
 
+    verificationTitle: "ইমেইল পৰীক্ষা কৰক",
+    verificationSubtitle: "লৈ প্ৰেৰণ কৰা ৬-অংকৰ পৰীক্ষণ ক'ড প্ৰৱিষ্ট কৰক",
+    verificationCodeLabel: "পৰীক্ষণ ক'ড (OTP)",
+    verificationCodePlaceholder: "৬-অংকৰ ক'ড দিয়ক",
+    verifyAndSignInBtn: "পৰীক্ষা কৰক আৰু ছাইন ইন কৰক",
+    resendCodeBtn: "ক'ড পুনৰ প্ৰেৰণ কৰক",
+    resendIn: "পুনৰ প্ৰেৰণৰ সময়",
+    changeEmail: "ইমেইল সলনি কৰক",
+    codeSentNotice: "আপোনাৰ ইমেইলত ৬-অংকৰ সুৰক্ষা ক'ড প্ৰেৰণ কৰা হৈছে।",
+    codeSentSuccess: "নতুন পৰীক্ষণ ক'ড প্ৰেৰণ কৰা হ'ল!",
+    invalidCode: "ভুল পৰীক্ষণ ক'ড। অনুগ্ৰহ কৰি আপোনাৰ ইনবক্স চাওক।",
+    codeExpired: "ক'ডৰ ম্যাদ উকলিল। অনুগ্ৰহ কৰি নতুন ক'ড অনুৰোধ কৰক।",
+    simulatedEmailNotice: "লাইভ ইমেইল প্ৰেৰণ অনুকৰণ / পৰীক্ষামূলক ক'ড:",
+    clickToFill: "স্বয়ংক্রিয়ভাৱে পূৰণ কৰিবলৈ ক্লিক কৰক",
+    calibratedGpsTelemetry: "কেলিব্ৰেটেড জিপিএছ টেলিমেট্ৰি",
+    headingLabel: "দিশ",
+    terminalAdvisoryLabel: "টাৰ্মিনেল পৰামৰ্শ",
     reportIncidentTitle: "পাৰ্বত্য পথ দুৰ্ঘটনা / বিপদ ৰিপৰ্ট কৰক",
     incidentType: "ঘটনাৰ প্ৰকাৰ",
     incidentLandslide: "ভূমিস্খলন / শিলাবৃষ্টি",
@@ -1604,6 +1674,23 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     signingIn: "যাচাই করা হচ্ছে...",
     backToPlatform: "প্ল্যাটফর্মে ফিরে যান",
 
+    verificationTitle: "ইমেল যাচাই করুন",
+    verificationSubtitle: "এ পাঠানো ৬-সংখ্যার যাচাইকরণ কোড লিখুন",
+    verificationCodeLabel: "যাচাইকরণ কোড (OTP)",
+    verificationCodePlaceholder: "৬-সংখ্যার কোড লিখুন",
+    verifyAndSignInBtn: "যাচাই করুন ও সাইন ইন করুন",
+    resendCodeBtn: "কোড পুনরায় পাঠান",
+    resendIn: "পুনরায় পাঠানোর সময়",
+    changeEmail: "ইমেল পরিবর্তন করুন",
+    codeSentNotice: "আপনার ইমেলে ৬-সংখ্যার সুরক্ষা কোড পাঠানো হয়েছে।",
+    codeSentSuccess: "নতুন যাচাইকরণ কোড পাঠানো হয়েছে!",
+    invalidCode: "ভুল যাচাইকরণ কোড। অনুগ্রহ করে আপনার ইনবক্স চেক করে আবার চেষ্টা করুন।",
+    codeExpired: "কোডের মেয়াদ শেষ। অনুগ্রহ করে নতুন কোড অনুরোধ করুন।",
+    simulatedEmailNotice: "লাইভ ইমেল ডিসপ্যাচ সিমুলেশন / পরীক্ষামূলক কোড:",
+    clickToFill: "অটো-ফিল করতে ক্লিক করুন",
+    calibratedGpsTelemetry: "ক্যালিব্রেটেড জিপিএস টেলিমেট্রি",
+    headingLabel: "দিক",
+    terminalAdvisoryLabel: "টার্মিনাল পরামর্শ",
     reportIncidentTitle: "পার্বত্য সড়ক দুর্ঘটনা / ঝুঁকি রিপোর্ট করুন",
     incidentType: "ঘটনার ধরন",
     incidentLandslide: "ধস / পাথর পতন",
@@ -1820,6 +1907,26 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
 export const CITIES_TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
   en: {
     gangtok: "Gangtok",
+    bokakhat: "Bokakhat",
+    margherita: "Margherita",
+    byrnihat: "Byrnihat",
+    mairang: "Mairang",
+    nongstoin: "Nongstoin",
+    chumukedima: "Chumukedima",
+    jalukie: "Jalukie",
+    tseminyu: "Tseminyu",
+    kiphire: "Kiphire",
+    kangpokpi: "Kangpokpi",
+    noney: "Noney",
+    moirang: "Moirang",
+    vairengte: "Vairengte",
+    saitual: "Saitual",
+    hnahthial: "Hnahthial",
+    bishalgarh: "Bishalgarh",
+    udaipur: "Udaipur",
+    santirbazar: "Santirbazar",
+    sabroom: "Sabroom",
+    lakhimpur: "North Lakhimpur",
     namchi: "Namchi",
     pelling: "Pelling",
     mangan: "Mangan",
@@ -1921,6 +2028,26 @@ export const CITIES_TRANSLATIONS: Record<SupportedLanguage, Record<string, strin
   },
   hi: {
     gangtok: "गंगटोक",
+    bokakhat: "बोकाखात",
+    margherita: "मार्गेरीटा",
+    byrnihat: "बर्नीहाट",
+    mairang: "मायरांग",
+    nongstoin: "नोंगस्टोइन",
+    chumukedima: "चुमुकेदिमा",
+    jalukie: "जलुकी",
+    tseminyu: "त्सेमिन्यु",
+    kiphire: "किफिरे",
+    kangpokpi: "कांगपोकपी",
+    noney: "नोने",
+    moirang: "मोइरांग",
+    vairengte: "वैरेन्गते",
+    saitual: "सैतुल",
+    hnahthial: "ह्नाहथियाल",
+    bishalgarh: "विशालगढ़",
+    udaipur: "उदयपुर",
+    santirbazar: "शांतिरबाज़ार",
+    sabroom: "सबरूम",
+    lakhimpur: "उत्तर लखीमपुर",
     namchi: "नामची",
     pelling: "पेलिंग",
     mangan: "मंगन",
@@ -2022,6 +2149,26 @@ export const CITIES_TRANSLATIONS: Record<SupportedLanguage, Record<string, strin
   },
   as: {
     gangtok: "গেংটক",
+    bokakhat: "বোকাখাত",
+    margherita: "মাৰ্ঘেৰিটা",
+    byrnihat: "বাৰ্নিহাট",
+    mairang: "মাইৰাং",
+    nongstoin: "নংস্টোইন",
+    chumukedima: "চুমুকেদিমা",
+    jalukie: "জালুকী",
+    tseminyu: "চেখমিন্যু",
+    kiphire: "কিফিৰে",
+    kangpokpi: "কাংপকপী",
+    noney: "নোনে",
+    moirang: "মইৰাং",
+    vairengte: "ভাইৰেংতে",
+    saitual: "চাইতুৱাল",
+    hnahthial: "হ্নাহথিয়াল",
+    bishalgarh: "বিশালগড়",
+    udaipur: "উদয়পুৰ",
+    santirbazar: "শান্তিৰবজাৰ",
+    sabroom: "সবৰুম",
+    lakhimpur: "উত্তৰ লখিমপুৰ",
     namchi: "নামচি",
     pelling: "পেলিং",
     mangan: "মংগন",
@@ -2123,6 +2270,26 @@ export const CITIES_TRANSLATIONS: Record<SupportedLanguage, Record<string, strin
   },
   bn: {
     gangtok: "গ্যাংটক",
+    bokakhat: "বোকাখাত",
+    margherita: "মার্ঘেরিটা",
+    byrnihat: "বার্নিহাট",
+    mairang: "মাইরাং",
+    nongstoin: "নংস্টোইন",
+    chumukedima: "চুমুকেদিমা",
+    jalukie: "জালুকি",
+    tseminyu: "ৎসেমিনু",
+    kiphire: "কিফিরে",
+    kangpokpi: "কাংপোকপী",
+    noney: "নোনি",
+    moirang: "মোইরাং",
+    vairengte: "ভাইরেংতে",
+    saitual: "সাইতুয়াল",
+    hnahthial: "হ্নাহথিয়াল",
+    bishalgarh: "বিশালগড়",
+    udaipur: "উদয়পুর",
+    santirbazar: "শান্তিরবাজার",
+    sabroom: "সক্রুম",
+    lakhimpur: "উত্তর লখিমপুর",
     namchi: "নামচি",
     pelling: "পেলিং",
     mangan: "মাঙ্গান",
@@ -2287,7 +2454,7 @@ export interface BlockageTranslation {
   cause: string;
   avoidInfo: string;
   detourRoute: string;
-  updatedTime: string;
+  updatedTime?: string;
 }
 
 export const BLOCKAGE_TRANSLATIONS: Record<SupportedLanguage, Record<string, BlockageTranslation>> = {
@@ -2558,3 +2725,137 @@ export function getLocalizedWeatherSummary(summary: string, lang: SupportedLangu
   };
   return map[lang]?.[summary] || summary;
 }
+
+export function getLocalizedWeatherAdvisory(advisory: string, lang: SupportedLanguage): string {
+  if (lang === "en" || !advisory) return advisory;
+  const map: Record<SupportedLanguage, Record<string, string>> = {
+    en: {},
+    hi: {
+      "Sub-zero frost on Sela Pass approaches. Anti-skid tire chains required for heavy transport.": "सेला दर्रे के पहुंच मार्ग पर शून्य से नीचे पाला। भारी वाहनों के लिए एंटी-स्किड टायर चेन अनिवार्य।",
+      "Cold valley fog reducing morning visibility; drive with low-beam fog lamps.": "घाटी का ठंडा कोहरा दृश्यता कम कर रहा है; लो-बीम फॉग लैंप जलाकर वाहन चलाएं।",
+      "Slippery ridge curves; extreme caution for multi-axle freight.": "फिसलन भरे मोड़; बहु-धुरी मालवाहकों के लिए अत्यधिक सावधानी आवश्यक।",
+      "Icy patches on Teesta river bridges. Reduced speed limit 25 km/h.": "तीस्ता नदी के पुलों पर बर्फीले हिस्से। गति सीमा 25 किमी/घंटे तक सीमित।",
+      "Black ice on mountain passes (Sela / Chungthang). Strict axle weight limits & snow chains advised.": "पर्वतीय दर्रों (सेला / चुंगथांग) पर ब्लैक आइस। सख्त एक्सल वजन सीमा एवं स्नो चेन की सलाह।",
+      "Active rainfall in hill ghat sections (NH-6 / NH-2). Heightened mudslide and hydroplaning risk.": "पहाड़ी घाट अनुभागों (NH-6 / NH-2) में सक्रिय वर्षा। भूस्खलन एवं हाइड्रोप्लेनिंग का बढ़ा खतरा।",
+      "Fair weather conditions with nominal highway cruising speeds and optimal braking traction.": "अनुकूल मौसम की स्थिति, सामान्य गति और इष्टतम ब्रेकिंग कर्षण।",
+      "Fair conditions across terminal approaches.": "टर्मिनल पहुंच मार्गों पर अनुकूल स्थिति।",
+    },
+    as: {
+      "Sub-zero frost on Sela Pass approaches. Anti-skid tire chains required for heavy transport.": "চেলা পাছৰ ওচৰত তুষাৰপাত। গধূৰ যান-বাহনৰ বাবে পিছল-ৰোধী টায়াৰ চেইন প্ৰয়োজন।",
+      "Cold valley fog reducing morning visibility; drive with low-beam fog lamps.": "উপত্যকাৰ ঘন কুঁৱলীৰ বাবে দৃশ্যমানতা কম; ল'-বীম ফগ লেম্প ব্যৱহাৰ কৰক।",
+      "Slippery ridge curves; extreme caution for multi-axle freight.": "পিচল পাহাৰীয়া কেঁকুৰী; মালবাহী গাড়ীৰ বাবে অত্যন্ত সাৱধানতাৰ প্ৰয়োজন।",
+      "Icy patches on Teesta river bridges. Reduced speed limit 25 km/h.": "তিস্তা দলঙৰ ওপৰত বৰফৰ আৱৰণ। গতিসীমা ২৫ কিমি/ঘণ্টালৈ সীমিত।",
+      "Black ice on mountain passes (Sela / Chungthang). Strict axle weight limits & snow chains advised.": "পৰ্বতীয়া পথত (চেলা / চুংথাং) পিছল বৰফ। ওজন সীমা আৰু চেইন ব্যৱহাৰৰ পৰামৰ্শ।",
+      "Active rainfall in hill ghat sections (NH-6 / NH-2). Heightened mudslide and hydroplaning risk.": "পাহাৰীয়া অঞ্চলত (NH-6 / NH-2) বৰষুণ। ভূমিস্খলনৰ আশংকা।",
+      "Fair weather conditions with nominal highway cruising speeds and optimal braking traction.": "অনুকূল বতৰ, স্বাভাৱিক গতি আৰু নিৰাপদ ব্ৰেকিং ব্যৱস্থা।",
+      "Fair conditions across terminal approaches.": "টাৰ্মিনেল পথত অনুকূল অৱস্থা।",
+    },
+    bn: {
+      "Sub-zero frost on Sela Pass approaches. Anti-skid tire chains required for heavy transport.": "সেলা পাসের রাস্তায় হিমাঙ্কের নিচে তাপমাত্রা। ভারী পরিবহনের জন্য অ্যান্টি-স্কিড চেইন আবশ্যক।",
+      "Cold valley fog reducing morning visibility; drive with low-beam fog lamps.": "উপত্যকার ঠান্ডা কুয়াশায় দৃশ্যমানতা কম; লো-বিম ফগ ল্যাম্প ব্যবহার করুন।",
+      "Slippery ridge curves; extreme caution for multi-axle freight.": "পিচ্ছিল পাহাড়ি বাঁক; মালবাহী ট্রাকের জন্য সর্বোচ্চ সতর্কতা প্রয়োজন।",
+      "Icy patches on Teesta river bridges. Reduced speed limit 25 km/h.": "তিস্তা সেতুর ওপর বরফাচ্ছন্ন অংশ। গতিসীমা ২৫ কিমি/ঘন্টায় সীমাবদ্ধ।",
+      "Black ice on mountain passes (Sela / Chungthang). Strict axle weight limits & snow chains advised.": "পাহাড়ি গিরিপথে (সেলা / চুংথাং) ব্ল্যাক আইস। ওজন সীমা ও চেইন ব্যবহারের পরামর্শ।",
+      "Active rainfall in hill ghat sections (NH-6 / NH-2). Heightened mudslide and hydroplaning risk.": "পাহাড়ি ঘাট অংশে (NH-6 / NH-2) বৃষ্টিপাত। ভূমিধস ও চাকা পিছলে যাওয়ার ঝুঁকি।",
+      "Fair weather conditions with nominal highway cruising speeds and optimal braking traction.": "অনুকূল আবহাওয়া, স্বাভাবিক গতি ও সর্বোত্তম ব্রেকিং ট্র্যাকশন।",
+      "Fair conditions across terminal approaches.": "টার্মিনাল সংযোগ সড়কে অনুকূল অবস্থা।",
+    },
+  };
+  return map[lang]?.[advisory] || advisory;
+}
+
+export function getLocalizedNote(note: string, lang: SupportedLanguage): string {
+  if (lang === "en" || !note) return note;
+  const map: Record<SupportedLanguage, Record<string, string>> = {
+    en: {},
+    hi: {
+      "North Sikkim road — landslide-prone": "उत्तर सिक्किम मार्ग — भूस्खलन संभावित",
+      "NH-10 Teesta gorge — monsoon vulnerable": "एनएच-10 तीस्ता घाटी — मानसून संवेदनशील",
+      "North Sikkim high mountain road — flash floods": "उत्तर सिक्किम उच्च पर्वतीय मार्ग — आकस्मिक बाढ़",
+    },
+    as: {
+      "North Sikkim road — landslide-prone": "উত্তৰ ছিকিম পথ — ভূমিস্খলন প্ৰৱণ",
+      "NH-10 Teesta gorge — monsoon vulnerable": "এনএইচ-১০ তিস্তা গিৰিখাত — বাৰিষাত সংবেদনশীল",
+      "North Sikkim high mountain road — flash floods": "উত্তৰ ছিকিম উচ্চ পাহাৰীয়া পথ — হঠাৎ বানপানী",
+    },
+    bn: {
+      "North Sikkim road — landslide-prone": "উত্তর সিকিম রাস্তা — ভূমিধস প্রবণ",
+      "NH-10 Teesta gorge — monsoon vulnerable": "এনএইচ-১০ তিস্তা গিরিখাত — বর্ষায় ঝুঁকিপূর্ণ",
+      "North Sikkim high mountain road — flash floods": "উত্তর সিকিম উচ্চ পাহাড়ি রাস্তা — আকস্মিক বন্যা",
+    },
+  };
+  return map[lang]?.[note] || note;
+}
+
+export function getCorridorDetails(
+  corridor: { id: string; origin: string; destination: string; tag: string; description: string },
+  lang: SupportedLanguage
+): { title: string; tag: string; description: string } {
+  const title = `${getCityName(corridor.origin, lang)} ➔ ${getCityName(corridor.destination, lang)}`;
+  if (lang === "en") {
+    return { title, tag: corridor.tag, description: corridor.description };
+  }
+
+  const tagMap: Record<SupportedLanguage, Record<string, string>> = {
+    en: {},
+    hi: {
+      "Defense & Border Lifeline": "रक्षा एवं सीमा जीवनरेखा",
+      "NH-6 Hill Lifeline": "एनएच-6 पर्वतीय जीवनरेखा",
+      "NH-2 Mountain Ridge": "एनएच-2 पर्वत श्रृंखला",
+      "Tripura Highway": "त्रिपुरा राष्ट्रीय राजमार्ग",
+      "North Sikkim Frontier": "उत्तरी सिक्किम सीमांत",
+      "Trans-Asian Trade": "ट्रांस-एशियाई व्यापार",
+    },
+    as: {
+      "Defense & Border Lifeline": "প্ৰতিৰক্ষা আৰু সীমান্তৰ জীৱনৰেখা",
+      "NH-6 Hill Lifeline": "এনএইচ-৬ পাহাৰীয়া জীৱনৰেখা",
+      "NH-2 Mountain Ridge": "এনএইচ-২ পৰ্বত শৃংখলা",
+      "Tripura Highway": "ত্ৰিপুৰা ৰাষ্ট্ৰীয় ঘাইপথ",
+      "North Sikkim Frontier": "উত্তৰ ছিকিম সীমান্ত",
+      "Trans-Asian Trade": "ট্ৰান্স-এছিয়ান বাণিজ্যিক",
+    },
+    bn: {
+      "Defense & Border Lifeline": "প্রতিরক্ষা ও সীমান্ত লাইফলাইন",
+      "NH-6 Hill Lifeline": "এনএইচ-৬ পাহাড়ি লাইফলাইন",
+      "NH-2 Mountain Ridge": "এনএইচ-২ পর্বত শৈলশিরা",
+      "Tripura Highway": "ত্রিপুরা জাতীয় মহাসড়ক",
+      "North Sikkim Frontier": "উত্তর সিকিম সীমান্ত",
+      "Trans-Asian Trade": "ট্রান্স-এশীয় বাণিজ্য",
+    },
+  };
+
+  const descMap: Record<SupportedLanguage, Record<string, string>> = {
+    en: {},
+    hi: {
+      "Climbs Bomdila & Sela Pass (13,700 ft) into western Arunachal frontier.": "बोमडिला और सेला दर्रा (13,700 फीट) चढ़कर पश्चिमी अरुणाचल सीमांत में प्रवेश।",
+      "Vital freight corridor via Jowai & Sonapur tunnel to southern Assam.": "जोवाई और सोनापुर सुरंग के माध्यम से दक्षिणी असम के लिए महत्वपूर्ण माल ढुलाई गलियारा।",
+      "Crucial interstate transit link through Kohima, Senapati & Kangpokpi.": "कोहिमा, सेनापति और कांगपोकपी के रास्ते महत्वपूर्ण अंतर्राज्यीय पारगमन संपर्क।",
+      "Connects Barak Valley to Agartala via Dharmanagar & Ambassa passes.": "धर्मनगर और अम्बासा दर्रों के माध्यम से बराक घाटी को अगरतला से जोड़ता है।",
+      "Teesta river gorge route traversing Mangan to northern valleys.": "तीस्ता नदी घाटी मार्ग जो मंगन से होकर उत्तरी घाटियों तक जाता है।",
+      "Full trans-regional trunk line through Assam, Nagaland & Manipur border.": "असम, नागालैंड और मणिपुर सीमा से होकर गुजरने वाली संपूर्ण अंतर-क्षेत्रीय ट्रंक लाइन।",
+    },
+    as: {
+      "Climbs Bomdila & Sela Pass (13,700 ft) into western Arunachal frontier.": "বোমডিলা আৰু চেলা পাছ (১৩,৭০০ ফুট) অতিক্ৰম কৰি পশ্চিম অৰুণাচল সীমান্তলৈ।",
+      "Vital freight corridor via Jowai & Sonapur tunnel to southern Assam.": "জোৱাই আৰু সোণাপুৰ সুৰংগৰে দক্ষিণ অসমলৈ গুৰুত্বপূৰ্ণ মালবাহী পথ।",
+      "Crucial interstate transit link through Kohima, Senapati & Kangpokpi.": "কহিমা, সেনাপতি আৰু কাংপকপী হৈ গুৰুত্বপূৰ্ণ আন্তঃৰাজ্যিক পৰিবহণ সংযোগ।",
+      "Connects Barak Valley to Agartala via Dharmanagar & Ambassa passes.": "ধৰ্মনগৰ আৰু আম্বাচা পাছ হৈ বৰাক উপত্যকাক আগৰতলাৰ সৈতে সংযোগ কৰে।",
+      "Teesta river gorge route traversing Mangan to northern valleys.": "মংগন হৈ উত্তৰ উপত্যকালৈ যোৱা তিস্তা নদীৰ গিৰিখাত পথ।",
+      "Full trans-regional trunk line through Assam, Nagaland & Manipur border.": "অসম, নাগালেণ্ড আৰু মণিপুৰ সীমান্তৰে যোৱা আন্তঃআঞ্চলিক মুখ্য পথ।",
+    },
+    bn: {
+      "Climbs Bomdila & Sela Pass (13,700 ft) into western Arunachal frontier.": "বোমডিলা ও সেলা পাস (১৩,৭০০ ফুট) অতিক্রম করে পশ্চিম অরুণাচল সীমান্তে।",
+      "Vital freight corridor via Jowai & Sonapur tunnel to southern Assam.": "জোয়াই ও সোনাপুর সুড়ঙ্গের মাধ্যমে দক্ষিণ আসামের গুরুত্বপূর্ণ মালবাহী পথ।",
+      "Crucial interstate transit link through Kohima, Senapati & Kangpokpi.": "কোহিমা, সেনাপতি ও কাংপোকপী হয়ে গুরুত্বপূর্ণ আন্তঃরাজ্য ট্রানজিট সংযোগ।",
+      "Connects Barak Valley to Agartala via Dharmanagar & Ambassa passes.": "ধর্মনগর ও আম্বাসা গিরিপথ হয়ে বরাক উপত্যকাকে আগরতলার সাথে যুক্ত করে।",
+      "Teesta river gorge route traversing Mangan to northern valleys.": "মঙ্গন হয়ে উত্তর উপত্যকা পর্যন্ত তিস্তা নদীর গিরিখাত পথ।",
+      "Full trans-regional trunk line through Assam, Nagaland & Manipur border.": "আসাম, নাগাল্যান্ড ও মণিপুর সীমান্ত হয়ে সম্পূর্ণ আন্তঃআঞ্চলিক ট্রাঙ্ক লাইন।",
+    },
+  };
+
+  return {
+    title,
+    tag: tagMap[lang]?.[corridor.tag] || corridor.tag,
+    description: descMap[lang]?.[corridor.description] || corridor.description,
+  };
+}
+

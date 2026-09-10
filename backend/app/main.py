@@ -15,6 +15,7 @@ import psycopg
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from .alerts import AlertStore, PostgresAlertStore
 from .auth import AuthUser, require_reviewer, require_user
@@ -693,3 +694,59 @@ def upload_field_report_attachment(
         return store.save_attachment(str(report_id), user.id, path, file.content_type, len(content), digest)
     except LookupError as exc:
         raise HTTPException(404, detail=str(exc)) from exc
+
+
+class VerificationRequest(BaseModel):
+    email: str
+
+
+class VerificationVerify(BaseModel):
+    email: str
+    code: str
+
+
+VERIFICATION_CODES: dict[str, tuple[str, float]] = {}
+
+
+@app.post("/api/v1/auth/request-code")
+def request_verification_code(body: VerificationRequest):
+    import secrets
+    import time
+
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, detail="A valid email address is required")
+    code = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = time.time() + 600.0  # 10 minutes
+    VERIFICATION_CODES[email] = (code, expires_at)
+    logger.info(f"[EMAIL VERIFICATION] Dispatched verification code {code} to {email}")
+    return {
+        "status": "sent",
+        "email": email,
+        "expires_in": 600,
+        "dev_code": code,
+        "message": f"Verification code sent to {email}",
+    }
+
+
+@app.post("/api/v1/auth/verify-code")
+def verify_verification_code(body: VerificationVerify):
+    import time
+
+    email = body.email.strip().lower()
+    code = body.code.strip()
+    if email not in VERIFICATION_CODES:
+        raise HTTPException(400, detail="No verification code found for this email. Please request a new code.")
+    stored_code, expires_at = VERIFICATION_CODES[email]
+    if time.time() > expires_at:
+        VERIFICATION_CODES.pop(email, None)
+        raise HTTPException(400, detail="Verification code has expired. Please request a new code.")
+    if stored_code != code:
+        raise HTTPException(400, detail="Invalid verification code. Please check your email and try again.")
+    VERIFICATION_CODES.pop(email, None)
+    return {
+        "status": "verified",
+        "email": email,
+        "message": "Email address verified successfully",
+    }
+

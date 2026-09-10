@@ -215,3 +215,31 @@ def test_review_requires_reviewer_and_updates_pending_report(client):
         app.dependency_overrides.pop(require_reviewer, None)
     assert reviewed.status_code == 200
     assert reviewed.json()["review_status"] == "accepted"
+
+
+def test_verification_code_flow(client: TestClient) -> None:
+    # 1. Invalid email
+    res = client.post("/api/v1/auth/request-code", json={"email": "invalid-email"})
+    assert res.status_code == 400
+
+    # 2. Valid request
+    res = client.post("/api/v1/auth/request-code", json={"email": "driver@raahsetu.in"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "sent"
+    assert len(data["dev_code"]) == 6
+    code = data["dev_code"]
+
+    # 3. Verify with wrong code
+    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": "000000"})
+    assert res.status_code == 400
+
+    # 4. Verify with correct code
+    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": code})
+    assert res.status_code == 200
+    assert res.json()["status"] == "verified"
+
+    # 5. Code is now invalidated (single-use)
+    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": code})
+    assert res.status_code == 400
+

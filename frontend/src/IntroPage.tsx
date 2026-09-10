@@ -15,7 +15,14 @@ import {
 } from "lucide-react";
 import { STRATEGIC_CORRIDORS } from "./routeData";
 import ConstellationGrid from "@/components/ui/constellation-grid";
-import { SupportedLanguage, TRANSLATIONS, getCityName, getStateName } from "./translations";
+import {
+  SupportedLanguage,
+  TRANSLATIONS,
+  getCityName,
+  getStateName,
+  getBlockageDetails,
+  getCorridorDetails,
+} from "./translations";
 
 interface RoadBlockage {
   id: string;
@@ -240,51 +247,54 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 
         {/* Advisory Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {INTRO_ROAD_BLOCKAGES.map((blk) => (
-            <div
-              key={blk.id}
-              className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
-                blk.severity === "CRITICAL"
-                  ? "border-destructive/30 bg-destructive/5"
-                  : "border-amber-500/30 bg-amber-500/5"
-              }`}
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-1">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                      blk.severity === "CRITICAL"
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                    }`}
-                  >
-                    {blk.severity === "CRITICAL" ? t.critical : t.high}
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground truncate">{getStateName(blk.state, lang)}</span>
-                </div>
-
-                <div className="font-bold text-sm text-foreground">{blk.road}</div>
-                <div className="text-xs text-primary font-medium">
-                  {getCityName(blk.originId, lang)} ⟷ {getCityName(blk.destinationId, lang)}
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{blk.cause}</p>
-
-                <div className="p-2.5 rounded-xl bg-background/80 border border-border/80 text-[11px] space-y-1">
-                  <div className="font-semibold text-foreground">{t.recommendedDetour}:</div>
-                  <div className="text-muted-foreground">{blk.detourRoute}</div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onLaunchConsole(blk.originId, blk.destinationId)}
-                className="w-full py-2 px-3 rounded-xl bg-card border border-border hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs group"
+          {INTRO_ROAD_BLOCKAGES.map((blk) => {
+            const b = getBlockageDetails(blk.id, lang, blk);
+            return (
+              <div
+                key={blk.id}
+                className={`p-5 rounded-2xl border flex flex-col justify-between space-y-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-md ${
+                  blk.severity === "CRITICAL"
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-amber-500/30 bg-amber-500/5"
+                }`}
               >
-                <span>{t.inspectInDispatcher}</span>
-                <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-          ))}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                        blk.severity === "CRITICAL"
+                          ? "bg-destructive/20 text-destructive"
+                          : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                      }`}
+                    >
+                      {blk.severity === "CRITICAL" ? t.critical : t.high}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground truncate">{getStateName(blk.state, lang)}</span>
+                  </div>
+
+                  <div className="font-bold text-sm text-foreground">{b.road}</div>
+                  <div className="text-xs text-primary font-medium">
+                    {getCityName(blk.originId, lang)} ⟷ {getCityName(blk.destinationId, lang)}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{b.cause}</p>
+
+                  <div className="p-2.5 rounded-xl bg-background/80 border border-border/80 text-[11px] space-y-1">
+                    <div className="font-semibold text-foreground">{t.recommendedDetour}:</div>
+                    <div className="text-muted-foreground">{b.detourRoute}</div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onLaunchConsole(blk.originId, blk.destinationId)}
+                  className="w-full py-2 px-3 rounded-xl bg-card border border-border hover:bg-primary hover:text-primary-foreground text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs group"
+                >
+                  <span>{t.inspectInDispatcher}</span>
+                  <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -446,28 +456,31 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {STRATEGIC_CORRIDORS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onLaunchConsole(c.origin, c.destination)}
-              className="p-4 rounded-2xl border border-border bg-card hover:bg-secondary/60 hover:border-primary/40 text-left transition-all cursor-pointer shadow-xs group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
-                  {getCityName(c.origin, lang)} ➔ {getCityName(c.destination, lang)}
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground">
-                  {c.tag}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{c.description}</p>
-              <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-[11px] text-primary font-medium">
-                <span>{t.inspectInDispatcher}</span>
-                <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
-            </button>
-          ))}
+          {STRATEGIC_CORRIDORS.map((c) => {
+            const cor = getCorridorDetails(c, lang);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onLaunchConsole(c.origin, c.destination)}
+                className="p-4 rounded-2xl border border-border bg-card hover:bg-secondary/60 hover:border-primary/40 text-left transition-all cursor-pointer shadow-xs group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                    {getCityName(c.origin, lang)} ➔ {getCityName(c.destination, lang)}
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground">
+                    {cor.tag}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{cor.description}</p>
+                <div className="mt-3 pt-2 border-t border-border flex items-center justify-between text-[11px] text-primary font-medium">
+                  <span>{t.inspectInDispatcher}</span>
+                  <ChevronRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

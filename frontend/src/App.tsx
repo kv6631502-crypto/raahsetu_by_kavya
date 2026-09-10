@@ -75,6 +75,9 @@ import {
   getBlockageDetails,
   getDistrictName,
   getLocalizedWeatherSummary,
+  getCorridorDetails,
+  getLocalizedNote,
+  getLocalizedWeatherAdvisory,
 } from "./translations";
 
 // Clean City Combobox
@@ -166,13 +169,17 @@ function CityCombobox({
     return CITIES.filter((c) => {
       if (c.id === otherCityId) return false;
       if (!q) return true;
+      const localizedCity = getCityName(c.id, lang, c.name).toLowerCase();
+      const localizedState = getStateName(c.state, lang).toLowerCase();
       return (
         c.name.toLowerCase().includes(q) ||
+        localizedCity.includes(q) ||
         c.state.toLowerCase().includes(q) ||
+        localizedState.includes(q) ||
         c.id.toLowerCase().includes(q)
       );
     });
-  }, [query, otherCityId]);
+  }, [query, otherCityId, lang]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -1354,6 +1361,7 @@ export default function App() {
         {activeView === "auth" && (
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
             <AuthPage
+              lang={lang}
               onSuccess={(profile) => {
                 handleSaveDriverProfile({
                   ...profile,
@@ -1389,17 +1397,17 @@ export default function App() {
                 <div>
                   <div className="font-bold text-sm sm:text-base text-foreground">
                     {!origin && !destination
-                      ? "Step 1 & 2: Select Departure Hub (Origin) & Target Destination"
+                      ? t.step12SelectTitle
                       : !destination
-                      ? `Departure Hub selected: ${CITY_MAP[origin]?.name || origin}. Now choose Destination.`
+                      ? `${t.departureHubSelected}: ${getCityName(origin, lang, CITY_MAP[origin]?.name)}. ${t.nowChooseDestination}`
                       : !origin
-                      ? `Destination selected: ${CITY_MAP[destination]?.name || destination}. Now choose Departure Hub.`
-                      : `Active Route: ${CITY_MAP[origin]?.name} ➔ ${CITY_MAP[destination]?.name}`}
+                      ? `${t.destSelected}: ${getCityName(destination, lang, CITY_MAP[destination]?.name)}. ${t.nowChooseDeparture}`
+                      : `${t.activeRoute}: ${getCityName(origin, lang, CITY_MAP[origin]?.name)} ➔ ${getCityName(destination, lang, CITY_MAP[destination]?.name)}`}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {!origin || !destination
-                      ? "Please select or type your Origin and Destination to calculate the terrain-safe path, elevation gradient, and risk analysis."
-                      : "Dual-path A* solve active. Distance, travel time, and hazard exposure calculated below."}
+                      ? t.step12Prompt
+                      : t.step12Active}
                   </div>
                 </div>
               </div>
@@ -1411,7 +1419,7 @@ export default function App() {
                       : "border border-border bg-secondary text-foreground"
                   }`}
                 >
-                  {!origin || !destination ? "Enter Endpoints Below ↓" : "Route Ready ✓"}
+                  {!origin || !destination ? t.enterEndpointsBelow : t.routeReady}
                 </span>
               </div>
             </div>
@@ -1419,12 +1427,13 @@ export default function App() {
             {/* Quick-Pick Freight Corridors */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-                <span>Strategic Mountain Freight Corridors</span>
-                <span className="text-[11px] font-normal lowercase">1-click dispatch presets</span>
+                <span>{t.strategicCorridorsBar}</span>
+                <span className="text-[11px] font-normal lowercase">{t.clickPresets}</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                 {STRATEGIC_CORRIDORS.map((c) => {
                   const isSelected = origin === c.origin && destination === c.destination;
+                  const cor = getCorridorDetails(c, lang);
                   return (
                     <button
                       key={c.id}
@@ -1439,8 +1448,8 @@ export default function App() {
                           : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary"
                       }`}
                     >
-                      <span>{c.title}</span>
-                      <span className="ml-1.5 text-[10px] font-mono opacity-70">({c.tag})</span>
+                      <span>{cor.title}</span>
+                      <span className="ml-1.5 text-[10px] font-mono opacity-70">({cor.tag})</span>
                     </button>
                   );
                 })}
@@ -1461,51 +1470,51 @@ export default function App() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-xs font-semibold">
                     <Mountain className="size-3.5" />
-                    <span>Eastern Himalayan Logistics Grid · 8 Northeast States</span>
+                    <span>{t.himalayanGridTitle}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                     <span className="inline-flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>OSM Real Graph Engine Active</span>
+                      <span>{t.osmGraphActive}</span>
                     </span>
                     <span className="hidden sm:inline">·</span>
-                    <span className="hidden sm:inline">56 Key Corridors</span>
+                    <span className="hidden sm:inline">{t.keyCorridorsCount}</span>
                   </div>
                 </div>
 
                 <div className="max-w-2xl">
                   <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    Risk-Aware Strategic Freight Routing & Accessibility
+                    {t.dispatcherBannerTitle}
                   </h1>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
-                    Dynamic terrain dual-path solver balancing transit duration against monsoon rainfall, slope gradients, and multi-axle freight restrictions across Assam, Arunachal, Meghalaya, Manipur, Mizoram, Nagaland, Sikkim, and Tripura.
+                    {t.dispatcherBannerDesc}
                   </p>
                 </div>
 
                 {/* Corridor telemetry stat bar */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Active Departure</div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">{t.activeDeparture}</div>
                     <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {origin ? `${CITY_MAP[origin]?.name} (${CITY_MAP[origin]?.state})` : "Awaiting input..."}
+                      {origin ? `${getCityName(origin, lang, CITY_MAP[origin]?.name)} (${getStateName(CITY_MAP[origin]?.state, lang)})` : t.awaitingInput}
                     </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Target Destination</div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">{t.targetDestination}</div>
                     <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {destination ? `${CITY_MAP[destination]?.name} (${CITY_MAP[destination]?.state})` : "Awaiting input..."}
+                      {destination ? `${getCityName(destination, lang, CITY_MAP[destination]?.name)} (${getStateName(CITY_MAP[destination]?.state, lang)})` : t.awaitingInput}
                     </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Corridor Elevation</div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">{t.corridorElevation}</div>
                     <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {origin && destination ? `${CITY_MAP[origin]?.y || 55}m ➔ ${CITY_MAP[destination]?.y || 3048}m` : "Awaiting route..."}
+                      {origin && destination ? `${CITY_MAP[origin]?.y || 55}m ➔ ${CITY_MAP[destination]?.y || 3048}m` : t.awaitingRoute}
                     </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Weather Advisory</div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">{t.weatherAdvisory}</div>
                     <div className="text-xs font-bold text-primary truncate mt-0.5">
-                      {origin && destination ? (liveWeather.summary || "Clear Transit") : "Standard Nominal"}
+                      {origin && destination ? (getLocalizedWeatherSummary(liveWeather.summary, lang) || t.clearTransit) : t.standardNominal}
                     </div>
                   </div>
                 </div>
@@ -1614,8 +1623,8 @@ export default function App() {
 
                       {/* Terminal Advisory Notice */}
                       <div className="p-2 rounded-xl bg-card/50 border border-border/40 text-[11px] text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">Terminal Advisory: </span>
-                        {destWeather.advisory}
+                        <span className="font-semibold text-foreground">{t.terminalAdvisoryLabel}: </span>
+                        {getLocalizedWeatherAdvisory(destWeather.advisory, lang)}
                       </div>
                     </div>
                   )}
@@ -1630,7 +1639,7 @@ export default function App() {
                   <div className="pt-3 border-t border-border grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                        Vehicle Axle
+                        {t.vehicleAxle}
                       </label>
                       <select
                         value={vehicle}
@@ -1639,7 +1648,7 @@ export default function App() {
                       >
                         {Object.entries(VEHICLE_PROFILES).map(([key, v]) => (
                           <option key={key} value={key}>
-                            {v.name}
+                            {t.vehicles[key as VehicleType]?.name || v.name}
                           </option>
                         ))}
                       </select>
@@ -1647,7 +1656,7 @@ export default function App() {
 
                     <div>
                       <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                        Cargo Priority
+                        {t.cargoPriority}
                       </label>
                       <select
                         value={commodity}
@@ -1656,7 +1665,7 @@ export default function App() {
                       >
                         {Object.entries(COMMODITY_PROFILES).map(([key, c]) => (
                           <option key={key} value={key}>
-                            {c.name}
+                            {t.commodities[key as CommodityType]?.name || c.name}
                           </option>
                         ))}
                       </select>
@@ -1667,10 +1676,10 @@ export default function App() {
                   <div className="p-2.5 rounded-xl bg-secondary/60 border border-border flex items-center justify-between text-xs">
                     <span className="text-muted-foreground flex items-center gap-1.5">
                       <CloudRain className="size-3.5 text-primary" />
-                      <span>Microclimate Ingestion:</span>
+                      <span>{t.microclimateIngestion}:</span>
                     </span>
                     <span className="font-semibold text-foreground">
-                      {WEATHER_PROFILES[weather]?.name || "Nominal Clear"}
+                      {t.weather[weather]?.name || WEATHER_PROFILES[weather]?.name || t.standardNominal}
                     </span>
                   </div>
                 </div>
@@ -1694,11 +1703,11 @@ export default function App() {
                       <circle cx="50" cy="50" r="3" fill="currentColor" />
                     </svg>
                     <div className="flex items-center justify-between pb-3 border-b border-border">
-                      <div className="font-bold text-sm text-foreground">A* Path Comparison</div>
+                      <div className="font-bold text-sm text-foreground">{t.pathComparison}</div>
                       {riskReductionPct > 0 && (
                         <span className="badge-status-normal">
                           <Check className="size-3" />
-                          <span>{riskReductionPct}% Safer Corridor</span>
+                          <span>{riskReductionPct}% {t.saferCorridor}</span>
                         </span>
                       )}
                     </div>
@@ -1707,7 +1716,7 @@ export default function App() {
                       {/* Nominal Shortest */}
                       <div className="p-3 rounded-xl border border-border bg-secondary/30 space-y-2">
                         <div className="text-[11px] font-semibold text-muted-foreground uppercase">
-                          Fastest (Shortest)
+                          {t.fastestShortest}
                         </div>
                         <div className="text-xl font-bold text-foreground">
                           {shortestStats.distance} <span className="text-xs font-normal text-muted-foreground">km</span>
@@ -1716,14 +1725,14 @@ export default function App() {
                           {formatHours(shortestStats.hours)}
                         </div>
                         <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                          Risk Index: {shortestStats.riskIndex}/100
+                          {t.riskIndex}: {shortestStats.riskIndex}/100
                         </div>
                       </div>
 
                       {/* Risk-Aware Safe Route */}
                       <div className="p-3 rounded-xl border border-primary/30 bg-primary/5 space-y-2">
                         <div className="text-[11px] font-semibold text-primary uppercase">
-                          Safe (Risk-Aware)
+                          {t.safeRiskAware}
                         </div>
                         <div className="text-xl font-bold text-foreground">
                           {safeStats.distance} <span className="text-xs font-normal text-muted-foreground">km</span>
@@ -1732,14 +1741,14 @@ export default function App() {
                           {formatHours(safeStats.hours)}
                         </div>
                         <div className="text-xs font-semibold text-primary">
-                          Risk Index: {safeStats.riskIndex}/100
+                          {t.riskIndex}: {safeStats.riskIndex}/100
                         </div>
                       </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Safe path trades {Math.max(0, safeStats.distance - shortestStats.distance)} km (+
-                      {formatHours(Math.max(0, safeStats.hours - shortestStats.hours))}) to avoid steep erosion gorges and active landslide zones.
+                      {t.safeTrades} {Math.max(0, safeStats.distance - shortestStats.distance)} km (+
+                      {formatHours(Math.max(0, safeStats.hours - shortestStats.hours))}) {t.toAvoidSteep}
                     </p>
                   </div>
                 )}
@@ -1750,10 +1759,10 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
                         <Mountain className="size-4 text-primary" />
-                        <span>Elevation Profile</span>
+                        <span>{t.elevationProfile}</span>
                       </div>
                       <span className="text-xs font-mono text-muted-foreground">
-                        Peak: {elevationAnalysis.maxElev}m ({elevationAnalysis.peakName})
+                        {t.peak} {elevationAnalysis.maxElev}m ({elevationAnalysis.peakName})
                       </span>
                     </div>
 
@@ -1811,7 +1820,7 @@ export default function App() {
                     className="flex-1 py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-2 shadow-xs"
                   >
                     <Download className="size-3.5" />
-                    <span>Download Manifest (JSON)</span>
+                    <span>{t.downloadManifest}</span>
                   </button>
 
                   <button
@@ -1820,7 +1829,7 @@ export default function App() {
                     className="py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     {copiedLink ? <Check className="size-3.5 text-primary" /> : <Share2 className="size-3.5" />}
-                    <span>{copiedLink ? "Copied" : "Share"}</span>
+                    <span>{copiedLink ? t.copied : t.share}</span>
                   </button>
 
                   <button
@@ -1829,7 +1838,7 @@ export default function App() {
                     className="py-2.5 px-4 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                   >
                     <Camera className="size-3.5" />
-                    <span>Report Hazard</span>
+                    <span>{t.reportHazard}</span>
                     {offlineReportsCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-mono">
                         {offlineReportsCount}
@@ -1854,7 +1863,7 @@ export default function App() {
                   <div className="flex items-center justify-between pb-3 border-b border-border">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-foreground">
-                        {CITY_MAP[origin]?.name} ➔ {CITY_MAP[destination]?.name}
+                        {origin ? getCityName(origin, lang, CITY_MAP[origin]?.name) : ""} ➔ {destination ? getCityName(destination, lang, CITY_MAP[destination]?.name) : ""}
                       </span>
                       {safeStats && (
                         <span className="text-xs text-muted-foreground font-mono">
@@ -1886,7 +1895,7 @@ export default function App() {
                         className="px-2.5 py-1 rounded-lg border border-border bg-secondary text-xs font-semibold text-foreground hover:bg-secondary/80 transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <Layers className="size-3.5" />
-                        <span>{mapMode === "osm" ? "Satellite View" : "Road Network"}</span>
+                        <span>{mapMode === "osm" ? t.satelliteView : t.roadNetwork}</span>
                       </button>
 
                       {/* Fullscreen Toggle */}
@@ -1894,7 +1903,7 @@ export default function App() {
                         type="button"
                         onClick={() => setIsBigScreenNav(!isBigScreenNav)}
                         className="p-1.5 rounded-lg border border-border bg-secondary text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                        title={isBigScreenNav ? "Exit Fullscreen (ESC)" : "Expand Map Fullscreen"}
+                        title={isBigScreenNav ? t.exitFullscreen : t.expandFullscreen}
                       >
                         {isBigScreenNav ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
                       </button>
@@ -1921,16 +1930,16 @@ export default function App() {
                 {/* Turn-by-Turn Leg Itinerary */}
                 <div className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-3">
                   <div className="font-bold text-sm text-foreground flex items-center justify-between">
-                    <span>Route Checkpoints & Waypoints</span>
-                    <span className="text-xs text-muted-foreground font-normal">{safeLegs.length} highway legs</span>
+                    <span>{t.routeWaypoints}</span>
+                    <span className="text-xs text-muted-foreground font-normal">{safeLegs.length} {t.highwayLegs}</span>
                   </div>
 
                   {intermediateCities.length > 0 && (
                     <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap pb-1">
-                      <span className="font-medium text-foreground">Via:</span>
+                      <span className="font-medium text-foreground">{t.via}:</span>
                       {intermediateCities.map((c, i) => (
                         <span key={c.id} className="inline-flex items-center">
-                          {c.name}
+                          {getCityName(c.id, lang, c.name)}
                           {i < intermediateCities.length - 1 && <span className="mx-1 opacity-50">→</span>}
                         </span>
                       ))}
@@ -1953,9 +1962,9 @@ export default function App() {
                             <span className="size-5 rounded-md bg-secondary text-muted-foreground flex items-center justify-center font-mono text-[11px] font-bold">
                               {idx + 1}
                             </span>
-                            <span>{leg.fromCity.name}</span>
+                            <span>{getCityName(leg.fromId, lang, leg.fromCity.name)}</span>
                             <ArrowRight className="size-3 text-muted-foreground" />
-                            <span>{leg.toCity.name}</span>
+                            <span>{getCityName(leg.toId, lang, leg.toCity.name)}</span>
                           </div>
                           <div className="flex items-center gap-2 font-mono text-muted-foreground">
                             <span>{leg.dist} km</span>
@@ -1963,13 +1972,13 @@ export default function App() {
                             <span>{formatHours(leg.hours)}</span>
                             <span>·</span>
                             <span className={leg.risk > 40 ? "text-destructive font-bold" : "text-primary"}>
-                              {leg.risk}% Risk
+                              {leg.risk}% {t.risk}
                             </span>
                           </div>
                         </div>
                         {leg.note && (
                           <div className="mt-1 pl-7 text-[11px] text-muted-foreground">
-                            {leg.note}
+                            {getLocalizedNote(leg.note, lang)}
                           </div>
                         )}
                       </div>
@@ -1987,25 +1996,25 @@ export default function App() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  District-Wise Accessibility Health (8 Northeast States)
+                  {t.districtHealthTitle}
                 </h1>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Real-time connectivity status, delay records, and active incident tracking (Northeast Mountain Logistics Mandate).
+                  {t.districtHealthSubtitle}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 text-xs font-mono shrink-0">
                 <span className="badge-status-normal">
                   <span className="size-1.5 rounded-full bg-emerald-500" />
-                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "NORMAL").length} Normal
+                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "NORMAL").length} {t.statusNormal}
                 </span>
                 <span className="badge-status-advisory">
                   <span className="size-1.5 rounded-full bg-amber-500" />
-                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "WATCH").length} Watch
+                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "WATCH").length} {t.statusWatch}
                 </span>
                 <span className="badge-status-restricted">
                   <span className="size-1.5 rounded-full bg-rose-500" />
-                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "RESTRICTED").length} Restricted
+                  {DISTRICT_CONNECTIVITY.filter((d) => d.status === "RESTRICTED").length} {t.statusRestricted}
                 </span>
               </div>
             </div>
@@ -2024,7 +2033,7 @@ export default function App() {
                         : "bg-secondary text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {st}
+                    {st === "ALL" ? t.all : getStateName(st === "Arunachal" ? "Arunachal Pradesh" : st, lang)}
                   </button>
                 ))}
               </div>
@@ -2035,7 +2044,7 @@ export default function App() {
                   type="text"
                   value={districtSearchQuery}
                   onChange={(e) => setDistrictSearchQuery(e.target.value)}
-                  placeholder="Search district or road..."
+                  placeholder={t.searchDistrictRoad}
                   className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-border bg-secondary text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>

@@ -245,20 +245,29 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
       iconAnchor: [22, 22],
     });
 
+    const t = TRANSLATIONS[lang];
     if (!gpsMarkerRef.current) {
       const marker = L.marker([lat, lon], { icon: vehicleIcon, zIndexOffset: 1000 }).addTo(map);
       marker.bindPopup(
         `<div style="font-family: monospace; font-size: 11px; padding: 4px;">
-          <strong style="color: #38bdf8;">📍 CALIBRATED GPS TELEMETRY</strong><br/>
+          <strong style="color: #38bdf8;">📍 ${t.calibratedGpsTelemetry}</strong><br/>
           <span>${placeName}</span><br/>
           <span style="color: #94a3b8;">${lat.toFixed(5)}°N, ${lon.toFixed(5)}°E</span><br/>
-          <span style="color: #10b981; font-weight: bold;">Speed: ${speedKmh} km/h · Heading: ${headingDeg}°</span>
+          <span style="color: #10b981; font-weight: bold;">${t.speed}: ${speedKmh} km/h · ${t.headingLabel}: ${headingDeg}°</span>
         </div>`
       );
       gpsMarkerRef.current = marker;
     } else {
       gpsMarkerRef.current.setIcon(vehicleIcon);
       gpsMarkerRef.current.setLatLng([lat, lon]);
+      gpsMarkerRef.current.setPopupContent(
+        `<div style="font-family: monospace; font-size: 11px; padding: 4px;">
+          <strong style="color: #38bdf8;">📍 ${t.calibratedGpsTelemetry}</strong><br/>
+          <span>${placeName}</span><br/>
+          <span style="color: #94a3b8;">${lat.toFixed(5)}°N, ${lon.toFixed(5)}°E</span><br/>
+          <span style="color: #10b981; font-weight: bold;">${t.speed}: ${speedKmh} km/h · ${t.headingLabel}: ${headingDeg}°</span>
+        </div>`
+      );
     }
 
     // Accuracy Circle
@@ -283,7 +292,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
       // Smoothly pan with vehicle without resetting zoom
       map.panTo([lat, lon], { animate: true, duration: 0.4 });
     }
-  }, [userGps, isNavigating]);
+  }, [userGps, isNavigating, lang]);
 
   // Recenter button helper
   const handleRecenterOnGps = () => {
