@@ -1345,70 +1345,6 @@ export default function App() {
         {/* VIEW 2: ROUTE DISPATCHER (ORIGIN TO DESTINATION PAGE) */}
         {activeView === "dispatcher" && (
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
-            {/* Regional Logistics Overview Banner with Himalayan Highway Backdrop */}
-            <div className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
-              <div
-                className="absolute inset-0 z-0 bg-cover bg-right sm:bg-center opacity-30 dark:opacity-20 transition-opacity"
-                style={{
-                  backgroundImage: "url('/hero-himalayan-highway.jpg')",
-                }}
-              />
-              <div className="absolute inset-0 z-0 bg-gradient-to-r from-card via-card/90 to-card/35 dark:from-card dark:via-card/92 dark:to-card/50" />
-
-              <div className="relative z-10 p-5 sm:p-6 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-xs font-semibold">
-                    <Mountain className="size-3.5" />
-                    <span>Eastern Himalayan Logistics Grid · 8 Northeast States</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>OSM Real Graph Engine Active</span>
-                    </span>
-                    <span className="hidden sm:inline">·</span>
-                    <span className="hidden sm:inline">56 Key Corridors</span>
-                  </div>
-                </div>
-
-                <div className="max-w-2xl">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    Risk-Aware Strategic Freight Routing & Accessibility
-                  </h1>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
-                    Dynamic terrain dual-path solver balancing transit duration against monsoon rainfall, slope gradients, and multi-axle freight restrictions across Assam, Arunachal, Meghalaya, Manipur, Mizoram, Nagaland, Sikkim, and Tripura.
-                  </p>
-                </div>
-
-                {/* Corridor telemetry stat bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Active Departure</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {origin ? `${CITY_MAP[origin]?.name} (${CITY_MAP[origin]?.state})` : "Awaiting input..."}
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Target Destination</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {destination ? `${CITY_MAP[destination]?.name} (${CITY_MAP[destination]?.state})` : "Awaiting input..."}
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Corridor Elevation</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
-                      {origin && destination ? `${CITY_MAP[origin]?.y || 55}m ➔ ${CITY_MAP[destination]?.y || 3048}m` : "Awaiting route..."}
-                    </div>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Weather Advisory</div>
-                    <div className="text-xs font-bold text-primary truncate mt-0.5">
-                      {origin && destination ? (liveWeather.summary || "Clear Transit") : "Standard Nominal"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
             {/* Highlighted Callout: Enter Origin & Destination */}
             <div
               className={`p-4 sm:p-5 rounded-2xl border-2 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -1479,6 +1415,71 @@ export default function App() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Regional Logistics Overview Banner with Himalayan Highway Backdrop */}
+            <div className="relative rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+              <div
+                className="absolute inset-0 z-0 bg-cover bg-right sm:bg-center opacity-30 dark:opacity-20 transition-opacity"
+                style={{
+                  backgroundImage: "url('/hero-himalayan-highway.jpg')",
+                }}
+              />
+              <div className="absolute inset-0 z-0 bg-gradient-to-r from-card via-card/90 to-card/35 dark:from-card dark:via-card/92 dark:to-card/50" />
+
+              <div className="relative z-10 p-5 sm:p-6 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-primary/25 bg-primary/10 text-primary text-xs font-semibold">
+                    <Mountain className="size-3.5" />
+                    <span>Eastern Himalayan Logistics Grid · 8 Northeast States</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>OSM Real Graph Engine Active</span>
+                    </span>
+                    <span className="hidden sm:inline">·</span>
+                    <span className="hidden sm:inline">56 Key Corridors</span>
+                  </div>
+                </div>
+
+                <div className="max-w-2xl">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                    Risk-Aware Strategic Freight Routing & Accessibility
+                  </h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">
+                    Dynamic terrain dual-path solver balancing transit duration against monsoon rainfall, slope gradients, and multi-axle freight restrictions across Assam, Arunachal, Meghalaya, Manipur, Mizoram, Nagaland, Sikkim, and Tripura.
+                  </p>
+                </div>
+
+                {/* Corridor telemetry stat bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Active Departure</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {origin ? `${CITY_MAP[origin]?.name} (${CITY_MAP[origin]?.state})` : "Awaiting input..."}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Target Destination</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {destination ? `${CITY_MAP[destination]?.name} (${CITY_MAP[destination]?.state})` : "Awaiting input..."}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Corridor Elevation</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {origin && destination ? `${CITY_MAP[origin]?.y || 55}m ➔ ${CITY_MAP[destination]?.y || 3048}m` : "Awaiting route..."}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase">Weather Advisory</div>
+                    <div className="text-xs font-bold text-primary truncate mt-0.5">
+                      {origin && destination ? (liveWeather.summary || "Clear Transit") : "Standard Nominal"}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
