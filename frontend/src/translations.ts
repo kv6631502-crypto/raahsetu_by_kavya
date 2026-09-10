@@ -192,6 +192,15 @@ export interface Translations {
   sosTriggered: string;
   close: string;
 
+  // Additional Destination Weather & Telemetry
+  destinationWeatherTitle: string;
+  terminalWeatherForecast: string;
+  temperature: string;
+  precipitation: string;
+  visibility: string;
+  roadGrip: string;
+  terminalStation: string;
+
   // Additional Dispatcher & Callout fields
   step12SelectTitle: string;
   departureHubSelected: string;
@@ -521,6 +530,13 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     sosTriggered: "Emergency Beacon Active",
     close: "Close",
 
+    destinationWeatherTitle: "Destination Weather",
+    terminalWeatherForecast: "Destination Terminal Microclimate & Live Forecast",
+    temperature: "Temperature",
+    precipitation: "Precipitation",
+    visibility: "Visibility",
+    roadGrip: "Road Surface Grip",
+    terminalStation: "Terminal Met Station",
     step12SelectTitle: "Step 1 & 2: Select Departure Hub (Origin) & Target Destination",
     departureHubSelected: "Departure Hub selected",
     nowChooseDestination: "Now choose Destination.",
@@ -881,6 +897,13 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     sosTriggered: "आपातकालीन बीकन सक्रिय है",
     close: "बंद करें",
 
+    destinationWeatherTitle: "गंतव्य का मौसम",
+    terminalWeatherForecast: "गंतव्य टर्मिनल सूक्ष्म-जलवायु एवं लाइव पूर्वानुमान",
+    temperature: "तापमान",
+    precipitation: "वर्षा / हिमपात",
+    visibility: "दृश्यता (विजिबिलिटी)",
+    roadGrip: "सड़क घर्षण ग्रिप",
+    terminalStation: "टर्मिनल मौसम केंद्र",
     step12SelectTitle: "चरण 1 एवं 2: प्रस्थान केंद्र (आरंभ) एवं लक्ष्य गंतव्य चुनें",
     departureHubSelected: "प्रस्थान केंद्र चुना गया",
     nowChooseDestination: "अब गंतव्य चुनें।",
@@ -1241,6 +1264,13 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     sosTriggered: "জৰুৰীকালীন সংকেত সক্ৰিয়",
     close: "বন্ধ কৰক",
 
+    destinationWeatherTitle: "গন্তব্যৰ বতৰ",
+    terminalWeatherForecast: "গন্তব্য টাৰ্মিনেলৰ স্থানীয় জলবায়ু আৰু লাইভ বতৰৰ আগজাননী",
+    temperature: "তাপমাত্ৰা",
+    precipitation: "বৰষুণ / তুষাৰপাত",
+    visibility: "দৃশ্যমানতা",
+    roadGrip: "পথৰ ঘৰ্ষণ গ্ৰিপ",
+    terminalStation: "টাৰ্মিনেল বতৰ বিজ্ঞান কেন্দ্ৰ",
     step12SelectTitle: "পদক্ষেপ ১ আৰু ২: প্ৰস্থান কেন্দ্ৰ (আৰম্ভণি) আৰু লক্ষ্য গন্তব্য নিৰ্বাচন কৰক",
     departureHubSelected: "প্ৰস্থান কেন্দ্ৰ নিৰ্বাচিত",
     nowChooseDestination: "এতিয়া গন্তব্য বাছক।",
@@ -1601,6 +1631,13 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     sosTriggered: "জরুরি সংকেত সক্রিয় আছে",
     close: "বন্ধ করুন",
 
+    destinationWeatherTitle: "গন্তব্যের আবহাওয়া",
+    terminalWeatherForecast: "গন্তব্য টার্মিনালের স্থানীয় জলবায়ু ও লাইভ আবহাওয়া পূর্বাভাস",
+    temperature: "তাপমাত্রা",
+    precipitation: "বৃষ্টিপাত / তুষারপাত",
+    visibility: "দৃশ্যমানতা",
+    roadGrip: "সড়কের ঘর্ষণ গ্রিপ",
+    terminalStation: "টার্মিনাল আবহাওয়া কেন্দ্র",
     step12SelectTitle: "ধাপ ১ এবং ২: প্রস্থান কেন্দ্র (উৎস) এবং লক্ষ্য গন্তব্য নির্বাচন করুন",
     departureHubSelected: "প্রস্থান কেন্দ্র নির্বাচিত",
     nowChooseDestination: "এখন গন্তব্য নির্বাচন করুন।",
@@ -2243,6 +2280,7 @@ export function getStateName(stateName: string, lang: SupportedLanguage): string
 }
 
 
+
 export interface BlockageTranslation {
   road: string;
   exactSpot: string;
@@ -2440,4 +2478,83 @@ export const DISTRICT_NAMES: Record<SupportedLanguage, Record<string, string>> =
 
 export function getDistrictName(name: string, lang: SupportedLanguage): string {
   return DISTRICT_NAMES[lang]?.[name] || name;
+}
+
+export function getLocalizedWeatherSummary(summary: string, lang: SupportedLanguage): string {
+  const map: Record<SupportedLanguage, Record<string, string>> = {
+    en: {},
+    hi: {
+      "Freezing Snow & Black Ice": "बर्फबारी एवं ब्लैक आइस",
+      "Cold Mountain Frost & Mist": "पर्वतीय पाला एवं कोहरा",
+      "High-Altitude Chilling Fog": "अत्यधिक ऊंचाई का घना कोहरा",
+      "Sub-Zero Alpine Freeze": "शून्य से नीचे अल्पाइन ठंड",
+      "Chilly Mountain Rain": "शीतल पर्वतीय वर्षा",
+      "Heavy Snowfall & Avalanche Alert": "भारी हिमपात एवं हिमस्खलन अलर्ट",
+      "Heavy Snowfall & Freezing Roads": "भारी बर्फबारी एवं बर्फीली सड़कें",
+      "Extreme Torrential Rainfall": "अत्यधिक मूसलाधार बारिश",
+      "Dense Monsoon Fog & Rain": "घना मानसूनी कोहरा एवं वर्षा",
+      "Monsoon Downpour & Hill Mist": "मानसूनी बारिश एवं पहाड़ी धुंध",
+      "Tropical Heavy Rain & Flash Ponding": "उष्णकटिबंधीय भारी बारिश एवं जलभराव",
+      "Heavy Monsoon Showers": "भारी मानसूनी बौछारें",
+      "Dima Hasao Hill Landslide Rain": "दीमा हसाओ पर्वतीय भूस्खलन वर्षा",
+      "Monsoon Showers & Valley Mist": "मानसूनी बौछारें एवं घाटी धुंध",
+      "Moderate Monsoon Showers": "मध्यम मानसूनी बौछारें",
+      "Slippery Hill Rain & Mudflow Risk": "फिसलन भरी बारिश एवं कीचड़ बहाव का खतरा",
+      "Monsoon Overcast & Showers": "मानसूनी बादल एवं बौछारें",
+      "Humid Overcast & Light Rain": "आर्द्र बादल एवं हल्की वर्षा",
+      "Clear & Dry Weather": "साफ एवं शुष्क मौसम",
+      "Clear & Dry Corridor": "साफ एवं शुष्क गलियारा",
+      "High Altitude Sub-Zero Freeze": "उच्च पर्वतीय शून्य से नीचे ठंड",
+      "Monsoon Downpour & Saturated Slopes": "मानसूनी बारिश एवं संतृप्त ढलान",
+    },
+    as: {
+      "Freezing Snow & Black Ice": "তুষাৰপাত আৰু পিছল বৰফ",
+      "Cold Mountain Frost & Mist": "পৰ্বতীয়া কুঁৱলী আৰু ঠাণ্ডা",
+      "High-Altitude Chilling Fog": "উচ্চ পাহাৰৰ ডাঠ কুঁৱলী",
+      "Sub-Zero Alpine Freeze": "শূন্যতকৈ তলৰ পাহাৰীয়া শীত",
+      "Chilly Mountain Rain": "ঠাণ্ডা পৰ্বতীয়া বৰষুণ",
+      "Heavy Snowfall & Avalanche Alert": "প্ৰবল তুষাৰপাত আৰু হিমস্খলন সতৰ্কবাৰ্তা",
+      "Heavy Snowfall & Freezing Roads": "প্ৰবল বৰফ আৰু পিছল পথ",
+      "Extreme Torrential Rainfall": "অত্যধিক ধাৰাসাৰ বৰষুণ",
+      "Dense Monsoon Fog & Rain": "ডাঠ বাৰিষাৰ কুঁৱলী আৰু বৰষুণ",
+      "Monsoon Downpour & Hill Mist": "বাৰিষাৰ বৰষুণ আৰু পাহাৰীয়া ধোঁৱা",
+      "Tropical Heavy Rain & Flash Ponding": "ক্ৰান্তীয় প্ৰবল বৰষুণ আৰু পানী জমা হোৱা",
+      "Heavy Monsoon Showers": "প্ৰবল বাৰিষাৰ জাক",
+      "Dima Hasao Hill Landslide Rain": "ডিমা হাছাও ভূমিস্খলনৰ বৰষুণ",
+      "Monsoon Showers & Valley Mist": "বাৰিষাৰ বৰষুণ আৰু উপত্যকাৰ কুঁৱলী",
+      "Moderate Monsoon Showers": "মধ্যমীয়া বাৰিষাৰ বৰষুণ",
+      "Slippery Hill Rain & Mudflow Risk": "পিচল পাহাৰীয়া বৰষুণ আৰু বোকাৰ বিপদ",
+      "Monsoon Overcast & Showers": "মেঘাচ্ছন্ন আকাশ আৰু বৰষুণ",
+      "Humid Overcast & Light Rain": "সেমেকা বতৰ আৰু পাতল বৰষুণ",
+      "Clear & Dry Weather": "পৰিষ্কাৰ আৰু শুকান বতৰ",
+      "Clear & Dry Corridor": "পৰিষ্কাৰ আৰু শুকান কৰিড'ৰ",
+      "High Altitude Sub-Zero Freeze": "উচ্চ পৰ্বতীয়া প্ৰচণ্ড শীত",
+      "Monsoon Downpour & Saturated Slopes": "বাৰিষাৰ বৰষুণ আৰু পাহাৰ খহি পৰাৰ সম্ভাৱনা",
+    },
+    bn: {
+      "Freezing Snow & Black Ice": "তুষারপাত ও বিপজ্জনক ব্ল্যাক আইস",
+      "Cold Mountain Frost & Mist": "পার্বত্য কুয়াশা ও শৈত্যপ্রবাহ",
+      "High-Altitude Chilling Fog": "উচ্চ পার্বত্য ঘন কুয়াশা",
+      "Sub-Zero Alpine Freeze": "হিমাঙ্কের নিচে তীব্র শীত",
+      "Chilly Mountain Rain": "ঠান্ডা পার্বত্য বৃষ্টি",
+      "Heavy Snowfall & Avalanche Alert": "ভারী তুষারপাত ও তুষারধসের সতর্কতা",
+      "Heavy Snowfall & Freezing Roads": "ভারী বরফ ও বরফাচ্ছন্ন রাস্তা",
+      "Extreme Torrential Rainfall": "চরম মুষলধারে বৃষ্টি",
+      "Dense Monsoon Fog & Rain": "ঘন বর্ষার কুয়াশা ও বৃষ্টি",
+      "Monsoon Downpour & Hill Mist": "বর্ষার বৃষ্টি ও পাহাড়ের ধোঁয়াশা",
+      "Tropical Heavy Rain & Flash Ponding": "গ্রীষ্মমণ্ডলীয় ভারী বৃষ্টি ও জলাবদ্ধতা",
+      "Heavy Monsoon Showers": "ভারী বর্ষার বৃষ্টি",
+      "Dima Hasao Hill Landslide Rain": "ডিমা হাসাও ভূমিধসের বৃষ্টি",
+      "Monsoon Showers & Valley Mist": "বর্ষার বৃষ্টি ও উপত্যকার কুয়াশা",
+      "Moderate Monsoon Showers": "মাঝারি বর্ষার বৃষ্টি",
+      "Slippery Hill Rain & Mudflow Risk": "পিচ্ছিল পাহাড়ি বৃষ্টি ও কাদার ধস",
+      "Monsoon Overcast & Showers": "মেঘলা আকাশ ও বৃষ্টিপাত",
+      "Humid Overcast & Light Rain": "আর্দ্র আবহাওয়া ও হালকা বৃষ্টি",
+      "Clear & Dry Weather": "পরিষ্কার ও শুষ্ক আবহাওয়া",
+      "Clear & Dry Corridor": "পরিষ্কার ও শুষ্ক করিডোর",
+      "High Altitude Sub-Zero Freeze": "উচ্চ পার্বত্য হিমাঙ্কের নিচের শীত",
+      "Monsoon Downpour & Saturated Slopes": "বর্ষার বৃষ্টি ও খাড়া ঢালের ঝুঁকি",
+    },
+  };
+  return map[lang]?.[summary] || summary;
 }

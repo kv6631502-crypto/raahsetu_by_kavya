@@ -238,6 +238,87 @@ export function getAutomaticWeatherForLocation(originId: string, destId?: string
   };
 }
 
+export function getCityWeather(cityId: string): LiveWeatherReport {
+  const c = CITY_MAP[cityId];
+  if (!c) {
+    return {
+      condition: "clear",
+      tempC: 26,
+      precipitationMm: 0,
+      visibilityKm: 12,
+      roadFriction: 0.95,
+      summary: "Clear & Dry Weather",
+      advisory: "Fair conditions across terminal approaches.",
+      stationName: "Regional Met Observatory",
+    };
+  }
+
+  const snowCities: Record<string, { temp: number; precip: number; vis: number; friction: number; summary: string; advisory: string }> = {
+    tawang: { temp: -4, precip: 5.2, vis: 2.0, friction: 0.38, summary: "Freezing Snow & Black Ice", advisory: "Sub-zero frost on Sela Pass approaches. Anti-skid tire chains required for heavy transport." },
+    dirang: { temp: 4, precip: 2.1, vis: 4.0, friction: 0.60, summary: "Cold Mountain Frost & Mist", advisory: "Cold valley fog reducing morning visibility; drive with low-beam fog lamps." },
+    bomdila: { temp: 2, precip: 3.5, vis: 3.0, friction: 0.52, summary: "High-Altitude Chilling Fog", advisory: "Slippery ridge curves; extreme caution for multi-axle freight." },
+    chungthang: { temp: 1, precip: 4.0, vis: 2.5, friction: 0.48, summary: "Sub-Zero Alpine Freeze", advisory: "Icy patches on Teesta river bridges. Reduced speed limit 25 km/h." },
+    mangan: { temp: 6, precip: 5.5, vis: 4.5, friction: 0.65, summary: "Chilly Mountain Rain", advisory: "Wet asphalt on North Sikkim highway; caution on gravel shoulders." },
+    lachung: { temp: -5, precip: 6.0, vis: 1.8, friction: 0.35, summary: "Heavy Snowfall & Avalanche Alert", advisory: "Active snowfall. Convoy movement with BRO clearance mandatory." },
+    lachen: { temp: -6, precip: 5.8, vis: 1.5, friction: 0.32, summary: "Heavy Snowfall & Freezing Roads", advisory: "Severe black ice and snowdrifts on Yumthang/Gurudongmar corridors." },
+  };
+
+  if (snowCities[cityId]) {
+    const sc = snowCities[cityId];
+    return {
+      condition: "snow",
+      tempC: sc.temp,
+      precipitationMm: sc.precip,
+      visibilityKm: sc.vis,
+      roadFriction: sc.friction,
+      summary: sc.summary,
+      advisory: sc.advisory,
+      stationName: `${c.name} Alpine Met Station (${c.y}m)`,
+    };
+  }
+
+  const rainCities: Record<string, { temp: number; precip: number; vis: number; friction: number; summary: string; advisory: string }> = {
+    cherrapunji: { temp: 18, precip: 38.5, vis: 2.5, friction: 0.50, summary: "Extreme Torrential Rainfall", advisory: "World's highest precipitation zone. Water cascading over roadbed; avoid edge berms." },
+    shillong: { temp: 19, precip: 18.2, vis: 4.0, friction: 0.62, summary: "Dense Monsoon Fog & Rain", advisory: "Heavy hill fog along Barapani and Shillong Peak; reduce speed on bypass." },
+    jowai: { temp: 20, precip: 16.0, vis: 5.0, friction: 0.64, summary: "Monsoon Downpour & Hill Mist", advisory: "Coal belt highway wet; heavy coal tippers moving slowly." },
+    silchar: { temp: 26, precip: 22.4, vis: 4.5, friction: 0.58, summary: "Tropical Heavy Rain & Flash Ponding", advisory: "Waterlogging in low-lying Barak valley corridors (NH-37 / NH-306)." },
+    karimganj: { temp: 27, precip: 19.0, vis: 5.0, friction: 0.60, summary: "Heavy Monsoon Showers", advisory: "Kushiara river basin saturated; monitor approach bund roads." },
+    haflong: { temp: 21, precip: 17.5, vis: 4.0, friction: 0.59, summary: "Dima Hasao Hill Landslide Rain", advisory: "Active slope seepage along hill railway cutting and NH-27 bypass." },
+    aizawl: { temp: 22, precip: 15.2, vis: 5.5, friction: 0.63, summary: "Monsoon Showers & Valley Mist", advisory: "Steep terrain curves; retain low gears on Aizawl western bypass." },
+    lunglei: { temp: 23, precip: 14.0, vis: 6.0, friction: 0.66, summary: "Moderate Monsoon Showers", advisory: "Wet hill curves; maintain 30-metre headway between multi-axle freight." },
+    kohima: { temp: 20, precip: 16.8, vis: 4.5, friction: 0.58, summary: "Slippery Hill Rain & Mudflow Risk", advisory: "Heavy hill seepage along Pagla Pahar and Chumukedima bypass." },
+    imphal: { temp: 24, precip: 12.5, vis: 7.0, friction: 0.70, summary: "Monsoon Overcast & Showers", advisory: "Valley approaches clear; cautious transit on NH-37 Makru bridge section." },
+    dimapur: { temp: 28, precip: 11.0, vis: 8.0, friction: 0.75, summary: "Humid Overcast & Light Rain", advisory: "Entry corridor to Nagaland hills; check brake air pressure before hill climb." },
+  };
+
+  if (rainCities[cityId]) {
+    const rc = rainCities[cityId];
+    return {
+      condition: "monsoon",
+      tempC: rc.temp,
+      precipitationMm: rc.precip,
+      visibilityKm: rc.vis,
+      roadFriction: rc.friction,
+      summary: rc.summary,
+      advisory: rc.advisory,
+      stationName: `${c.name} Doppler Weather Radar (${c.y}m)`,
+    };
+  }
+
+  // Valley & Plains cities
+  const isValleyHot = c.y < 250;
+  return {
+    condition: "clear",
+    tempC: isValleyHot ? 31 : 27,
+    precipitationMm: 0.0,
+    visibilityKm: 12.0,
+    roadFriction: 0.95,
+    summary: "Clear & Dry Weather",
+    advisory: "Dry road surface with high traction and unobstructed visibility for fleet transit.",
+    stationName: `${c.name} Surface Met Observatory (${c.y}m)`,
+  };
+}
+
 export function getIntermediateCities(path: string[]): City[] {
   if (path.length <= 2) return [];
   return path.slice(1, -1).map((id) => CITY_MAP[id]).filter(Boolean);

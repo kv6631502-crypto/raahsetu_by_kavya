@@ -12,6 +12,9 @@ import {
   Globe,
   CloudRain,
   Database,
+  Droplets,
+  Eye,
+  Snowflake,
   FileText,
   Download,
   Info,
@@ -59,6 +62,7 @@ import {
   formatHours,
   getAdjustedEdgeRisk,
   getAutomaticWeatherForLocation,
+  getCityWeather,
   getIntermediateCities,
   getRouteLegs,
   solvePath,
@@ -68,6 +72,9 @@ import {
   TRANSLATIONS,
   getCityName,
   getStateName,
+  getBlockageDetails,
+  getDistrictName,
+  getLocalizedWeatherSummary,
 } from "./translations";
 
 // Clean City Combobox
@@ -770,6 +777,11 @@ export default function App() {
   }, [origin, destination]);
   const weather = liveWeather.condition;
 
+  const destWeather = useMemo(() => {
+    if (!destination) return null;
+    return getCityWeather(destination);
+  }, [destination]);
+
   // Shortest route solver
   const shortest = useMemo(() => {
     return solvePath(origin, destination, (edge) => edge.dist);
@@ -1249,8 +1261,16 @@ export default function App() {
                 <span>{t.tabAdvisories}</span>
               </span>
               <span className="truncate font-medium text-foreground">
-                <strong>{ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].road} ({getStateName(ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].state, lang)}):</strong>{" "}
-                {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].cause} at {ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx].exactSpot}.
+                {(() => {
+                  const blk = ACTIVE_ROAD_BLOCKAGES[activeBlockageIdx];
+                  const b = getBlockageDetails(blk.id, lang, blk);
+                  return (
+                    <>
+                      <strong>{b.road} ({getStateName(blk.state, lang)}):</strong>{" "}
+                      {b.cause} at {b.exactSpot}.
+                    </>
+                  );
+                })()}
               </span>
             </div>
 
@@ -1533,6 +1553,72 @@ export default function App() {
                       lang={lang}
                     />
                   </div>
+
+                  {/* Destination Weather & Terminal Conditions Card */}
+                  {destination && destWeather && (
+                    <div className="p-3.5 rounded-2xl border border-border bg-secondary/40 space-y-2.5 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-xl bg-card border border-border flex items-center justify-center shadow-xs">
+                            {destWeather.condition === "snow" ? (
+                              <Snowflake className="size-4 text-sky-500 animate-pulse" />
+                            ) : destWeather.condition === "monsoon" ? (
+                              <CloudRain className="size-4 text-blue-500" />
+                            ) : (
+                              <Sun className="size-4 text-amber-500" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-foreground">
+                              {t.destinationWeatherTitle}: {getCityName(destination, lang, CITY_MAP[destination]?.name)}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">
+                              {destWeather.stationName}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-black text-foreground">{destWeather.tempC}°C</div>
+                          <div className="text-[10px] font-semibold text-primary">
+                            {getLocalizedWeatherSummary(destWeather.summary, lang)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3 Metrics Grid */}
+                      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/60 text-[11px]">
+                        <div className="p-1.5 rounded-xl bg-card/70 border border-border/50 text-center">
+                          <div className="text-[9px] text-muted-foreground uppercase flex items-center justify-center gap-1">
+                            <Droplets className="size-2.5 text-blue-400" />
+                            <span>{t.precipitation}</span>
+                          </div>
+                          <div className="font-bold text-foreground mt-0.5">{destWeather.precipitationMm} mm/h</div>
+                        </div>
+
+                        <div className="p-1.5 rounded-xl bg-card/70 border border-border/50 text-center">
+                          <div className="text-[9px] text-muted-foreground uppercase flex items-center justify-center gap-1">
+                            <Eye className="size-2.5 text-emerald-400" />
+                            <span>{t.visibility}</span>
+                          </div>
+                          <div className="font-bold text-foreground mt-0.5">{destWeather.visibilityKm} km</div>
+                        </div>
+
+                        <div className="p-1.5 rounded-xl bg-card/70 border border-border/50 text-center">
+                          <div className="text-[9px] text-muted-foreground uppercase flex items-center justify-center gap-1">
+                            <Activity className="size-2.5 text-amber-400" />
+                            <span>{t.roadGrip}</span>
+                          </div>
+                          <div className="font-bold text-foreground mt-0.5">{Math.round(destWeather.roadFriction * 100)}%</div>
+                        </div>
+                      </div>
+
+                      {/* Terminal Advisory Notice */}
+                      <div className="p-2 rounded-xl bg-card/50 border border-border/40 text-[11px] text-muted-foreground leading-relaxed">
+                        <span className="font-semibold text-foreground">Terminal Advisory: </span>
+                        {destWeather.advisory}
+                      </div>
+                    </div>
+                  )}
 
                   {locationNotice && (
                     <div className="p-2.5 rounded-xl bg-secondary border border-border text-xs text-muted-foreground leading-relaxed">
@@ -1964,7 +2050,7 @@ export default function App() {
                 >
                   <div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-muted-foreground uppercase">{dist.state}</span>
+                      <span className="font-semibold text-muted-foreground uppercase">{getStateName(dist.state, lang)}</span>
                       <span
                         className={
                           dist.status === "RESTRICTED"
@@ -1974,20 +2060,20 @@ export default function App() {
                             : "badge-status-normal"
                         }
                       >
-                        {dist.status}
+                        {dist.status === "RESTRICTED" ? t.statusRestricted : dist.status === "WATCH" ? t.statusWatch : t.statusNormal}
                       </span>
                     </div>
-                    <div className="font-bold text-base text-foreground mt-2">{dist.district}</div>
+                    <div className="font-bold text-base text-foreground mt-2">{getDistrictName(dist.district, lang)}</div>
                     <div className="text-xs text-primary font-mono mt-0.5">{dist.primaryHighway}</div>
                   </div>
 
                   <div className="pt-3 border-t border-border space-y-2 text-xs">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span>Active Incidents:</span>
+                      <span>{t.activeIncidents}</span>
                       <strong className="text-foreground">{dist.incidentCount}</strong>
                     </div>
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span>Transit Delay:</span>
+                      <span>{t.transitDelay}</span>
                       <strong className={dist.delayAvgMinutes > 60 ? "text-destructive" : "text-foreground"}>
                         +{dist.delayAvgMinutes}m
                       </strong>
@@ -2002,7 +2088,7 @@ export default function App() {
                       }}
                       className="w-full py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>Route to Hub</span>
+                      <span>{t.routeToHub}</span>
                       <ArrowRight className="size-3" />
                     </button>
                   </div>
@@ -2018,10 +2104,10 @@ export default function App() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Active Road Closures & Landslide Advisories
+                  {t.activeClosuresTitle}
                 </h1>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Verified mountain pass blockages, geotechnical sensor alerts, and official detour recommendations.
+                  {t.activeClosuresSubtitle}
                 </p>
               </div>
 
@@ -2030,72 +2116,76 @@ export default function App() {
                 onClick={() => setIsReportModalOpen(true)}
                 className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs"
               >
-                Report Road Hazard
+                {t.reportRoadHazard}
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {ACTIVE_ROAD_BLOCKAGES.map((blk) => (
-                <div
-                  key={blk.id}
-                  className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={
-                          blk.severity === "CRITICAL" ? "badge-status-restricted" : "badge-status-advisory"
-                        }
+              {ACTIVE_ROAD_BLOCKAGES.map((blk) => {
+                const b = getBlockageDetails(blk.id, lang, blk);
+                return (
+                  <div
+                    key={blk.id}
+                    className="p-5 rounded-2xl border border-border bg-card shadow-xs space-y-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={
+                            blk.severity === "CRITICAL" ? "badge-status-restricted" : "badge-status-advisory"
+                          }
+                        >
+                          {blk.severity === "CRITICAL" ? t.critical : t.high} {t.closureBadge}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">{b.updatedTime}</span>
+                      </div>
+
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground">
+                          {getCityName(blk.originId || "", lang)} ⟷ {getCityName(blk.destinationId || "", lang)}{" "}
+                          <span className="text-xs font-normal text-muted-foreground">({b.road})</span>
+                        </h2>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          <strong>{t.spot}:</strong> {b.exactSpot} ({getStateName(blk.state, lang)})
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-secondary/50 border border-border text-xs text-foreground">
+                        <strong className="text-destructive">{t.cause}:</strong> {b.cause}
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5 text-foreground">
+                          <span className="font-bold text-destructive">{t.avoid}: </span>
+                          <span>{b.avoidInfo}</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl border border-primary/20 bg-primary/5 text-foreground">
+                          <span className="font-bold text-primary">{t.recommendedDetourLabel}: </span>
+                          <span>{b.detourRoute}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-border flex items-center justify-between">
+                      <span className="text-xs font-mono text-muted-foreground">{blk.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (blk.originId && blk.destinationId) {
+                            setOrigin(blk.originId);
+                            setDestination(blk.destinationId);
+                          }
+                          scrollToMap();
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                       >
-                        {blk.severity} CLOSURE
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">{blk.updatedTime}</span>
-                    </div>
-
-                    <div>
-                      <h2 className="text-lg font-bold text-foreground">
-                        {blk.cities} <span className="text-xs font-normal text-muted-foreground">({blk.road})</span>
-                      </h2>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        <strong>Spot:</strong> {blk.exactSpot} ({blk.state})
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-secondary/50 border border-border text-xs text-foreground">
-                      <strong className="text-destructive">Cause:</strong> {blk.cause}
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div className="p-2.5 rounded-xl border border-destructive/20 bg-destructive/5 text-foreground">
-                        <span className="font-bold text-destructive">Avoid: </span>
-                        <span>{blk.avoidInfo}</span>
-                      </div>
-                      <div className="p-2.5 rounded-xl border border-primary/20 bg-primary/5 text-foreground">
-                        <span className="font-bold text-primary">Recommended Detour: </span>
-                        <span>{blk.detourRoute}</span>
-                      </div>
+                        <span>{t.applyDetour}</span>
+                        <ArrowRight className="size-3" />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="pt-3 border-t border-border flex items-center justify-between">
-                    <span className="text-xs font-mono text-muted-foreground">{blk.id}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (blk.originId && blk.destinationId) {
-                          setOrigin(blk.originId);
-                          setDestination(blk.destinationId);
-                        }
-                        scrollToMap();
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs inline-flex items-center gap-1.5"
-                    >
-                      <span>Apply Detour</span>
-                      <ArrowRight className="size-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -2105,10 +2195,10 @@ export default function App() {
           <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 space-y-8">
             <div className="pb-4 border-b border-border">
               <h1 className="text-2xl font-bold text-foreground">
-                Platform Architecture & Official Data Sources
+                {t.platformArchitecture}
               </h1>
               <p className="text-xs text-muted-foreground mt-1">
-                Transparency and explainability principles powering the RaahSetu routing engine.
+                {t.platformArchitectureSub}
               </p>
             </div>
 
@@ -2118,13 +2208,13 @@ export default function App() {
                 <div className="md:col-span-7 space-y-2">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
                     <Database className="size-3" />
-                    <span>OSM Network Graph Topology</span>
+                    <span>{t.osmTopology}</span>
                   </div>
                   <h2 className="text-lg font-bold text-foreground">
-                    Northeast India Multi-Modal Road Graph
+                    {t.northeastMultiModal}
                   </h2>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Extracted from Geofabrik OpenStreetMap PBF extracts using Pyosmium and OSMnx. The runtime pilot comprises 5,814 road nodes and 13,681 directed highway edges spanning all 8 Northeastern states.
+                    {t.northeastMultiModalDesc}
                   </p>
                 </div>
                 <div className="md:col-span-5 rounded-xl overflow-hidden border border-border h-40 relative shadow-2xs bg-slate-950">
@@ -2134,7 +2224,7 @@ export default function App() {
                     className="w-full h-full object-contain p-2"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-2.5">
-                    <span className="text-[11px] text-white/90 font-mono">13,681 Directed Edges · 8 States</span>
+                    <span className="text-[11px] text-white/90 font-mono">{t.graphEdgesCaption}</span>
                   </div>
                 </div>
               </div>
@@ -2144,46 +2234,46 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
                 <div className="text-2xl font-bold text-destructive">1,68,491</div>
-                <div className="text-xs font-semibold text-foreground mt-1">Annual Fatalities Nationwide</div>
-                <p className="text-xs text-muted-foreground mt-1">MoRTH census: Ghat fatality severity is 45.2%.</p>
+                <div className="text-xs font-semibold text-foreground mt-1">{t.annualFatalitiesNationwide}</div>
+                <p className="text-xs text-muted-foreground mt-1">{t.morthCensus}</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
                 <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">400+</div>
-                <div className="text-xs font-semibold text-foreground mt-1">Monsoon Landslides</div>
-                <p className="text-xs text-muted-foreground mt-1">GSI recorded severe rockfall and mudflow blockages.</p>
+                <div className="text-xs font-semibold text-foreground mt-1">{t.monsoonLandslides}</div>
+                <p className="text-xs text-muted-foreground mt-1">{t.gsiRecorded}</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-primary">8 States</div>
-                <div className="text-xs font-semibold text-foreground mt-1">OSM Road Graphs</div>
-                <p className="text-xs text-muted-foreground mt-1">Extracted via Pyosmium and OSMnx.</p>
+                <div className="text-2xl font-bold text-primary">8 {t.statStates}</div>
+                <div className="text-xs font-semibold text-foreground mt-1">{t.osmGraphs}</div>
+                <p className="text-xs text-muted-foreground mt-1">{t.extractedPyosmium}</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-foreground">Dual-Path A* Engine</div>
-                <div className="text-xs font-semibold text-foreground mt-1">Deterministic Engine</div>
-                <p className="text-xs text-muted-foreground mt-1">Priority queue with admissible terrain heuristic.</p>
+                <div className="text-2xl font-bold text-foreground">{t.dualPathEngine}</div>
+                <div className="text-xs font-semibold text-foreground mt-1">{t.deterministicEngine}</div>
+                <p className="text-xs text-muted-foreground mt-1">{t.priorityQueue}</p>
               </div>
             </div>
 
             {/* How it works */}
             <div className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-4">
-              <h2 className="text-lg font-bold text-foreground">How the Engine Computes Routes</h2>
+              <h2 className="text-lg font-bold text-foreground">{t.howEngineComputes}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 <div className="p-3 rounded-xl bg-secondary/50 space-y-1.5">
-                  <div className="font-bold text-foreground">1. Graph Extraction</div>
+                  <div className="font-bold text-foreground">{t.graphExtractionTitle}</div>
                   <p className="text-muted-foreground leading-relaxed">
-                    OSM highway ways converted into directed weighted edges with surface and gradient tags.
+                    {t.graphExtractionDesc}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-secondary/50 space-y-1.5">
-                  <div className="font-bold text-foreground">2. Edge Cost Weighting</div>
+                  <div className="font-bold text-foreground">{t.costWeightingTitle}</div>
                   <p className="text-muted-foreground leading-relaxed">
-                    Edges penalised based on vehicle axle limit, cargo sensitivity, and rainfall intensity.
+                    {t.costWeightingDesc}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-secondary/50 space-y-1.5">
-                  <div className="font-bold text-foreground">3. Dual-Path Solve</div>
+                  <div className="font-bold text-foreground">{t.dualPathSolveTitle}</div>
                   <p className="text-muted-foreground leading-relaxed">
-                    Engine runs A* twice on identical graph: once for fastest time, once for minimal hazard exposure.
+                    {t.dualPathSolveDesc}
                   </p>
                 </div>
               </div>
@@ -2193,10 +2283,10 @@ export default function App() {
             <div className="p-4 rounded-2xl border border-border bg-secondary/40 text-xs text-muted-foreground space-y-2">
               <div className="font-semibold text-foreground flex items-center gap-1.5">
                 <Info className="size-4 text-primary" />
-                <span>Platform Scope & Operational Boundaries</span>
+                <span>{t.platformScopeTitle}</span>
               </div>
               <p>
-                RaahSetu is an explainable operational system designed for national mountain freight corridors. Highway telemetry and hazard observations reflect validated geological surveys and offline snapshots. Official emergency transit conforms to regional disaster management and highway authority advisories.
+                {t.platformScopeDesc}
               </p>
             </div>
           </div>
@@ -2208,10 +2298,10 @@ export default function App() {
         <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Waypoints className="size-4 text-primary" />
-            <span className="font-semibold text-foreground">RaahSetu</span>
-            <span>· Northeast India Emergency Logistics Routing</span>
+            <span className="font-semibold text-foreground">{t.footerBrandText}</span>
+            <span>· {t.footerSub}</span>
           </div>
-          <div>OpenStreetMap data © OpenStreetMap contributors · RaahSetu Logistics Platform.</div>
+          <div>{t.footerCopyrightText}</div>
         </div>
       </footer>
 
@@ -2220,7 +2310,7 @@ export default function App() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Fleet Driver & Vehicle Profile</h2>
+              <h2 className="text-base font-bold text-foreground">{t.driverProfileTitle}</h2>
               <button
                 type="button"
                 onClick={() => setIsRegistrationModalOpen(false)}
@@ -2239,7 +2329,7 @@ export default function App() {
               className="space-y-3 text-xs"
             >
               <div>
-                <label className="block font-semibold text-muted-foreground mb-1">Driver Name</label>
+                <label className="block font-semibold text-muted-foreground mb-1">{t.driverNameLabel}</label>
                 <input
                   type="text"
                   value={driverProfile.driverName}
@@ -2249,7 +2339,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block font-semibold text-muted-foreground mb-1">Vehicle Registration No</label>
+                <label className="block font-semibold text-muted-foreground mb-1">{t.vehicleRegLabel}</label>
                 <input
                   type="text"
                   value={driverProfile.vehicleNo}
@@ -2259,7 +2349,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block font-semibold text-muted-foreground mb-1">Driver Mobile</label>
+                <label className="block font-semibold text-muted-foreground mb-1">{t.driverMobileLabel}</label>
                 <input
                   type="text"
                   value={driverProfile.driverMobile}
@@ -2269,7 +2359,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block font-semibold text-muted-foreground mb-1">Trusted Emergency Contact</label>
+                <label className="block font-semibold text-muted-foreground mb-1">{t.trustedEmergencyContactLabel}</label>
                 <input
                   type="text"
                   value={driverProfile.trustedContactMobile}
@@ -2284,13 +2374,13 @@ export default function App() {
                   onClick={() => setIsRegistrationModalOpen(false)}
                   className="px-4 py-2 rounded-xl border border-border bg-secondary text-foreground font-semibold cursor-pointer"
                 >
-                  Cancel
+                  {t.cancelBtn}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold cursor-pointer shadow-xs"
                 >
-                  Save Profile
+                  {t.saveProfileBtn}
                 </button>
               </div>
             </form>
@@ -2305,7 +2395,7 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-destructive font-bold text-base">
                 <Siren className="size-5" />
-                <span>Emergency Distress SOS</span>
+                <span>{t.emergencyDistressSos}</span>
               </div>
               <button
                 type="button"
@@ -2318,21 +2408,21 @@ export default function App() {
 
             <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-foreground space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold">Vehicle:</span>
+                <span className="font-semibold">{t.vehicleLabel}</span>
                 <span className="font-mono">{driverProfile.vehicleNo}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-semibold">Driver:</span>
+                <span className="font-semibold">{t.driverLabel}</span>
                 <span>{driverProfile.driverName}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-semibold">Corridor:</span>
-                <span>{CITY_MAP[origin]?.name} ➔ {CITY_MAP[destination]?.name}</span>
+                <span className="font-semibold">{t.corridorLabel}</span>
+                <span>{getCityName(origin, lang)} ➔ {getCityName(destination, lang)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-semibold">Status:</span>
+                <span className="font-semibold">{t.statusLabel}</span>
                 <span className="text-destructive font-bold">
-                  {isSosTransmitting ? "Transmitting GPS..." : sosTransmissionSuccess ? "Dispatched to Authorities (Active)" : "Ready to Transmit"}
+                  {isSosTransmitting ? t.transmittingGps : sosTransmissionSuccess ? t.dispatchedToAuthorities : t.readyToTransmit}
                 </span>
               </div>
             </div>
@@ -2343,14 +2433,14 @@ export default function App() {
                 className="py-2.5 px-3 rounded-xl bg-destructive text-destructive-foreground flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <PhoneCall className="size-3.5" />
-                <span>Call NDRF (1078)</span>
+                <span>{t.callNdrf}</span>
               </a>
               <a
                 href={`tel:${driverProfile.trustedContactMobile}`}
                 className="py-2.5 px-3 rounded-xl border border-border bg-secondary text-foreground flex items-center justify-center gap-1.5"
               >
                 <Phone className="size-3.5" />
-                <span>Call Fleet Base</span>
+                <span>{t.callFleetBase}</span>
               </a>
             </div>
           </div>
@@ -2362,7 +2452,7 @@ export default function App() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-foreground">Report Highway Hazard</h2>
+              <h2 className="text-base font-bold text-foreground">{t.reportHighwayHazard}</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -2384,7 +2474,7 @@ export default function App() {
               ) : (
                 <div className="text-center p-4 text-xs text-muted-foreground space-y-2">
                   <Camera className="size-8 mx-auto opacity-50" />
-                  <div>Capture or upload live road evidence</div>
+                  <div>{t.captureOrUpload}</div>
                 </div>
               )}
             </div>
@@ -2396,7 +2486,7 @@ export default function App() {
                   onClick={capturePhoto}
                   className="flex-1 py-2 rounded-xl bg-destructive text-destructive-foreground font-semibold text-xs cursor-pointer"
                 >
-                  Snap Photo
+                  {t.snapPhoto}
                 </button>
               ) : (
                 <button
@@ -2405,7 +2495,7 @@ export default function App() {
                   className="flex-1 py-2 rounded-xl border border-border bg-secondary text-foreground font-semibold text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Camera className="size-3.5" />
-                  <span>Start Camera</span>
+                  <span>{t.startCamera}</span>
                 </button>
               )}
 
@@ -2430,7 +2520,7 @@ export default function App() {
                 onClick={() => cameraInputRef.current?.click()}
                 className="px-3 py-2 rounded-xl border border-border bg-secondary text-foreground font-semibold text-xs cursor-pointer"
               >
-                Upload
+                {t.upload}
               </button>
             </div>
 
@@ -2443,7 +2533,7 @@ export default function App() {
                 }}
                 className="px-4 py-2 rounded-xl border border-border bg-secondary text-foreground text-xs font-semibold cursor-pointer"
               >
-                Cancel
+                {t.cancelBtn}
               </button>
               <button
                 type="button"
@@ -2451,11 +2541,11 @@ export default function App() {
                   stopCamera();
                   setOfflineReportsCount((prev) => prev + 1);
                   setIsReportModalOpen(false);
-                  alert("Hazard report logged successfully.");
+                  alert(t.hazardReportSuccess);
                 }}
                 className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs"
               >
-                Submit Hazard Report
+                {t.submitHazardReport}
               </button>
             </div>
           </div>
