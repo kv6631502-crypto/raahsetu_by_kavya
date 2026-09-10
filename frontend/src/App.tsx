@@ -6,8 +6,10 @@ import {
   ArrowUpDown,
   Camera,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Globe,
   CloudRain,
   Database,
   FileText,
@@ -491,6 +493,20 @@ export default function App() {
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
   const [commodity, setCommodity] = useState<CommodityType>("medical");
 
+  // Language dropdown toggle state
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target as Node)) {
+        setIsLangDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Phone Native Language
   const [langMode, setLangMode] = useState<"auto" | "manual">(() => {
     try {
@@ -522,14 +538,11 @@ export default function App() {
   const [districtFilterState, setDistrictFilterState] = useState<string>("ALL");
   const [districtSearchQuery, setDistrictSearchQuery] = useState<string>("");
 
-  // Theme: "light" | "dark"
+  // Theme: "light" | "dark" - First preference is strictly light theme
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try {
       const saved = localStorage.getItem("raahsetu_theme");
       if (saved === "light" || saved === "dark") return saved;
-      if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        return "dark";
-      }
     } catch {}
     return "light";
   });
@@ -1090,20 +1103,49 @@ export default function App() {
               {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4 text-amber-400" />}
             </button>
 
-            {/* Language Selector */}
-            <div className="hidden sm:flex items-center rounded-xl border border-border bg-card p-1 text-xs" title={`Language mode: ${langMode}`}>
-              {(["en", "hi", "as", "bn"] as SupportedLanguage[]).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => handleSelectLanguage(l, "manual")}
-                  className={`px-2 py-1 rounded-lg uppercase font-mono text-[11px] font-semibold cursor-pointer transition-colors ${
-                    lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {l}
-                </button>
-              ))}
+            {/* Language Selector Dropdown */}
+            <div ref={langDropdownRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className="px-2.5 py-1.5 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                title={`Current language: ${lang.toUpperCase()} (${langMode === "auto" ? "Auto-detected" : "Manual"})`}
+              >
+                <Globe className="size-3.5 text-primary" />
+                <span>{lang === "en" ? "English" : lang === "hi" ? "हिन्दी" : lang === "as" ? "অসমীয়া" : "বাংলা"}</span>
+                <ChevronDown className="size-3 text-muted-foreground" />
+              </button>
+
+              {isLangDropdownOpen && (
+                <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-border bg-card p-1 shadow-xl z-50 text-xs space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    {langMode === "auto" ? "Auto-Detected (System)" : "Select Language"}
+                  </div>
+                  {[
+                    { id: "en", label: "English", native: "English" },
+                    { id: "hi", label: "Hindi", native: "हिन्दी" },
+                    { id: "as", label: "Assamese", native: "অসমীয়া" },
+                    { id: "bn", label: "Bengali", native: "বাংলা" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectLanguage(item.id as SupportedLanguage, "manual");
+                        setIsLangDropdownOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between cursor-pointer transition-colors ${
+                        lang === item.id
+                          ? "bg-primary/10 text-primary font-bold"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      <span>{item.native}</span>
+                      <span className="text-[10px] text-muted-foreground font-normal">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Driver Profile Button */}
@@ -2163,7 +2205,7 @@ export default function App() {
 
       {/* DRIVER REGISTRATION MODAL */}
       {isRegistrationModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground">Fleet Driver & Vehicle Profile</h2>
@@ -2246,7 +2288,7 @@ export default function App() {
 
       {/* EMERGENCY SOS MODAL */}
       {isSosModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-destructive/40 bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-destructive font-bold text-base">
@@ -2305,7 +2347,7 @@ export default function App() {
 
       {/* CAMERA HAZARD REPORT MODAL */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground">Report Highway Hazard</h2>
