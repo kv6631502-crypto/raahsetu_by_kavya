@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
+  AlertCircle,
   ArrowRight,
   Eye,
   EyeOff,
   Lock,
+  Mail,
   Phone,
+  RefreshCw,
   Shield,
-  Truck,
-  User,
   Waypoints,
 } from "lucide-react";
 
@@ -24,32 +25,114 @@ interface AuthPageProps {
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) => {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [name, setName] = useState("Bipul Hazarika");
-  const [mobileOrEmail, setMobileOrEmail] = useState("+91 98640 12345");
-  const [vehicleNo, setVehicleNo] = useState("AS-01-GB-4821");
-  const [password, setPassword] = useState("••••••••");
+  const [email, setEmail] = useState("driver@raahsetu.in");
+  const [password, setPassword] = useState("SafeTransit@2026");
+  const [trustedPersonNo, setTrustedPersonNo] = useState("+91 94350 99881");
   const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(true);
+
+  // Captcha State
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [captchaError, setCaptchaError] = useState<string | null>(null);
+  const [isRefreshingCaptcha, setIsRefreshingCaptcha] = useState(false);
+  const captchaCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Generate random 5-character unambiguous captcha code
+  const generateCaptchaCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  // Draw captcha with distortion, wavy lines, and noise
+  const renderCaptcha = (code: string) => {
+    const canvas = captchaCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const isDark = document.documentElement.classList.contains("dark");
+
+    // Background fill
+    ctx.fillStyle = isDark ? "#0f172a" : "#f1f5f9";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Decorative noise lines
+    for (let i = 0; i < 4; i++) {
+      ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.4)" : "rgba(2, 132, 199, 0.4)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+      ctx.bezierCurveTo(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        Math.random() * canvas.width,
+        Math.random() * canvas.height
+      );
+      ctx.stroke();
+    }
+
+    // Render characters with rotation and slight jitter
+    for (let i = 0; i < code.length; i++) {
+      ctx.save();
+      const x = 16 + i * 22;
+      const y = 28 + (Math.random() * 4 - 2);
+      const angle = (Math.random() * 24 - 12) * (Math.PI / 180);
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.font = "bold 20px 'Courier New', monospace";
+      ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
+      ctx.fillText(code[i], 0, 0);
+      ctx.restore();
+    }
+
+    // Noise dots
+    for (let i = 0; i < 35; i++) {
+      ctx.fillStyle = isDark ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.2)";
+      ctx.beginPath();
+      ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  const refreshCaptcha = () => {
+    setIsRefreshingCaptcha(true);
+    const newCode = generateCaptchaCode();
+    setCaptchaCode(newCode);
+    setCaptchaInput("");
+    setCaptchaError(null);
+    setTimeout(() => {
+      renderCaptcha(newCode);
+      setIsRefreshingCaptcha(false);
+    }, 150);
+  };
+
+  useEffect(() => {
+    const code = generateCaptchaCode();
+    setCaptchaCode(code);
+    renderCaptcha(code);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSuccess({
-      driverName: name || "Fleet Driver",
-      driverMobile: mobileOrEmail || "+91 98640 12345",
-      vehicleNo: vehicleNo || "AS-01-GB-4821",
-      trustedContactMobile: "+91 94350 99881",
-      vehicleType: "heavy",
-      commodity: "medical",
-    });
-  };
 
-  const handleQuickDemoAccess = () => {
+    // Validate Captcha
+    if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
+      setCaptchaError("Invalid captcha code. Please enter the characters shown.");
+      refreshCaptcha();
+      return;
+    }
+
     onSuccess({
-      driverName: "Bipul Hazarika",
-      driverMobile: "+91 98640 12345",
+      driverName: email.split("@")[0] || "Fleet Driver",
+      driverMobile: email,
       vehicleNo: "AS-01-GB-4821",
-      trustedContactMobile: "+91 94350 99881",
+      trustedContactMobile: trustedPersonNo || "+91 94350 99881",
       vehicleType: "heavy",
       commodity: "medical",
     });
@@ -57,16 +140,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      {/* 2-Column Authentication Card (Modeled directly after Dribbble reference) */}
+      {/* 2-Column Authentication Card */}
       <div className="w-full max-w-4xl rounded-3xl border border-border bg-card shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 transition-colors">
         {/* Left Side: Himalayan Road Visual Showcase */}
-        <div className="lg:col-span-5 relative p-6 sm:p-8 flex flex-col justify-between overflow-hidden min-h-[300px] lg:min-h-[580px]">
+        <div className="lg:col-span-5 relative p-6 sm:p-8 flex flex-col justify-between overflow-hidden min-h-[280px] lg:min-h-[560px]">
           {/* Background Highway Photography */}
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: "url('/hero-himalayan-highway.jpg')" }}
           />
-          {/* Subtle Deep Gradient Mask */}
+          {/* Deep Gradient Mask */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/75" />
 
           {/* Top Bar on Image: Logo & Back Button */}
@@ -88,120 +171,57 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
             </button>
           </div>
 
-          {/* Bottom Card Copy & Pagination */}
-          <div className="relative z-10 space-y-4">
+          {/* Bottom Card Copy */}
+          <div className="relative z-10 space-y-3">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/30 border border-primary/40 text-primary-foreground text-[10px] font-bold uppercase tracking-wider mb-2">
                 <Shield className="size-3" />
-                <span>Verified Freight Portal</span>
+                <span>Verified Dispatcher Portal</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
                 Navigating Lifelines, Safeguarding Freight.
               </h2>
               <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                Empowering hill drivers, logistics operators, and essential supplies across Northeast mountain corridors.
+                Autonomous terrain routing & emergency distress coordination across the 8 Northeast Himalayan states.
               </p>
-            </div>
-
-            {/* Pagination Dots */}
-            <div className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-white" />
-              <span className="size-2 rounded-full bg-white/40" />
-              <span className="size-2 rounded-full bg-white/40" />
             </div>
           </div>
         </div>
 
         {/* Right Side: Clean Authentication Form */}
-        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between bg-card text-foreground">
+        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center bg-card text-foreground">
           <div>
             {/* Header */}
             <div className="space-y-1">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {mode === "signin" ? "Sign in to Dispatcher" : "Create fleet driver account"}
+                Sign In to RaahSetu
               </h1>
               <p className="text-xs text-muted-foreground">
-                {mode === "signin" ? (
-                  <>
-                    <span>Don't have an account? </span>
-                    <button
-                      type="button"
-                      onClick={() => setMode("signup")}
-                      className="text-primary font-semibold hover:underline cursor-pointer"
-                    >
-                      Sign up
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span>Already have an account? </span>
-                    <button
-                      type="button"
-                      onClick={() => setMode("signin")}
-                      className="text-primary font-semibold hover:underline cursor-pointer"
-                    >
-                      Log in
-                    </button>
-                  </>
-                )}
+                Enter your credentials, trusted emergency contact, and security captcha to access the logistics console.
               </p>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="mt-6 space-y-3.5 text-xs">
-              {mode === "signup" && (
-                <div>
-                  <label className="block font-semibold text-muted-foreground mb-1">
-                    Driver / Operator Full Name
-                  </label>
-                  <div className="relative flex items-center">
-                    <User className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Bipul Hazarika"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4 text-xs">
+              {/* 1. Email ID */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
-                  Driver Mobile Number or Email
+                  Email ID
                 </label>
                 <div className="relative flex items-center">
-                  <Phone className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
+                  <Mail className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
                   <input
-                    type="text"
+                    type="email"
                     required
-                    value={mobileOrEmail}
-                    onChange={(e) => setMobileOrEmail(e.target.value)}
-                    placeholder="+91 98640 12345 or fleet@transport.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="driver@raahsetu.in or fleet@logistics.gov.in"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-muted-foreground mb-1">
-                  Vehicle Registration / Fleet ID
-                </label>
-                <div className="relative flex items-center">
-                  <Truck className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    required
-                    value={vehicleNo}
-                    onChange={(e) => setVehicleNo(e.target.value)}
-                    placeholder="e.g. AS-01-GB-4821 (28T Multi-Axle)"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono uppercase"
-                  />
-                </div>
-              </div>
-
+              {/* 2. Password */}
               <div>
                 <label className="block font-semibold text-muted-foreground mb-1">
                   Password
@@ -220,84 +240,85 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome }) =
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary size-4"
-                  />
-                  <span className="text-muted-foreground text-[11px]">
-                    I agree to MoRTH Road Safety Protocols
-                  </span>
+              {/* 3. Trusted Person No */}
+              <div>
+                <label className="block font-semibold text-muted-foreground mb-1">
+                  Trusted Person No (Emergency SOS Contact)
                 </label>
-                {mode === "signin" && (
+                <div className="relative flex items-center">
+                  <Phone className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
+                  <input
+                    type="tel"
+                    required
+                    value={trustedPersonNo}
+                    onChange={(e) => setTrustedPersonNo(e.target.value)}
+                    placeholder="+91 94350 99881 (Base Dispatch / Family)"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                  Designated trusted contact for emergency distress coordination and SOS beacons in zero-network hill passes.
+                </p>
+              </div>
+
+              {/* 4. Security Captcha */}
+              <div>
+                <label className="block font-semibold text-muted-foreground mb-1">
+                  Security Captcha
+                </label>
+                <div className="flex items-center gap-3">
+                  <canvas
+                    ref={captchaCanvasRef}
+                    width={130}
+                    height={42}
+                    className="rounded-xl border border-border shrink-0 select-none shadow-2xs"
+                    title="Security verification code"
+                  />
                   <button
                     type="button"
-                    className="text-[11px] text-primary hover:underline cursor-pointer"
+                    onClick={refreshCaptcha}
+                    className="p-2.5 rounded-xl border border-border bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-2xs"
+                    title="Refresh Captcha"
                   >
-                    Forgot password?
+                    <RefreshCw className={`size-4 ${isRefreshingCaptcha ? "animate-spin" : ""}`} />
                   </button>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={captchaInput}
+                    onChange={(e) => {
+                      setCaptchaInput(e.target.value);
+                      if (captchaError) setCaptchaError(null);
+                    }}
+                    placeholder="Enter captcha"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono uppercase tracking-wider"
+                  />
+                </div>
+                {captchaError && (
+                  <div className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    <span>{captchaError}</span>
+                  </div>
                 )}
               </div>
 
+              {/* 5. Submit Button */}
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-xs shadow-xs hover:opacity-95 transition-opacity cursor-pointer flex items-center justify-center gap-2 mt-2"
+                className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-xs hover:opacity-95 transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
               >
-                <span>{mode === "signin" ? "Sign In to Dispatcher" : "Create Account & Enter"}</span>
-                <ArrowRight className="size-3.5" />
+                <span>Sign In to Dispatcher</span>
+                <ArrowRight className="size-4" />
               </button>
             </form>
-
-            {/* SSO & Demo Options */}
-            <div className="mt-5 space-y-3">
-              <div className="relative flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <span className="relative px-3 bg-card text-[11px] text-muted-foreground uppercase tracking-wider">
-                  Or continue with
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={handleQuickDemoAccess}
-                  className="py-2 px-3 rounded-xl border border-border bg-secondary text-foreground hover:bg-muted font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Truck className="size-3.5 text-primary" />
-                  <span>Fleet Driver Demo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleQuickDemoAccess}
-                  className="py-2 px-3 rounded-xl border border-border bg-secondary text-foreground hover:bg-muted font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Shield className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>NIC / Gov SSO</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-border text-[11px] text-muted-foreground flex items-center justify-between">
-            <span>Encrypted Fleet Auth v2.4</span>
-            <button
-              type="button"
-              onClick={onBackToHome}
-              className="hover:underline text-foreground cursor-pointer"
-            >
-              Skip login & explore data
-            </button>
           </div>
         </div>
       </div>
