@@ -5,8 +5,8 @@ import { CITIES, CITY_MAP, City, RouteLeg } from "./routeData";
 import { LocateFixed } from "lucide-react";
 
 interface RealMapLeafletProps {
-  originCity: City;
-  destCity: City;
+  originCity?: City | null;
+  destCity?: City | null;
   routePath: string[] | null;
   safeLegs: RouteLeg[];
   userGps: {
@@ -133,8 +133,8 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
 
     // 1. Plot all 111 real city/hub nodes on real geographic coordinates
     CITIES.forEach((c) => {
-      const isOrigin = c.id === originCity.id;
-      const isDest = c.id === destCity.id;
+      const isOrigin = originCity ? c.id === originCity.id : false;
+      const isDest = destCity ? c.id === destCity.id : false;
       const isOnRoute = routePath ? routePath.includes(c.id) : false;
 
       const markerColor = isOrigin

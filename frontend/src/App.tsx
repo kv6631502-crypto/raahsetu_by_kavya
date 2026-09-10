@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CloudRain,
   Database,
+  FileText,
   Download,
   Info,
   Layers,
@@ -33,6 +34,8 @@ import {
   X,
 } from "lucide-react";
 import { RealMapLeaflet } from "./RealMapLeaflet";
+import { IntroPage } from "./IntroPage";
+import { AuthPage } from "./AuthPage";
 import {
   detectPhoneNativeLanguage,
   getLocalizedNavInstruction,
@@ -185,7 +188,11 @@ function CityCombobox({
         )}
       </div>
 
-      <div className="relative flex items-center rounded-xl border border-border bg-card px-3 py-2.5 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-xs">
+      <div className={`relative flex items-center rounded-xl border px-3 py-2.5 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-xs ${
+        !selectedId
+          ? "border-primary/60 bg-primary/5 ring-1 ring-primary/25"
+          : "border-border bg-card"
+      }`}>
         <Search className="size-4 text-muted-foreground shrink-0 mr-2" />
         <div className="flex-1 min-w-0">
           {open ? (
@@ -210,13 +217,18 @@ function CityCombobox({
               <span className="font-semibold text-foreground truncate">
                 {customOrigin && label === "Departure Hub" ? (
                   <span className="text-primary font-bold">📍 {customOrigin.name}</span>
-                ) : (
+                ) : selectedCity ? (
                   <>
-                    <span>{selectedCity?.name}</span>
+                    <span>{selectedCity.name}</span>
                     <span className="ml-1.5 text-xs text-muted-foreground font-normal">
-                      ({selectedCity?.state})
+                      ({selectedCity.state})
                     </span>
                   </>
+                ) : (
+                  <span className="text-primary font-semibold flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-primary animate-pulse" />
+                    <span>Click to choose {label}...</span>
+                  </span>
                 )}
               </span>
             </button>
@@ -474,8 +486,8 @@ export const CITY_ELEVATIONS_M: Record<string, number> = {
 };
 
 export default function App() {
-  const [origin, setOrigin] = useState("guwahati");
-  const [destination, setDestination] = useState("tawang");
+  const [origin, setOrigin] = useState<string>("");
+  const [destination, setDestination] = useState<string>("");
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
   const [commodity, setCommodity] = useState<CommodityType>("medical");
 
@@ -505,8 +517,8 @@ export default function App() {
     } catch {}
   };
 
-  // Views: "dispatcher" | "districts" | "advisories" | "system"
-  const [activeView, setActiveView] = useState<"dispatcher" | "districts" | "advisories" | "system">("dispatcher");
+  // Views: "intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system"
+  const [activeView, setActiveView] = useState<"intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system">("intro");
   const [districtFilterState, setDistrictFilterState] = useState<string>("ALL");
   const [districtSearchQuery, setDistrictSearchQuery] = useState<string>("");
 
@@ -734,7 +746,7 @@ export default function App() {
 
   // Auto weather for current corridor
   const liveWeather = useMemo(() => {
-    return getAutomaticWeatherForLocation(origin, destination);
+    return getAutomaticWeatherForLocation(origin || "guwahati", destination || "tawang");
   }, [origin, destination]);
   const weather = liveWeather.condition;
 
@@ -984,7 +996,11 @@ export default function App() {
       <header className="border-b border-border bg-card px-4 sm:px-6 py-3 transition-colors">
         <div className="mx-auto max-w-7xl flex items-center justify-between gap-3">
           {/* Brand */}
-          <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveView("intro")}
+            className="flex items-center gap-3 text-left cursor-pointer group"
+          >
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold shadow-xs">
               <Waypoints className="size-5" />
             </div>
@@ -996,10 +1012,22 @@ export default function App() {
                 Northeast Logistics Intelligence
               </div>
             </div>
-          </div>
+          </button>
 
           {/* Segmented View Switcher (Desktop) */}
           <nav className="hidden md:flex items-center p-1 rounded-xl bg-secondary border border-border text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setActiveView("intro")}
+              className={`px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeView === "intro"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileText className="size-3.5" />
+              <span>Problem & Crisis</span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveView("dispatcher")}
@@ -1081,11 +1109,15 @@ export default function App() {
             {/* Driver Profile Button */}
             <button
               type="button"
-              onClick={() => setIsRegistrationModalOpen(true)}
-              className="hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-secondary text-xs font-medium cursor-pointer transition-colors"
+              onClick={() => setActiveView("auth")}
+              className={`hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border text-xs font-medium cursor-pointer transition-colors ${
+                activeView === "auth"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "bg-card hover:bg-secondary text-foreground"
+              }`}
             >
               <Truck className="size-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{driverProfile.vehicleNo}</span>
+              <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : "Sign In"}</span>
             </button>
 
             {/* Emergency SOS Button */}
@@ -1107,6 +1139,15 @@ export default function App() {
 
       {/* Mobile Sub-Navigation Bar */}
       <div className="md:hidden border-b border-border bg-card px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setActiveView("intro")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+            activeView === "intro" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+          }`}
+        >
+          Problem
+        </button>
         <button
           type="button"
           onClick={() => setActiveView("dispatcher")}
@@ -1203,7 +1244,63 @@ export default function App() {
       </div>
 
       <main className="flex-1">
-        {/* VIEW 1: ROUTE DISPATCHER */}
+        {/* VIEW 0: INTRO / GROUND DATA & PROBLEM STATEMENT */}
+        {activeView === "intro" && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+            <IntroPage
+              onLaunchConsole={(o, d) => {
+                if (o && d) {
+                  setOrigin(o);
+                  setDestination(d);
+                } else {
+                  setOrigin("");
+                  setDestination("");
+                }
+                setActiveView("dispatcher");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onNavigateToAuth={() => {
+                setActiveView("auth");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onNavigateToDistricts={() => {
+                setActiveView("districts");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onNavigateToAdvisories={() => {
+                setActiveView("advisories");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onNavigateToSystem={() => {
+                setActiveView("system");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          </div>
+        )}
+
+        {/* VIEW 1: DEDICATED LOGIN / SIGN-UP PAGE (Modeled after Screenshot 1) */}
+        {activeView === "auth" && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+            <AuthPage
+              onSuccess={(profile) => {
+                handleSaveDriverProfile({
+                  ...profile,
+                  trustedContactName: "Fleet Dispatch Base",
+                  isRegistered: true,
+                });
+                setActiveView("dispatcher");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onBackToHome={() => {
+                setActiveView("intro");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          </div>
+        )}
+
+        {/* VIEW 2: ROUTE DISPATCHER (ORIGIN TO DESTINATION PAGE) */}
         {activeView === "dispatcher" && (
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
             {/* Regional Logistics Overview Banner with Himalayan Highway Backdrop */}
@@ -1245,23 +1342,73 @@ export default function App() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
                     <div className="text-[10px] font-medium text-muted-foreground uppercase">Active Departure</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[origin]?.name} ({CITY_MAP[origin]?.state})</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {origin ? `${CITY_MAP[origin]?.name} (${CITY_MAP[origin]?.state})` : "Awaiting input..."}
+                    </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
                     <div className="text-[10px] font-medium text-muted-foreground uppercase">Target Destination</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[destination]?.name} ({CITY_MAP[destination]?.state})</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {destination ? `${CITY_MAP[destination]?.name} (${CITY_MAP[destination]?.state})` : "Awaiting input..."}
+                    </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
                     <div className="text-[10px] font-medium text-muted-foreground uppercase">Corridor Elevation</div>
-                    <div className="text-xs font-bold text-foreground truncate mt-0.5">{CITY_MAP[origin]?.y || 55}m ➔ {CITY_MAP[destination]?.y || 3048}m</div>
+                    <div className="text-xs font-bold text-foreground truncate mt-0.5">
+                      {origin && destination ? `${CITY_MAP[origin]?.y || 55}m ➔ ${CITY_MAP[destination]?.y || 3048}m` : "Awaiting route..."}
+                    </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
                     <div className="text-[10px] font-medium text-muted-foreground uppercase">Weather Advisory</div>
-                    <div className="text-xs font-bold text-primary truncate mt-0.5">{liveWeather.summary || "Clear Transit"}</div>
+                    <div className="text-xs font-bold text-primary truncate mt-0.5">
+                      {origin && destination ? (liveWeather.summary || "Clear Transit") : "Standard Nominal"}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            {/* Highlighted Callout: Enter Origin & Destination */}
+            <div
+              className={`p-4 sm:p-5 rounded-2xl border-2 transition-all shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                !origin || !destination
+                  ? "border-primary/80 bg-primary/10 ring-2 ring-primary/25"
+                  : "border-border bg-card"
+              }`}
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="size-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shrink-0 shadow-xs">
+                  <MapPin className="size-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm sm:text-base text-foreground">
+                    {!origin && !destination
+                      ? "Step 1 & 2: Select Departure Hub (Origin) & Target Destination"
+                      : !destination
+                      ? `Departure Hub selected: ${CITY_MAP[origin]?.name || origin}. Now choose Destination.`
+                      : !origin
+                      ? `Destination selected: ${CITY_MAP[destination]?.name || destination}. Now choose Departure Hub.`
+                      : `Active Route: ${CITY_MAP[origin]?.name} ➔ ${CITY_MAP[destination]?.name}`}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {!origin || !destination
+                      ? "Please select or type your Origin and Destination to calculate the terrain-safe path, elevation gradient, and risk analysis."
+                      : "Dual-path A* solve active. Distance, travel time, and hazard exposure calculated below."}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-xl ${
+                    !origin || !destination
+                      ? "bg-primary text-primary-foreground font-bold animate-pulse shadow-xs"
+                      : "border border-border bg-secondary text-foreground"
+                  }`}
+                >
+                  {!origin || !destination ? "Enter Endpoints Below ↓" : "Route Ready ✓"}
+                </span>
+              </div>
+            </div>
+
             {/* Quick-Pick Freight Corridors */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
