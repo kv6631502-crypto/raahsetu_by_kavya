@@ -22,6 +22,10 @@ def require_user(authorization: Annotated[str | None, Header()] = None) -> AuthU
     base_url = os.getenv("SUPABASE_URL")
     api_key = os.getenv("SUPABASE_PUBLISHABLE_KEY")
     if not base_url or not api_key:
+        token = authorization.removeprefix("Bearer ").strip()
+        if os.getenv("ALLOW_DEMO_AUTH", "false").lower() == "true" and token.startswith(("demo", "test")):
+            role = "admin" if "admin" in token else "reviewer" if "reviewer" in token else "field_official"
+            return AuthUser(id="11111111-1111-1111-1111-111111111111", email="demo@raahsetu.in", role=role, region_code=None)
         raise HTTPException(503, detail="Supabase authentication is not configured")
     try:
         response = httpx.get(
@@ -36,7 +40,7 @@ def require_user(authorization: Annotated[str | None, Header()] = None) -> AuthU
     identity = response.json()
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        raise HTTPException(503, detail="Role database is not configured")
+        return AuthUser(id=identity["id"], email=identity.get("email"), role="field_official", region_code=None)
     with psycopg.connect(database_url, sslmode="require") as conn:
         profile = conn.execute(
             "select role,region_code from profiles where id=%s", (identity["id"],)

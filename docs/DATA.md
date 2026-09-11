@@ -1,6 +1,6 @@
 # Dataset inventory and evidence rules
 
-The collection covers the project's initial public-data needs across Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim and Tripura. It is a curated, reproducible bundle. It is **not an assertion that every relevant government dataset is publicly downloadable or that all sources are complete**.
+The collection covers the project's initial public-data needs across Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland, Sikkim and Tripura. It also includes a separate Siliguri gateway pilot because Siliguri is in West Bengal but serves as a major operational access corridor into the Northeast. It is a curated, reproducible bundle. It is **not an assertion that every relevant government dataset is publicly downloadable or that all sources are complete**.
 
 Download receipts preserve source URLs, access timestamps, file sizes, SHA-256 hashes and original modification headers. `datasets/manifest-*.json` records each successful download and each failure. `datasets/processed` contains derived data, never replacements for the raw evidence.
 

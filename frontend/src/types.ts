@@ -128,6 +128,8 @@ export type Comparison = {
     reason: string;
     score: number;
     evidence: string;
+    ml_disruption_probability?: number;
+    ml_primary_factor?: string;
   }[];
   assumptions: string[];
 };

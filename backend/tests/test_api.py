@@ -217,29 +217,8 @@ def test_review_requires_reviewer_and_updates_pending_report(client):
     assert reviewed.json()["review_status"] == "accepted"
 
 
-def test_verification_code_flow(client: TestClient) -> None:
-    # 1. Invalid email
-    res = client.post("/api/v1/auth/request-code", json={"email": "invalid-email"})
-    assert res.status_code == 400
-
-    # 2. Valid request
-    res = client.post("/api/v1/auth/request-code", json={"email": "driver@raahsetu.in"})
-    assert res.status_code == 200
-    data = res.json()
-    assert data["status"] == "sent"
-    assert len(data["dev_code"]) == 6
-    code = data["dev_code"]
-
-    # 3. Verify with wrong code
-    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": "000000"})
-    assert res.status_code == 400
-
-    # 4. Verify with correct code
-    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": code})
-    assert res.status_code == 200
-    assert res.json()["status"] == "verified"
-
-    # 5. Code is now invalidated (single-use)
-    res = client.post("/api/v1/auth/verify-code", json={"email": "driver@raahsetu.in", "code": code})
-    assert res.status_code == 400
-
+def test_demo_otp_endpoints_are_retired(client: TestClient) -> None:
+    for path in ("/api/v1/auth/request-code", "/api/v1/auth/verify-code"):
+        response = client.post(path, json={"email": "driver@raahsetu.in", "code": "000000"})
+        assert response.status_code == 410
+        assert response.json()["detail"] == "Demo OTP is retired. Use Supabase Auth."

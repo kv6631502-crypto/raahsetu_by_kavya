@@ -10,6 +10,9 @@ interface RealMapLeafletProps {
   destCity?: City | null;
   routePath: string[] | null;
   safeLegs: RouteLeg[];
+  backendRouteGeometry?: [number, number][]; // [[lon, lat], ...] from backend Risk-A*
+  fastestRouteGeometry?: [number, number][]; // [[lon, lat], ...] from backend Fastest
+  routeSource?: "backend" | "local";
   userGps: {
     lat: number;
     lon: number;
@@ -29,6 +32,10 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
   originCity,
   destCity,
   routePath,
+  safeLegs: _safeLegs,
+  backendRouteGeometry,
+  fastestRouteGeometry,
+  routeSource = "local",
   userGps,
   isNavigating,
   mapMode: externalMapMode,
@@ -172,32 +179,67 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
     });
 
     // 2. Plot real route polyline connecting nodes with geodetic coordinates
-    if (routePath && routePath.length >= 2) {
-      const latLngs: [number, number][] = [];
-      routePath.forEach((id) => {
-        const city = CITY_MAP[id];
-        if (city) latLngs.push([city.lat, city.lon]);
-      });
+    const hasBackendRisk = backendRouteGeometry && backendRouteGeometry.length >= 2;
+    const hasBackendFastest = fastestRouteGeometry && fastestRouteGeometry.length >= 2;
 
-      if (latLngs.length >= 2) {
+    if (hasBackendRisk || (routePath && routePath.length >= 2)) {
+      let riskLatLngs: [number, number][] = [];
+      if (hasBackendRisk) {
+        riskLatLngs = backendRouteGeometry!.map(([lon, lat]) => [lat, lon]);
+      } else if (routePath && routePath.length >= 2) {
+        routePath.forEach((id) => {
+          const city = CITY_MAP[id];
+          if (city) riskLatLngs.push([city.lat, city.lon]);
+        });
+      }
+
+      // If backend fastest route is available, render it in amber for direct dual comparison
+      if (hasBackendFastest) {
+        const fastestLatLngs: [number, number][] = fastestRouteGeometry!.map(([lon, lat]) => [lat, lon]);
+        if (fastestLatLngs.length >= 2) {
+          const fastestLine = L.polyline(fastestLatLngs, {
+            color: "#f59e0b",
+            weight: 3.5,
+            dashArray: "6, 8",
+            opacity: 0.85,
+            lineCap: "round",
+            lineJoin: "round",
+          });
+          fastestLine.bindTooltip(
+            `<div style="font-family: monospace; font-size: 11px; font-weight: bold; color: #f59e0b;">
+              ⏱ Fastest Baseline Route (Higher Risk)
+            </div>`,
+            { sticky: true, className: "rs-leaflet-tooltip" }
+          );
+          group.addLayer(fastestLine);
+        }
+      }
+
+      if (riskLatLngs.length >= 2) {
         // Outer glow
-        const glowLine = L.polyline(latLngs, {
-          color: "#10b981",
-          weight: 7,
+        const glowLine = L.polyline(riskLatLngs, {
+          color: "#059669",
+          weight: 8,
           opacity: 0.35,
           lineCap: "round",
           lineJoin: "round",
         });
         group.addLayer(glowLine);
 
-        // Core Route Polyline
-        const mainLine = L.polyline(latLngs, {
-          color: "#34d399",
-          weight: 4,
+        // Core Risk-A* Route Polyline
+        const mainLine = L.polyline(riskLatLngs, {
+          color: "#10b981",
+          weight: 4.5,
           opacity: 0.95,
           lineCap: "round",
           lineJoin: "round",
         });
+        mainLine.bindTooltip(
+          `<div style="font-family: monospace; font-size: 11px; font-weight: bold; color: #10b981;">
+            🛡 ${routeSource === "backend" ? "Risk-A* Engine: Admissible Safe Corridor" : "Safe Transit Route"}
+          </div>`,
+          { sticky: true, className: "rs-leaflet-tooltip" }
+        );
         group.addLayer(mainLine);
 
         // Fit map bounds to route if not currently locked into live driver tracking
@@ -206,7 +248,7 @@ export const RealMapLeaflet: React.FC<RealMapLeafletProps> = ({
         }
       }
     }
-  }, [originCity, destCity, routePath, isNavigating, lang]);
+  }, [originCity, destCity, routePath, backendRouteGeometry, fastestRouteGeometry, routeSource, isNavigating, lang]);
 
   // Update Real GPS Hardware Marker
   useEffect(() => {

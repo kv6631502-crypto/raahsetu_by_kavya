@@ -10,3 +10,16 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
+
+if ("serviceWorker" in navigator) {
+  if (import.meta.env.PROD) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  } else {
+    // A production worker can otherwise keep serving an old app shell on localhost.
+    void navigator.serviceWorker.getRegistrations().then((registrations) =>
+      Promise.all(registrations.map((registration) => registration.unregister())),
+    );
+  }
+}

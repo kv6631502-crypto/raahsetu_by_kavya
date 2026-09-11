@@ -91,9 +91,45 @@ export const getAccessibilityEvents = (regionCode?: string) =>
 export const getAlerts = (token: string) => request<Alert[]>("/api/v1/alerts", { headers: { Authorization: `Bearer ${token}` } });
 export const getConnectivity = (token: string) => request<ConnectivitySummary[]>("/api/v1/connectivity", { headers: { Authorization: `Bearer ${token}` } });
 export const getFleetVehicles = (token: string) => request<VehicleAsset[]>("/api/v1/fleet/vehicles", { headers: { Authorization: `Bearer ${token}` } });
-export const sendFleetPosition = (token: string, payload: { vehicle_id: string; recorded_at: string; lon: number; lat: number; accuracy_m?: number | null }) => request<VehiclePosition>("/api/v1/fleet/positions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+export const sendFleetPosition = (
+  token: string,
+  payload: {
+    vehicle_id: string;
+    recorded_at: string;
+    lon: number;
+    lat: number;
+    speed_kph?: number | null;
+    heading?: number | null;
+    status?: "en_route" | "delayed" | "stopped" | "delivered";
+    accuracy_m?: number | null;
+  },
+) => request<VehiclePosition>("/api/v1/fleet/positions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
 export const getDeliveries = (token: string) => request<DeliveryJob[]>("/api/v1/deliveries", { headers: { Authorization: `Bearer ${token}` } });
 export const updateDelivery = (token: string, deliveryId: string, payload: Pick<DeliveryJob, "status"> & { eta_at?: string | null }) => request<DeliveryJob>(`/api/v1/deliveries/${encodeURIComponent(deliveryId)}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+
+export type LiveWeatherStation = {
+  region_code: string;
+  station: string;
+  lat: number;
+  lon: number;
+  temperature_c: number;
+  humidity_pct: number;
+  precipitation_mm_24h: number;
+  wind_kph: number;
+  condition: string;
+  heavy_rain_warning: boolean;
+  source: string;
+  fetched_at: string;
+  fresh: boolean;
+  stale: boolean;
+};
+
+export const getLiveWeather = (regionCode?: string) =>
+  request<LiveWeatherStation>(
+    `/api/v1/weather/live${regionCode ? `?region_code=${encodeURIComponent(regionCode)}` : ""}`,
+  );
+export const getAllLiveWeather = () =>
+  request<{ stations: LiveWeatherStation[] }>("/api/v1/weather/live");
 
 type PublicConfig = { supabase_url: string; supabase_publishable_key: string };
 export class AuthError extends Error {

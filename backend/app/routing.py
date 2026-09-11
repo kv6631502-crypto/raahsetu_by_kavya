@@ -8,6 +8,7 @@ import math
 import time
 from dataclasses import dataclass
 
+from .ml_prediction import predict_disruption
 from .models import Dataset, Edge, Endpoint, RouteRequest
 
 
@@ -304,6 +305,12 @@ class RoadGraph:
                         "weather exposure": edge.weather_score
                         + (edge.flood_susceptibility if request.weather == "heavy_rain" else 0),
                     }
+                    pred = predict_disruption(
+                        rainfall_mm_24h=80.0 if request.weather == "heavy_rain" else 15.0,
+                        slope_deg=35.0 if any(k in edge.name.lower() for k in ("ghat", "hill", "pass", "mountain", "gorge")) else 12.0,
+                        historical_incidents=1 if edge.accident_score >= 0.4 else 0,
+                        surface_score=edge.surface_score,
+                    )
                     explanations.append(
                         {
                             "edge_id": edge.id,
@@ -311,6 +318,8 @@ class RoadGraph:
                             "reason": max(drivers, key=drivers.get),
                             "score": round(self.risk(edge, request.weather), 3),
                             "evidence": edge.evidence,
+                            "ml_disruption_probability": pred.disruption_probability,
+                            "ml_primary_factor": pred.primary_factors[0]["factor"] if pred.primary_factors else "Baseline",
                         }
                     )
         return {

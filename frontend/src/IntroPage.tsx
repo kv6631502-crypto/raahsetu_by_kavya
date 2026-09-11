@@ -150,7 +150,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 )}
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                {t.heroDescription}
+                Prototype decision support for Northeast logistics. Route comparisons use a versioned corridor graph and scenario risk weights; live incident, weather, and authority feeds require configured data integrations.
               </p>
             </div>
 
@@ -188,19 +188,19 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl pt-4">
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">111</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statBeacons}</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Indexed prototype hubs</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-primary">{t.statSolvers}</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statSolversSub}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-primary">Risk-A*</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Backend route comparison</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">{t.statHazards}</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statHazardsSub}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">Scenario risk</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Verified feeds pending</div>
               </div>
               <div className="p-3.5 rounded-2xl bg-card/85 backdrop-blur-md border border-border shadow-xs hover:-translate-y-0.5 transition-transform text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-foreground">{t.statStates}</div>
-                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">{t.statStatesSub}</div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">8 states</div>
+                <div className="text-[11px] text-muted-foreground font-medium mt-0.5">Corridor prototype coverage</div>
               </div>
             </div>
 
@@ -225,13 +225,13 @@ export const IntroPage: React.FC<IntroPageProps> = ({
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
               <Shield className="size-3" />
-              <span>{t.liveHighwayAdvisory}</span>
+              <span>Scenario advisory board</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              {t.advisoriesTitle}
+              Planning scenarios for corridor review
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-              {t.advisoriesSubtitle}
+              Illustrative risk cases for testing rerouting behaviour. They are not live closure notices.
             </p>
           </div>
 
@@ -276,7 +276,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                   <div className="text-xs text-primary font-medium">
                     {getCityName(blk.originId, lang)} ⟷ {getCityName(blk.destinationId, lang)}
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{b.cause}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">Simulation — {b.cause}</p>
 
                   <div className="p-2.5 rounded-xl bg-background/80 border border-border/80 text-[11px] space-y-1">
                     <div className="font-semibold text-foreground">{t.recommendedDetour}:</div>
@@ -296,6 +296,9 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             );
           })}
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          These scenarios exercise the rerouting flow. They are not authority-issued closure notices and must be replaced by reviewed accessibility events in a deployed environment.
+        </p>
       </section>
 
       {/* 3. GROUND REALITY & CRISIS EVIDENCE */}
@@ -303,62 +306,62 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold border border-destructive/20">
             <AlertTriangle className="size-3" />
-            <span>{t.groundRealityBadge}</span>
+            <span>Evidence governance</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            {t.groundRealityTitle}
+            Source validation before operational use
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-            {t.groundRealityDesc}
+            Government and field sources are recorded as integration targets. This prototype does not present unsourced regional statistics or simulated incidents as live facts.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Stat 1 */}
           <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-destructive group-hover:scale-105 transition-transform origin-left">{t.stat1Value}</div>
-            <div className="text-xs font-bold text-foreground">{t.stat1Label}</div>
+            <div className="text-3xl font-black text-destructive group-hover:scale-105 transition-transform origin-left">01</div>
+            <div className="text-xs font-bold text-foreground">Road safety baseline</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.stat1Desc}
+              Load only traceable MoRTH/eDAR records with source date, district and license metadata.
             </p>
             <div className="pt-2 border-t border-destructive/20 text-[10px] text-destructive font-semibold">
-              {t.stat1Source}
+              Required: source register
             </div>
           </div>
 
           {/* Stat 2 */}
           <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform origin-left">{t.stat2Value}</div>
-            <div className="text-xs font-bold text-foreground">{t.stat2Label}</div>
+            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform origin-left">02</div>
+            <div className="text-xs font-bold text-foreground">Hazard evidence</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.stat2Desc}
+              Historical landslide records need coordinate QA and human review before they affect routing weights.
             </p>
             <div className="pt-2 border-t border-amber-500/20 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-              {t.stat2Source}
+              Required: accepted hazard-to-road match
             </div>
           </div>
 
           {/* Stat 3 */}
           <div className="p-5 rounded-2xl border border-border bg-card space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-foreground group-hover:scale-105 transition-transform origin-left">{t.stat3Value}</div>
-            <div className="text-xs font-bold text-foreground">{t.stat3Label}</div>
+            <div className="text-3xl font-black text-foreground group-hover:scale-105 transition-transform origin-left">03</div>
+            <div className="text-xs font-bold text-foreground">Weather and closure feeds</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.stat3Desc}
+              Timestamped provider data and field reports must remain distinguishable from planning scenarios.
             </p>
             <div className="pt-2 border-t border-border text-[10px] text-muted-foreground font-semibold">
-              {t.stat3Source}
+              Required: source freshness policy
             </div>
           </div>
 
           {/* Stat 4 */}
           <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-primary group-hover:scale-105 transition-transform origin-left">{t.stat4Value}</div>
-            <div className="text-xs font-bold text-foreground">{t.stat4Label}</div>
+            <div className="text-3xl font-black text-primary group-hover:scale-105 transition-transform origin-left">04</div>
+            <div className="text-xs font-bold text-foreground">Measured evaluation</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {t.stat4Desc}
+              Compare route cost and exposure on versioned data; do not claim field safety outcomes without a study.
             </p>
             <div className="pt-2 border-t border-primary/20 text-[10px] text-primary font-semibold">
-              {t.stat4Source}
+              Available: controlled prototype benchmark
             </div>
           </div>
         </div>

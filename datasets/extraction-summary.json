@@ -1,0 +1,83 @@
+[
+  {
+    "region": "nagaland",
+    "road_ways": 13657,
+    "facility_features": 171,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\nagaland-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "tripura",
+    "road_ways": 26828,
+    "facility_features": 133,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\tripura-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "mizoram",
+    "road_ways": 15291,
+    "facility_features": 129,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\mizoram-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "arunachal-pradesh",
+    "road_ways": 13340,
+    "facility_features": 100,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\arunachal-pradesh-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "meghalaya",
+    "road_ways": 25013,
+    "facility_features": 235,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\meghalaya-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "assam",
+    "road_ways": 149517,
+    "facility_features": 1640,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\assam-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "manipur",
+    "road_ways": 24396,
+    "facility_features": 204,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\manipur-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "guwahati-pilot",
+    "road_ways": 3519,
+    "facility_features": 307,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\guwahati-pilot-roads.osm",
+    "boundary_buffer_degrees": 0,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  },
+  {
+    "region": "sikkim",
+    "road_ways": 5452,
+    "facility_features": 93,
+    "source": "datasets\\raw\\osm\\north-eastern-zone-latest.osm.pbf",
+    "output": "datasets\\processed\\osm\\sikkim-roads.osm",
+    "boundary_buffer_degrees": 0.02,
+    "limitations": "OSM completeness varies; facility operation unverified; no turn relations"
+  }
+]

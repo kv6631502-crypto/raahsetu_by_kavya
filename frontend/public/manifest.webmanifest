@@ -1,0 +1,18 @@
+{
+  "name": "RaahSetu - Explainable Northeast Logistics",
+  "short_name": "RaahSetu",
+  "description": "Risk-aware, explainable routing and fleet navigation for Northeast India corridors",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["logistics", "navigation", "government", "utilities"]
+}
