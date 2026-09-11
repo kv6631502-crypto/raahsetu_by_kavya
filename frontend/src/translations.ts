@@ -225,6 +225,9 @@ export interface Translations {
 
   // IntroPage Section 6
   explorePlatformModules: string;
+  view3dTerrain: string;
+  apiConnected: string;
+  offlineFallback: string;
   calibratedGpsTelemetry: string;
   headingLabel: string;
   terminalAdvisoryLabel: string;
@@ -620,6 +623,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     conventionalNavBullet4: "No commodity prioritization: treats volatile petroleum tankers the same as light passenger cars.",
     raahSetuEngineBadge: "Terrain Dual-Solve",
     explorePlatformModules: "Explore Platform Modules",
+    view3dTerrain: "3D Terrain View",
+    apiConnected: "FastAPI A* Connected",
+    offlineFallback: "Offline Solver Active",
     calibratedGpsTelemetry: "CALIBRATED GPS TELEMETRY",
     headingLabel: "Heading",
     terminalAdvisoryLabel: "Terminal Advisory",
@@ -1042,6 +1048,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     conventionalNavBullet4: "कोई माल प्राथमिकता नहीं: अस्थिर पेट्रोलियम टैंकरों को हल्की यात्री कारों के समान मानता है।",
     raahSetuEngineBadge: "भू-भाग दोहरा-समाधान",
     explorePlatformModules: "प्लेटफ़ॉर्म मॉड्यूल देखें",
+    view3dTerrain: "3D भू-भाग दृश्य",
+    apiConnected: "फास्ट-एपीआई A* कनेक्टेड",
+    offlineFallback: "ऑफ़लाइन सॉल्वर सक्रिय",
     calibratedGpsTelemetry: "कैलिब्रेटेड जीपीएस टेलीमेट्री",
     headingLabel: "दिशा",
     terminalAdvisoryLabel: "टर्मिनल सलाह",
@@ -1464,6 +1473,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     conventionalNavBullet4: "কোনো পণ্য অগ্ৰাধিকাৰ নাই: অস্থিৰ পেট্ৰ'লিয়াম টেংকাৰক পাতল যাত্ৰী গাড়ীৰ সৈতে একে ব্যৱহাৰ কৰে।",
     raahSetuEngineBadge: "ভূ-ভাগ দ্বৈত-সমাধান",
     explorePlatformModules: "প্লেটফৰ্ম মডিউল অন্বেষণ কৰক",
+    view3dTerrain: "3D ভূ-ভাগ দৃশ্য",
+    apiConnected: "ফাষ্ট-এপিআই A* সংযুক্ত",
+    offlineFallback: "অফলাইন সলভাৰ সক্ৰিয়",
     calibratedGpsTelemetry: "কেলিব্ৰেটেড জিপিএছ টেলিমেট্ৰি",
     headingLabel: "দিশ",
     terminalAdvisoryLabel: "টাৰ্মিনেল পৰামৰ্শ",
@@ -1886,6 +1898,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     conventionalNavBullet4: "কোনো পণ্য অগ্রাধিকার নেই: অস্থিতিশীল পেট্রোলিয়াম ট্যাঙ্কারকে হালকা যাত্রী গাড়ির মতো গণ্য করে।",
     raahSetuEngineBadge: "ভূ-ভাগ দ্বৈত-সমাধান",
     explorePlatformModules: "প্ল্যাটফর্ম মডিউল অন্বেষণ করুন",
+    view3dTerrain: "3D ভূ-ভাগ দৃশ্য",
+    apiConnected: "ফাস্ট-এপিআই A* সংযুক্ত",
+    offlineFallback: "অফলাইন সলভার সক্রিয়",
     calibratedGpsTelemetry: "ক্যালিব্রেটেড জিপিএস টেলিমেট্রি",
     headingLabel: "দিক",
     terminalAdvisoryLabel: "টার্মিনাল পরামর্শ",

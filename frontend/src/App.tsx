@@ -27,6 +27,7 @@ import {
   Minimize2,
   Moon,
   Mountain,
+  Boxes,
   Navigation,
   Phone,
   PhoneCall,
@@ -39,6 +40,9 @@ import {
   X,
 } from "lucide-react";
 import { RealMapLeaflet } from "./RealMapLeaflet";
+import TerrainMap from "./TerrainMap";
+import { compareRoutes } from "./api";
+import type { Comparison, Network, Location as ApiLocation } from "./types";
 import { IntroPage } from "./IntroPage";
 import { AuthPage } from "./AuthPage";
 import {
@@ -54,6 +58,7 @@ import {
   COMMODITY_PROFILES,
   CommodityType,
   DISTRICT_CONNECTIVITY,
+  EDGES,
   STRATEGIC_CORRIDORS,
   VEHICLE_PROFILES,
   VehicleType,
@@ -770,13 +775,18 @@ export default function App() {
   }, [isCameraActive, cameraStream]);
 
   // Map & Navigation
-  const [mapMode, setMapMode] = useState<"osm" | "satellite">("osm");
+  const [mapMode, setMapMode] = useState<"osm" | "satellite" | "3d">("osm");
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string | null>(null);
   const [customOrigin, setCustomOrigin] = useState<{ name: string; lat: number; lon: number } | null>(null);
   const mapCardRef = useRef<HTMLDivElement | null>(null);
+
+  // Live Backend FastAPI A* vs Offline Heuristic Status
+  const [backendComparison, setBackendComparison] = useState<Comparison | null>(null);
+  const [apiStatus, setApiStatus] = useState<"connected" | "offline">("offline");
+  const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null);
 
   // Auto weather for current corridor
   const liveWeather = useMemo(() => {
@@ -788,6 +798,95 @@ export default function App() {
     if (!destination) return null;
     return getCityWeather(destination);
   }, [destination]);
+
+  // Live backend comparison query with automatic fallback
+  useEffect(() => {
+    if (!origin || !destination) {
+      setBackendComparison(null);
+      setApiLatencyMs(null);
+      return;
+    }
+    const o = CITY_MAP[origin];
+    const d = CITY_MAP[destination];
+    if (!o || !d) return;
+
+    const controller = new AbortController();
+    const startTime = performance.now();
+    compareRoutes(
+      {
+        dataset_id: "demo",
+        origin: { node_id: origin || "n2_0" },
+        destination: { node_id: destination || "n2_6" },
+        vehicle: vehicle === "light" ? "light" : "heavy",
+        weather: weather === "monsoon" ? "heavy_rain" : "normal",
+        risk_aversion: 0.5,
+        closed_edge_ids: [],
+        strict_vehicle: false,
+      },
+      controller.signal
+    )
+      .then((res) => {
+        const elapsed = Math.round(performance.now() - startTime);
+        setBackendComparison(res);
+        setApiLatencyMs(elapsed);
+        setApiStatus("connected");
+      })
+      .catch(() => {
+        setBackendComparison(null);
+        setApiLatencyMs(null);
+        setApiStatus("offline");
+      });
+
+    return () => controller.abort();
+  }, [origin, destination, vehicle, weather]);
+
+  // 3D Terrain Map Geometry Models
+  const terrain3dNetwork = useMemo<Network>(() => {
+    return {
+      type: "FeatureCollection",
+      metadata: {
+        dataset_id: "osm-northeast",
+        focus_node: origin || "guwahati",
+        focus: { lon: 91.7362, lat: 26.1445 },
+        radius_km: 300,
+        returned_features: EDGES.length,
+        total_features: EDGES.length,
+        truncated: false,
+      },
+      features: EDGES.map((edge) => {
+        const fromCity = CITY_MAP[edge.a];
+        const toCity = CITY_MAP[edge.b];
+        return {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [fromCity ? fromCity.lon : 91.7, fromCity ? fromCity.lat : 26.1],
+              [toCity ? toCity.lon : 91.8, toCity ? toCity.lat : 26.2],
+            ],
+          },
+          properties: {
+            id: `${edge.a}-${edge.b}`,
+            name: `${fromCity?.name ?? edge.a} - ${toCity?.name ?? edge.b}`,
+            u: edge.a,
+            v: edge.b,
+            risk: edge.risk,
+            closed: false,
+            evidence: "Northeast surveyed road graph",
+          },
+        };
+      }),
+    };
+  }, [origin]);
+
+  const terrain3dLocations = useMemo<ApiLocation[]>(() => {
+    return CITIES.map((c) => ({
+      id: c.id,
+      label: c.name,
+      lat: c.lat,
+      lon: c.lon,
+    }));
+  }, []);
 
   // Shortest route solver
   const shortest = useMemo(() => {
@@ -822,6 +921,48 @@ export default function App() {
     const diff = ((shortestStats.riskIndex - safeStats.riskIndex) / shortestStats.riskIndex) * 100;
     return Math.max(0, Math.round(diff));
   }, [shortestStats, safeStats]);
+
+  const terrain3dComparison = useMemo<Comparison | null>(() => {
+    if (backendComparison) return backendComparison;
+    if (!safe || safe.length < 2) return null;
+    return {
+      dataset_id: "osm-northeast",
+      dataset_version: "v1.0-local",
+      routes: [
+        {
+          id: "risk_aware",
+          status: "available",
+          edge_ids: [],
+          geometry: {
+            type: "LineString",
+            coordinates: safe.map((cid) => {
+              const c = CITY_MAP[cid];
+              return c ? [c.lon, c.lat] : [91.7, 26.1];
+            }),
+          },
+          distance_km: safeStats?.distance || 0,
+          duration_min: Math.round((safeStats?.hours || 0) * 60),
+          risk_exposure: (safeStats?.distance || 0) * ((safeStats?.riskIndex || 0) / 100),
+          mean_risk_score: (safeStats?.riskIndex || 0) / 100,
+          high_risk_segments: 0,
+          unknown_restriction_segments: 0,
+          unknown_risk_segments: 0,
+          objective_cost: safeStats?.distance || 0,
+          expanded_nodes: safe.length,
+          compute_ms: 12,
+          roads: safe.map((c) => CITY_MAP[c]?.name || c),
+          warnings: [],
+        },
+      ],
+      comparison: {
+        extra_minutes: 0,
+        exposure_reduction_pct: riskReductionPct,
+        same_route: false,
+      },
+      explanations: [],
+      assumptions: ["Offline heuristic solve", "Terrain elevation model active"],
+    };
+  }, [backendComparison, safe, safeStats, riskReductionPct]);
 
   // Elevation analysis
   const elevationAnalysis = useMemo(() => {
@@ -1860,8 +2001,8 @@ export default function App() {
                       : "rounded-2xl border border-border bg-card p-4 shadow-xs space-y-3"
                   }
                 >
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between pb-3 border-b border-border flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-foreground">
                         {origin ? getCityName(origin, lang, CITY_MAP[origin]?.name) : ""} ➔ {destination ? getCityName(destination, lang, CITY_MAP[destination]?.name) : ""}
                       </span>
@@ -1870,6 +2011,13 @@ export default function App() {
                           ({safeStats.distance} km · {formatHours(safeStats.hours)})
                         </span>
                       )}
+                      {/* Live API / Solver Status Badge */}
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border border-border bg-secondary/80">
+                        <span className={`size-2 rounded-full ${apiStatus === "connected" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                        <span className={apiStatus === "connected" ? "text-emerald-500 font-semibold" : "text-muted-foreground"}>
+                          {apiStatus === "connected" ? `${t.apiConnected}${apiLatencyMs ? ` (${apiLatencyMs}ms)` : ""}` : t.offlineFallback}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1888,14 +2036,30 @@ export default function App() {
                         <span>{isNavigating ? t.stopNavigation : t.startNavigation}</span>
                       </button>
 
+                      {/* 3D Terrain Switcher */}
+                      <button
+                        type="button"
+                        onClick={() => setMapMode(mapMode === "3d" ? "osm" : "3d")}
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                          mapMode === "3d"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border bg-secondary text-foreground hover:bg-secondary/80"
+                        }`}
+                        title={t.view3dTerrain}
+                      >
+                        <Boxes className="size-3.5" />
+                        <span>{t.view3dTerrain}</span>
+                      </button>
+
                       {/* Satellite / Street Switcher */}
                       <button
                         type="button"
+                        disabled={mapMode === "3d"}
                         onClick={() => setMapMode(mapMode === "osm" ? "satellite" : "osm")}
-                        className="px-2.5 py-1 rounded-lg border border-border bg-secondary text-xs font-semibold text-foreground hover:bg-secondary/80 transition-colors cursor-pointer flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-lg border border-border bg-secondary text-xs font-semibold text-foreground hover:bg-secondary/80 transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
                       >
                         <Layers className="size-3.5" />
-                        <span>{mapMode === "osm" ? t.satelliteView : t.roadNetwork}</span>
+                        <span>{mapMode === "satellite" ? t.roadNetwork : t.satelliteView}</span>
                       </button>
 
                       {/* Fullscreen Toggle */}
@@ -1910,21 +2074,40 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Leaflet Cartography Container */}
-                  <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border"}>
-                    <RealMapLeaflet
-                      originCity={CITY_MAP[origin]}
-                      destCity={CITY_MAP[destination]}
-                      routePath={safe}
-                      safeLegs={safeLegs}
-                      userGps={navGpsCoords}
-                      isNavigating={isNavigating}
-                      isBigScreen={isBigScreenNav}
-                      mapMode={mapMode}
-                      onMapModeChange={setMapMode}
-                      lang={lang}
-                    />
-                  </div>
+                  {/* Interactive Cartography Viewport: 3D R3F Canvas or 2D Leaflet */}
+                  {mapMode === "3d" ? (
+                    <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border bg-[#0a0d0d] relative"}>
+                      <TerrainMap
+                        network={terrain3dNetwork}
+                        locations={terrain3dLocations}
+                        result={terrain3dComparison}
+                        origin={origin}
+                        destination={destination}
+                        closedIds={[]}
+                        mode="3d"
+                        reset={0}
+                        showRisk={true}
+                        selected=""
+                        terrain={null}
+                        events={[]}
+                      />
+                    </div>
+                  ) : (
+                    <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border"}>
+                      <RealMapLeaflet
+                        originCity={CITY_MAP[origin]}
+                        destCity={CITY_MAP[destination]}
+                        routePath={safe}
+                        safeLegs={safeLegs}
+                        userGps={navGpsCoords}
+                        isNavigating={isNavigating}
+                        isBigScreen={isBigScreenNav}
+                        mapMode={mapMode === "satellite" ? "satellite" : "osm"}
+                        onMapModeChange={(m) => setMapMode(m)}
+                        lang={lang}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Turn-by-Turn Leg Itinerary */}

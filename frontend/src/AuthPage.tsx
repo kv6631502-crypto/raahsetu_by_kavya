@@ -179,9 +179,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
     setIsRequestingCode(true);
     setVerificationError(null);
     const localFallbackCode = `${Math.floor(100000 + Math.random() * 900000)}`;
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 
     try {
-      const resp = await fetch("http://127.0.0.1:8000/api/v1/auth/request-code", {
+      const resp = await fetch(`${apiBase}/api/v1/auth/request-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: targetEmail }),
@@ -233,8 +234,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
     setVerificationError(null);
 
     let isVerified = false;
+    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
     try {
-      const resp = await fetch("http://127.0.0.1:8000/api/v1/auth/verify-code", {
+      const resp = await fetch(`${apiBase}/api/v1/auth/verify-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: cleanInput }),

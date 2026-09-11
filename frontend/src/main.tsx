@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./live.css";
+import "./workspace.css";
 import "./tailwind.css";
 
 createRoot(document.getElementById("root")!).render(

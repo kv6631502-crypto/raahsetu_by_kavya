@@ -584,10 +584,13 @@ def compare_routes(request: RouteRequest):
     try:
         graph = get_graph(request.dataset_id)
         if os.getenv("DATABASE_URL") and request.dataset_id != "demo":
-            region = "assam" if request.dataset_id.startswith("osm-guwahati") else request.dataset_id.removeprefix("osm-")
-            events = PostgresFieldReportStore().active_events(region)
-            blocked = [event["edge_id"] for event in events if event["dataset_id"] == request.dataset_id and event["accessibility_status"] == "blocked" and event["edge_id"] in graph.edges]
-            request = request.model_copy(update={"closed_edge_ids": list(dict.fromkeys([*request.closed_edge_ids, *blocked]))})
+            try:
+                region = "assam" if request.dataset_id.startswith("osm-guwahati") else request.dataset_id.removeprefix("osm-")
+                events = PostgresFieldReportStore().active_events(region)
+                blocked = [event["edge_id"] for event in events if event["dataset_id"] == request.dataset_id and event["accessibility_status"] == "blocked" and event["edge_id"] in graph.edges]
+                request = request.model_copy(update={"closed_edge_ids": list(dict.fromkeys([*request.closed_edge_ids, *blocked]))})
+            except (psycopg.Error, OSError, Exception) as db_exc:  # noqa: BLE001
+                logger.warning("Failed to retrieve live accessibility closures from PostGIS, using graph defaults: %s", db_exc)
         return graph.compare(request)
     except ValueError as exc:
         raise HTTPException(422, detail=str(exc)) from exc
@@ -679,6 +682,8 @@ def upload_field_report_attachment(
     path = f"{user.id}/{report_id}/{digest}.{file.content_type.rsplit('/', 1)[1]}"
     base_url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_PUBLISHABLE_KEY")
+    if not base_url or not key:
+        raise HTTPException(503, detail="Evidence storage service is not configured")
     try:
         response = httpx.post(
             f"{base_url}/storage/v1/object/field-report-evidence/{path}",

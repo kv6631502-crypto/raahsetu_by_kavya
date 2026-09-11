@@ -1,0 +1,17 @@
+# RaahSetu Backend Dependencies
+# Generated from pyproject.toml
+
+# Core runtime dependencies
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+pydantic>=2.10,<3
+python-dotenv>=1,<2
+httpx>=0.28,<1
+python-multipart>=0.0.20,<1
+psycopg[binary]>=3.2,<4
+
+# Development & Testing dependencies
+pytest>=8,<10
+ruff>=0.11,<1
+networkx>=3.4,<4
+pyyaml>=6,<7
