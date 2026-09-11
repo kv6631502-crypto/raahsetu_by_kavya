@@ -303,62 +303,62 @@ export const IntroPage: React.FC<IntroPageProps> = ({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-semibold border border-destructive/20">
             <AlertTriangle className="size-3" />
-            <span>Ground Reality & MoRTH Accident Census</span>
+            <span>{t.groundRealityBadge}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-            The Life-or-Death Reality of Mountain Highway Logistics
+            {t.groundRealityTitle}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-            Official government data from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau (NCRB), and Geological Survey of India (GSI) document a severe regional logistics crisis.
+            {t.groundRealityDesc}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Stat 1 */}
           <div className="p-5 rounded-2xl border border-destructive/30 bg-destructive/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-destructive group-hover:scale-105 transition-transform origin-left">1,68,491</div>
-            <div className="text-xs font-bold text-foreground">Annual Fatalities Nationwide</div>
+            <div className="text-3xl font-black text-destructive group-hover:scale-105 transition-transform origin-left">{t.stat1Value}</div>
+            <div className="text-xs font-bold text-foreground">{t.stat1Label}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Per MoRTH official census, mountain ghat sections have an accident fatality rate of <strong className="text-destructive">45.2%</strong>—nearly double plain highway crashes.
+              {t.stat1Desc}
             </p>
             <div className="pt-2 border-t border-destructive/20 text-[10px] text-destructive font-semibold">
-              Source: MoRTH Road Accidents Report
+              {t.stat1Source}
             </div>
           </div>
 
           {/* Stat 2 */}
           <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform origin-left">400+</div>
-            <div className="text-xs font-bold text-foreground">Major Landslides Annually</div>
+            <div className="text-3xl font-black text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform origin-left">{t.stat2Value}</div>
+            <div className="text-xs font-bold text-foreground">{t.stat2Label}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              GSI landslide databases record over 400 severe rockfall and debris slips each monsoon, completely severing lifelines like NH-6, NH-2, and NH-13 for weeks.
+              {t.stat2Desc}
             </p>
             <div className="pt-2 border-t border-amber-500/20 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-              Source: Geological Survey of India (GSI)
+              {t.stat2Source}
             </div>
           </div>
 
           {/* Stat 3 */}
           <div className="p-5 rounded-2xl border border-border bg-card space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-foreground group-hover:scale-105 transition-transform origin-left">6,200+</div>
-            <div className="text-xs font-bold text-foreground">Northeast Corridor Lives Lost</div>
+            <div className="text-3xl font-black text-foreground group-hover:scale-105 transition-transform origin-left">{t.stat3Value}</div>
+            <div className="text-xs font-bold text-foreground">{t.stat3Label}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Truck drivers, co-drivers, and passengers have lost their lives across the Northeast mountain belt over the past decade due to brake fade, extreme slopes, and edge drop-offs.
+              {t.stat3Desc}
             </p>
             <div className="pt-2 border-t border-border text-[10px] text-muted-foreground font-semibold">
-              Source: Regional NCRB Police Records
+              {t.stat3Source}
             </div>
           </div>
 
           {/* Stat 4 */}
           <div className="p-5 rounded-2xl border border-primary/30 bg-primary/5 space-y-3 shadow-xs hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 transform-gpu group cursor-default">
-            <div className="text-3xl font-black text-primary group-hover:scale-105 transition-transform origin-left">₹3,500 Cr</div>
-            <div className="text-xs font-bold text-foreground">Annual Economic Freight Delay</div>
+            <div className="text-3xl font-black text-primary group-hover:scale-105 transition-transform origin-left">{t.stat4Value}</div>
+            <div className="text-xs font-bold text-foreground">{t.stat4Label}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Convoys carrying life-saving pharmaceuticals, oxygen cylinders, food rations, and farm produce remain stranded at Sela Pass and Sonapur tunnel chokepoints.
+              {t.stat4Desc}
             </p>
             <div className="pt-2 border-t border-primary/20 text-[10px] text-primary font-semibold">
-              Source: Logistics Council Estimates
+              {t.stat4Source}
             </div>
           </div>
         </div>
@@ -385,27 +385,27 @@ export const IntroPage: React.FC<IntroPageProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-destructive font-bold text-sm">
                 <XCircle className="size-4" />
-                <span>Conventional Consumer Navigation</span>
+                <span>{t.conventionalNavTitle}</span>
               </div>
-              <span className="text-[10px] font-mono text-destructive uppercase px-2 py-0.5 rounded bg-destructive/10">Naive Distance</span>
+              <span className="text-[10px] font-mono text-destructive uppercase px-2 py-0.5 rounded bg-destructive/10">{t.conventionalNavBadge}</span>
             </div>
 
             <ul className="space-y-2.5 text-xs text-muted-foreground">
               <li className="flex items-start gap-2">
                 <span className="text-destructive font-bold shrink-0">✕</span>
-                <span>Minimizes pure linear distance (km), frequently choosing dangerous unpaved shortcut tracks.</span>
+                <span>{t.conventionalNavBullet1}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-destructive font-bold shrink-0">✕</span>
-                <span>Ignores hill slope gradients, causing fatal brake overheating and vehicle roll-aways on 14%+ inclines.</span>
+                <span>{t.conventionalNavBullet2}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-destructive font-bold shrink-0">✕</span>
-                <span>Unaware of multi-axle bridge weight restrictions, leading to freight strandings at narrow Bailey crossings.</span>
+                <span>{t.conventionalNavBullet3}</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-destructive font-bold shrink-0">✕</span>
-                <span>No commodity prioritization: treats volatile petroleum tankers the same as light passenger cars.</span>
+                <span>{t.conventionalNavBullet4}</span>
               </li>
             </ul>
           </div>
@@ -417,7 +417,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
                 <CheckCircle2 className="size-4" />
                 <span>{t.solutionTitle}</span>
               </div>
-              <span className="text-[10px] font-mono text-primary uppercase px-2 py-0.5 rounded bg-primary/10">Terrain Dual-Solve</span>
+              <span className="text-[10px] font-mono text-primary uppercase px-2 py-0.5 rounded bg-primary/10">{t.raahSetuEngineBadge}</span>
             </div>
 
             <ul className="space-y-2.5 text-xs text-muted-foreground">
@@ -486,7 +486,7 @@ export const IntroPage: React.FC<IntroPageProps> = ({
 
       {/* 6. REDIRECT DIRECTORY LINKS */}
       <section className="p-6 rounded-2xl border border-border bg-secondary/40 space-y-4">
-        <h3 className="text-sm font-bold text-foreground">Explore Platform Modules</h3>
+        <h3 className="text-sm font-bold text-foreground">{t.explorePlatformModules}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <button
             type="button"

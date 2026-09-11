@@ -179,6 +179,52 @@ export interface Translations {
   codeExpired: string;
   simulatedEmailNotice: string;
   clickToFill: string;
+
+  // Auth: Login vs Sign Up
+  signUpTitle: string;
+  signUpSubtitle: string;
+  confirmPasswordLabel: string;
+  confirmPasswordPlaceholder: string;
+  passwordMismatch: string;
+  createAccountBtn: string;
+  alreadyHaveAccount: string;
+  dontHaveAccount: string;
+  verifiedSigningIn: string;
+  expiresInMins: string;
+  copiedText: string;
+
+  // IntroPage Section 3: Ground Reality
+  groundRealityBadge: string;
+  groundRealityTitle: string;
+  groundRealityDesc: string;
+  stat1Value: string;
+  stat1Label: string;
+  stat1Desc: string;
+  stat1Source: string;
+  stat2Value: string;
+  stat2Label: string;
+  stat2Desc: string;
+  stat2Source: string;
+  stat3Value: string;
+  stat3Label: string;
+  stat3Desc: string;
+  stat3Source: string;
+  stat4Value: string;
+  stat4Label: string;
+  stat4Desc: string;
+  stat4Source: string;
+
+  // IntroPage Section 4: Blind Spot
+  conventionalNavTitle: string;
+  conventionalNavBadge: string;
+  conventionalNavBullet1: string;
+  conventionalNavBullet2: string;
+  conventionalNavBullet3: string;
+  conventionalNavBullet4: string;
+  raahSetuEngineBadge: string;
+
+  // IntroPage Section 6
+  explorePlatformModules: string;
   calibratedGpsTelemetry: string;
   headingLabel: string;
   terminalAdvisoryLabel: string;
@@ -536,6 +582,44 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     codeExpired: "Code expired. Please request a new verification code.",
     simulatedEmailNotice: "Simulated Live Email Dispatch / Test Code:",
     clickToFill: "Click to Auto-fill",
+    signUpTitle: "Create Fleet Account",
+    signUpSubtitle: "Register as a mountain logistics fleet driver, emergency dispatcher, or state highway monitoring officer.",
+    confirmPasswordLabel: "Confirm Password",
+    confirmPasswordPlaceholder: "Re-enter your secure password",
+    passwordMismatch: "Passwords do not match. Please re-enter.",
+    createAccountBtn: "Create Account & Verify →",
+    alreadyHaveAccount: "Already have an account?",
+    dontHaveAccount: "Don't have an account?",
+    verifiedSigningIn: "Verified! Signing in...",
+    expiresInMins: "Expires in 10 mins",
+    copiedText: "Copied!",
+    groundRealityBadge: "Ground Reality & MoRTH Accident Census",
+    groundRealityTitle: "The Life-or-Death Reality of Mountain Highway Logistics",
+    groundRealityDesc: "Official government data from the Ministry of Road Transport and Highways (MoRTH), National Crime Records Bureau (NCRB), and Geological Survey of India (GSI) document a severe regional logistics crisis.",
+    stat1Value: "1,68,491",
+    stat1Label: "Annual Fatalities Nationwide",
+    stat1Desc: "Per MoRTH official census, mountain ghat sections have an accident fatality rate of 45.2%—nearly double plain highway crashes.",
+    stat1Source: "Source: MoRTH Road Accidents Report",
+    stat2Value: "400+",
+    stat2Label: "Major Landslides Annually",
+    stat2Desc: "GSI landslide databases record over 400 severe rockfall and debris slips each monsoon, completely severing lifelines like NH-6, NH-2, and NH-13 for weeks.",
+    stat2Source: "Source: Geological Survey of India (GSI)",
+    stat3Value: "6,200+",
+    stat3Label: "Northeast Corridor Lives Lost",
+    stat3Desc: "Truck drivers, co-drivers, and passengers have lost their lives across the Northeast mountain belt over the past decade due to brake fade, extreme slopes, and edge drop-offs.",
+    stat3Source: "Source: Regional NCRB Police Records",
+    stat4Value: "₹3,500 Cr",
+    stat4Label: "Annual Economic Freight Delay",
+    stat4Desc: "Convoys carrying life-saving pharmaceuticals, oxygen cylinders, food rations, and farm produce remain stranded at Sela Pass and Sonapur tunnel chokepoints.",
+    stat4Source: "Source: Logistics Council Estimates",
+    conventionalNavTitle: "Conventional Consumer Navigation",
+    conventionalNavBadge: "Naive Distance",
+    conventionalNavBullet1: "Minimizes pure linear distance (km), frequently choosing dangerous unpaved shortcut tracks.",
+    conventionalNavBullet2: "Ignores hill slope gradients, causing fatal brake overheating and vehicle roll-aways on 14%+ inclines.",
+    conventionalNavBullet3: "Unaware of multi-axle bridge weight restrictions, leading to freight strandings at narrow Bailey crossings.",
+    conventionalNavBullet4: "No commodity prioritization: treats volatile petroleum tankers the same as light passenger cars.",
+    raahSetuEngineBadge: "Terrain Dual-Solve",
+    explorePlatformModules: "Explore Platform Modules",
     calibratedGpsTelemetry: "CALIBRATED GPS TELEMETRY",
     headingLabel: "Heading",
     terminalAdvisoryLabel: "Terminal Advisory",
@@ -920,6 +1004,44 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     codeExpired: "कोड समाप्त हो गया। कृपया नया कोड मंगवाएं।",
     simulatedEmailNotice: "लाइव ईमेल डिस्पैच सिमुलेशन / परीक्षण कोड:",
     clickToFill: "ऑटो-फिल करने के लिए क्लिक करें",
+    signUpTitle: "फ्लीट खाता बनाएं",
+    signUpSubtitle: "पर्वतीय लॉजिस्टिक्स फ्लीट चालक, आपातकालीन प्रेषक या राज्य राजमार्ग निगरानी अधिकारी के रूप में पंजीकरण करें।",
+    confirmPasswordLabel: "पासवर्ड की पुष्टि करें",
+    confirmPasswordPlaceholder: "अपना सुरक्षित पासवर्ड पुनः दर्ज करें",
+    passwordMismatch: "पासवर्ड मेल नहीं खाते। कृपया पुनः दर्ज करें।",
+    createAccountBtn: "खाता बनाएं एवं सत्यापित करें →",
+    alreadyHaveAccount: "पहले से खाता है?",
+    dontHaveAccount: "खाता नहीं है?",
+    verifiedSigningIn: "सत्यापित! लॉग इन हो रहा है...",
+    expiresInMins: "10 मिनट में समाप्त",
+    copiedText: "कॉपी हो गया!",
+    groundRealityBadge: "जमीनी हकीकत एवं MoRTH दुर्घटना जनगणना",
+    groundRealityTitle: "पर्वतीय राजमार्ग लॉजिस्टिक्स की जीवन-मरण की वास्तविकता",
+    groundRealityDesc: "सड़क परिवहन एवं राजमार्ग मंत्रालय (MoRTH), राष्ट्रीय अपराध रिकॉर्ड ब्यूरो (NCRB) और भारतीय भूवैज्ञानिक सर्वेक्षण (GSI) के आधिकारिक सरकारी आंकड़े एक गंभीर क्षेत्रीय लॉजिस्टिक्स संकट दर्शाते हैं।",
+    stat1Value: "1,68,491",
+    stat1Label: "वार्षिक राष्ट्रीय मृत्यु संख्या",
+    stat1Desc: "MoRTH की आधिकारिक जनगणना के अनुसार, पर्वतीय घाट खंडों में दुर्घटना मृत्यु दर 45.2% है—मैदानी राजमार्ग दुर्घटनाओं से लगभग दोगुनी।",
+    stat1Source: "स्रोत: MoRTH सड़क दुर्घटना रिपोर्ट",
+    stat2Value: "400+",
+    stat2Label: "वार्षिक प्रमुख भूस्खलन",
+    stat2Desc: "GSI भूस्खलन डेटाबेस प्रत्येक मानसून में 400 से अधिक गंभीर चट्टान गिरने और मलबा बहाव को दर्ज करता है, जो NH-6, NH-2 और NH-13 जैसी जीवन रेखाओं को हफ्तों के लिए पूरी तरह से काट देता है।",
+    stat2Source: "स्रोत: भारतीय भूवैज्ञानिक सर्वेक्षण (GSI)",
+    stat3Value: "6,200+",
+    stat3Label: "पूर्वोत्तर गलियारे में जानें गईं",
+    stat3Desc: "ट्रक चालक, सह-चालक और यात्री ब्रेक फेड, अत्यधिक ढलान और किनारे की खाई के कारण पिछले दशक में पूर्वोत्तर पर्वतीय क्षेत्र में अपनी जान गंवा चुके हैं।",
+    stat3Source: "स्रोत: क्षेत्रीय NCRB पुलिस रिकॉर्ड",
+    stat4Value: "₹3,500 करोड़",
+    stat4Label: "वार्षिक आर्थिक माल ढुलाई विलंब",
+    stat4Desc: "जीवन रक्षक दवाइयां, ऑक्सीजन सिलेंडर, खाद्य राशन और कृषि उपज ले जाने वाले काफिले सेला दर्रा और सोनापुर सुरंग की अड़चनों पर फंसे रहते हैं।",
+    stat4Source: "स्रोत: लॉजिस्टिक्स परिषद अनुमान",
+    conventionalNavTitle: "पारंपरिक उपभोक्ता नेविगेशन",
+    conventionalNavBadge: "केवल दूरी आधारित",
+    conventionalNavBullet1: "केवल रैखिक दूरी (किमी) को कम करता है, अक्सर खतरनाक कच्चे शॉर्टकट ट्रैक चुनता है।",
+    conventionalNavBullet2: "पहाड़ी ढलान प्रवणता को अनदेखा करता है, जिससे 14%+ ढलानों पर ब्रेक अधिक गर्म होकर घातक दुर्घटनाएं होती हैं।",
+    conventionalNavBullet3: "बहु-एक्सल पुल भार सीमा से अनजान, संकीर्ण बेली पुलों पर माल ट्रक फंस जाते हैं।",
+    conventionalNavBullet4: "कोई माल प्राथमिकता नहीं: अस्थिर पेट्रोलियम टैंकरों को हल्की यात्री कारों के समान मानता है।",
+    raahSetuEngineBadge: "भू-भाग दोहरा-समाधान",
+    explorePlatformModules: "प्लेटफ़ॉर्म मॉड्यूल देखें",
     calibratedGpsTelemetry: "कैलिब्रेटेड जीपीएस टेलीमेट्री",
     headingLabel: "दिशा",
     terminalAdvisoryLabel: "टर्मिनल सलाह",
@@ -1304,6 +1426,44 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     codeExpired: "ক'ডৰ ম্যাদ উকলিল। অনুগ্ৰহ কৰি নতুন ক'ড অনুৰোধ কৰক।",
     simulatedEmailNotice: "লাইভ ইমেইল প্ৰেৰণ অনুকৰণ / পৰীক্ষামূলক ক'ড:",
     clickToFill: "স্বয়ংক্রিয়ভাৱে পূৰণ কৰিবলৈ ক্লিক কৰক",
+    signUpTitle: "ফ্লীট একাউণ্ট সৃষ্টি কৰক",
+    signUpSubtitle: "পৰ্বতীয় লজিষ্টিক্স ফ্লীট চালক, জৰুৰীকালীন প্ৰেৰক বা ৰাজ্যিক ৰাজপথ নিৰীক্ষণ বিষয়া হিচাপে পঞ্জীয়ন কৰক।",
+    confirmPasswordLabel: "পাছৱৰ্ড নিশ্চিত কৰক",
+    confirmPasswordPlaceholder: "আপোনাৰ সুৰক্ষিত পাছৱৰ্ড পুনৰ দিয়ক",
+    passwordMismatch: "পাছৱৰ্ড মিলা নাই। অনুগ্ৰহ কৰি পুনৰ দিয়ক।",
+    createAccountBtn: "একাউণ্ট সৃষ্টি কৰক আৰু সত্যাপন কৰক →",
+    alreadyHaveAccount: "ইতিমধ্যে একাউণ্ট আছে?",
+    dontHaveAccount: "একাউণ্ট নাই?",
+    verifiedSigningIn: "সত্যাপিত! লগ ইন হৈ আছে...",
+    expiresInMins: "10 মিনিটত সমাপ্ত হ'ব",
+    copiedText: "কপি হৈছে!",
+    groundRealityBadge: "মাটিৰ বাস্তৱতা আৰু MoRTH দুৰ্ঘটনা লেখা",
+    groundRealityTitle: "পৰ্বতীয় ৰাজপথ লজিষ্টিক্সৰ জীৱন-মৰণৰ বাস্তৱতা",
+    groundRealityDesc: "পথ পৰিবহন আৰু ৰাজপথ মন্ত্ৰালয় (MoRTH), ৰাষ্ট্ৰীয় অপৰাধ ৰেকৰ্ড বিউৰো (NCRB) আৰু ভাৰতীয় ভূতাত্ত্বিক সৰ্বেক্ষণ (GSI)ৰ চৰকাৰী তথ্যই এক গুৰুতৰ আঞ্চলিক লজিষ্টিক্স সংকট নথিভুক্ত কৰে।",
+    stat1Value: "১,৬৮,৪৯১",
+    stat1Label: "বাৰ্ষিক ৰাষ্ট্ৰীয় মৃত্যু সংখ্যা",
+    stat1Desc: "MoRTH-ৰ চৰকাৰী লেখা অনুসৰি, পৰ্বতীয় ঘাট অংশত দুৰ্ঘটনাত মৃত্যুৰ হাৰ ৪৫.২%—সমতল ৰাজপথৰ দুৰ্ঘটনাতকৈ প্ৰায় দুগুণ।",
+    stat1Source: "উৎস: MoRTH পথ দুৰ্ঘটনা প্ৰতিবেদন",
+    stat2Value: "৪০০+",
+    stat2Label: "বাৰ্ষিক প্ৰধান ভূমিস্খলন",
+    stat2Desc: "GSI ভূমিস্খলন ডেটাবেছে প্ৰতি বাৰিষাত ৪০০-ৰো অধিক গুৰুতৰ শিলাপাত আৰু ধ্বংসাৱশেষ স্খলন নথিভুক্ত কৰে, যিয়ে NH-6, NH-2 আৰু NH-13-ৰ দৰে জীৱনৰেখা সপ্তাহৰ বাবে সম্পূৰ্ণৰূপে বিচ্ছিন্ন কৰে।",
+    stat2Source: "উৎস: ভাৰতীয় ভূতাত্ত্বিক সৰ্বেক্ষণ (GSI)",
+    stat3Value: "৬,২০০+",
+    stat3Label: "উত্তৰ-পূবৰ গলিত প্ৰাণ",
+    stat3Desc: "ব্ৰেক বিকল, অত্যধিক ঢাল আৰু কিনাৰৰ খাদৰ বাবে যোৱা দশকত উত্তৰ-পূব পৰ্বতীয় অঞ্চলত ট্ৰাক চালক, সহ-চালক আৰু যাত্ৰীয়ে প্ৰাণ হেৰুৱাইছে।",
+    stat3Source: "উৎস: আঞ্চলিক NCRB আৰক্ষী অভিলেখ",
+    stat4Value: "₹৩,৫০০ কোটি",
+    stat4Label: "বাৰ্ষিক অৰ্থনৈতিক মালবাহী পলম",
+    stat4Desc: "জীৱনদায়ক ঔষধ, অক্সিজেন চিলিণ্ডাৰ, খাদ্য ৰেচন আৰু কৃষি সামগ্ৰী বহন কৰা কনভয়সমূহ ছেলা পাছ আৰু সোণাপুৰ টানেলৰ বাধাত আবদ্ধ হৈ থাকে।",
+    stat4Source: "উৎস: লজিষ্টিক্স পৰিষদ অনুমান",
+    conventionalNavTitle: "পৰম্পৰাগত উপভোক্তা নেভিগেশ্বন",
+    conventionalNavBadge: "কেৱল দূৰত্ব ভিত্তিক",
+    conventionalNavBullet1: "কেৱল ৰৈখিক দূৰত্ব (কিমি) হ্ৰাস কৰে, প্ৰায়ে বিপজ্জনক কেঁচা শ্বৰ্টকাট ট্ৰেক বাছি লয়।",
+    conventionalNavBullet2: "পাহাৰৰ ঢালৰ প্ৰৱণতা অৱহেলা কৰে, যাৰ ফলত ১৪%+ ঢালত ব্ৰেক অতিৰিক্ত গৰম হৈ মাৰাত্মক দুৰ্ঘটনা ঘটে।",
+    conventionalNavBullet3: "বহু-এক্সল দলঙৰ ভাৰ সীমাৰ বিষয়ে অজ্ঞাত, সংকীৰ্ণ বেইলি দলঙত মালবাহী ট্ৰাক আবদ্ধ হয়।",
+    conventionalNavBullet4: "কোনো পণ্য অগ্ৰাধিকাৰ নাই: অস্থিৰ পেট্ৰ'লিয়াম টেংকাৰক পাতল যাত্ৰী গাড়ীৰ সৈতে একে ব্যৱহাৰ কৰে।",
+    raahSetuEngineBadge: "ভূ-ভাগ দ্বৈত-সমাধান",
+    explorePlatformModules: "প্লেটফৰ্ম মডিউল অন্বেষণ কৰক",
     calibratedGpsTelemetry: "কেলিব্ৰেটেড জিপিএছ টেলিমেট্ৰি",
     headingLabel: "দিশ",
     terminalAdvisoryLabel: "টাৰ্মিনেল পৰামৰ্শ",
@@ -1688,6 +1848,44 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     codeExpired: "কোডের মেয়াদ শেষ। অনুগ্রহ করে নতুন কোড অনুরোধ করুন।",
     simulatedEmailNotice: "লাইভ ইমেল ডিসপ্যাচ সিমুলেশন / পরীক্ষামূলক কোড:",
     clickToFill: "অটো-ফিল করতে ক্লিক করুন",
+    signUpTitle: "ফ্লিট অ্যাকাউন্ট তৈরি করুন",
+    signUpSubtitle: "পর্বতীয় লজিস্টিক্স ফ্লিট চালক, জরুরি প্রেরক বা রাজ্য রাজপথ পর্যবেক্ষণ কর্মকর্তা হিসেবে নিবন্ধন করুন।",
+    confirmPasswordLabel: "পাসওয়ার্ড নিশ্চিত করুন",
+    confirmPasswordPlaceholder: "আপনার সুরক্ষিত পাসওয়ার্ড পুনরায় দিন",
+    passwordMismatch: "পাসওয়ার্ড মিলছে না। অনুগ্রহ করে পুনরায় দিন।",
+    createAccountBtn: "অ্যাকাউন্ট তৈরি করুন ও যাচাই করুন →",
+    alreadyHaveAccount: "ইতিমধ্যে অ্যাকাউন্ট আছে?",
+    dontHaveAccount: "অ্যাকাউন্ট নেই?",
+    verifiedSigningIn: "যাচাই সম্পন্ন! লগ ইন হচ্ছে...",
+    expiresInMins: "১০ মিনিটে মেয়াদ শেষ",
+    copiedText: "কপি হয়েছে!",
+    groundRealityBadge: "মাঠ পর্যায়ের বাস্তবতা ও MoRTH দুর্ঘটনা শুমারি",
+    groundRealityTitle: "পর্বতীয় রাজপথ লজিস্টিক্সের জীবন-মরণ বাস্তবতা",
+    groundRealityDesc: "সড়ক পরিবহন ও মহাসড়ক মন্ত্রণালয় (MoRTH), জাতীয় অপরাধ রেকর্ড ব্যুরো (NCRB) এবং ভারতীয় ভূতাত্ত্বিক জরিপ (GSI)-এর সরকারি তথ্য একটি গুরুতর আঞ্চলিক লজিস্টিক্স সংকট নথিভুক্ত করে।",
+    stat1Value: "১,৬৮,৪৯১",
+    stat1Label: "বার্ষিক জাতীয় মৃত্যু সংখ্যা",
+    stat1Desc: "MoRTH-এর সরকারি শুমারি অনুসারে, পর্বতীয় ঘাট অংশে দুর্ঘটনায় মৃত্যুর হার ৪৫.২%—সমতল মহাসড়ক দুর্ঘটনার প্রায় দ্বিগুণ।",
+    stat1Source: "উৎস: MoRTH সড়ক দুর্ঘটনা প্রতিবেদন",
+    stat2Value: "৪০০+",
+    stat2Label: "বার্ষিক প্রধান ভূমিধস",
+    stat2Desc: "GSI ভূমিধস ডেটাবেস প্রতি বর্ষায় ৪০০-এর বেশি গুরুতর পাথর পতন ও ধ্বংসাবশেষ স্খলন নথিভুক্ত করে, যা NH-6, NH-2 এবং NH-13-এর মতো জীবনরেখাকে সপ্তাহের জন্য সম্পূর্ণ বিচ্ছিন্ন করে।",
+    stat2Source: "উৎস: ভারতীয় ভূতাত্ত্বিক জরিপ (GSI)",
+    stat3Value: "৬,২০০+",
+    stat3Label: "উত্তর-পূর্ব করিডোরে হারানো প্রাণ",
+    stat3Desc: "ব্রেক বিকল, চরম ঢাল এবং কিনারার খাদের কারণে গত দশকে উত্তর-পূর্ব পর্বতমালায় ট্রাক চালক, সহ-চালক এবং যাত্রীরা প্রাণ হারিয়েছেন।",
+    stat3Source: "উৎস: আঞ্চলিক NCRB পুলিশ রেকর্ড",
+    stat4Value: "₹৩,৫০০ কোটি",
+    stat4Label: "বার্ষিক অর্থনৈতিক মালবাহী বিলম্ব",
+    stat4Desc: "জীবন রক্ষাকারী ওষুধ, অক্সিজেন সিলিন্ডার, খাদ্য রেশন এবং কৃষি পণ্য বহনকারী কনভয়গুলি সেলা পাস এবং সোনাপুর টানেলের বাধায় আটকে থাকে।",
+    stat4Source: "উৎস: লজিস্টিক্স কাউন্সিল অনুমান",
+    conventionalNavTitle: "প্রচলিত ভোক্তা নেভিগেশন",
+    conventionalNavBadge: "শুধু দূরত্ব ভিত্তিক",
+    conventionalNavBullet1: "শুধুমাত্র রৈখিক দূরত্ব (কিমি) কমায়, প্রায়ই বিপজ্জনক কাঁচা শর্টকাট ট্র্যাক বেছে নেয়।",
+    conventionalNavBullet2: "পাহাড়ের ঢালের প্রবণতা উপেক্ষা করে, যার ফলে ১৪%+ ঢালে ব্রেক অতিরিক্ত গরম হয়ে মারাত্মক দুর্ঘটনা ঘটে।",
+    conventionalNavBullet3: "বহু-অক্ষ সেতুর ভার সীমা সম্পর্কে অজ্ঞাত, সংকীর্ণ বেইলি সেতুতে মালবাহী ট্রাক আটকে যায়।",
+    conventionalNavBullet4: "কোনো পণ্য অগ্রাধিকার নেই: অস্থিতিশীল পেট্রোলিয়াম ট্যাঙ্কারকে হালকা যাত্রী গাড়ির মতো গণ্য করে।",
+    raahSetuEngineBadge: "ভূ-ভাগ দ্বৈত-সমাধান",
+    explorePlatformModules: "প্ল্যাটফর্ম মডিউল অন্বেষণ করুন",
     calibratedGpsTelemetry: "ক্যালিব্রেটেড জিপিএস টেলিমেট্রি",
     headingLabel: "দিক",
     terminalAdvisoryLabel: "টার্মিনাল পরামর্শ",

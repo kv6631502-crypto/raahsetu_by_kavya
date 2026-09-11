@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Send,
   Shield,
+  UserPlus,
   Waypoints,
 } from "lucide-react";
 
@@ -35,12 +36,18 @@ interface AuthPageProps {
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lang = "en" }) => {
   const t = TRANSLATIONS[lang];
+
+  // Auth mode: login or signup
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authStep, setAuthStep] = useState<"credentials" | "verification">("credentials");
 
   const [email, setEmail] = useState("driver@raahsetu.in");
   const [password, setPassword] = useState("SafeTransit@2026");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [trustedPersonNo, setTrustedPersonNo] = useState("+91 94350 99881");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Captcha State
   const [captchaCode, setCaptchaCode] = useState("");
@@ -153,6 +160,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
     renderCaptcha(code);
   }, []);
 
+  // Reset fields when switching modes
+  const switchMode = (mode: "login" | "signup") => {
+    setAuthMode(mode);
+    setAuthStep("credentials");
+    setPasswordError(null);
+    setCaptchaError(null);
+    setVerificationError(null);
+    setConfirmPassword("");
+    setOtpInput("");
+    setSentCode(null);
+    setIsVerifiedSuccess(false);
+    refreshCaptcha();
+  };
+
   // Request 6-digit OTP code to email
   const requestEmailCode = async (targetEmail: string) => {
     setIsRequestingCode(true);
@@ -182,6 +203,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
   // Step 1 Submission: Validate Captcha -> Request Email Code -> Move to Step 2
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // For signup: validate confirm password
+    if (authMode === "signup") {
+      if (password !== confirmPassword) {
+        setPasswordError(t.passwordMismatch);
+        return;
+      }
+    }
 
     // Validate Captcha
     if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
@@ -298,10 +327,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
               {/* Header */}
               <div className="space-y-1">
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  {t.authTitle}
+                  {authMode === "login" ? t.authTitle : t.signUpTitle}
                 </h1>
                 <p className="text-xs text-muted-foreground">
-                  {t.authSubtitle}
+                  {authMode === "login" ? t.authSubtitle : t.signUpSubtitle}
                 </p>
               </div>
 
@@ -336,7 +365,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                       type={showPassword ? "text" : "password"}
                       required
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError) setPasswordError(null);
+                      }}
                       placeholder={t.passwordPlaceholder}
                       className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
                     />
@@ -350,6 +382,43 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                     </button>
                   </div>
                 </div>
+
+                {/* 2b. Confirm Password (Signup only) */}
+                {authMode === "signup" && (
+                  <div>
+                    <label className="block font-semibold text-muted-foreground mb-1">
+                      {t.confirmPasswordLabel}
+                    </label>
+                    <div className="relative flex items-center">
+                      <Lock className="size-4 text-muted-foreground absolute left-3 pointer-events-none" />
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (passwordError) setPasswordError(null);
+                        }}
+                        placeholder={t.confirmPasswordPlaceholder}
+                        className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                    {passwordError && (
+                      <div className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 font-medium">
+                        <AlertCircle className="size-3.5" />
+                        <span>{passwordError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 3. Trusted Person No */}
                 <div>
@@ -422,13 +491,45 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                 >
                   {isRequestingCode ? (
                     <RefreshCw className="size-4 animate-spin" />
-                  ) : (
+                  ) : authMode === "login" ? (
                     <>
                       <span>{t.signInBtn}</span>
                       <ArrowRight className="size-4" />
                     </>
+                  ) : (
+                    <>
+                      <UserPlus className="size-4" />
+                      <span>{t.createAccountBtn}</span>
+                    </>
                   )}
                 </button>
+
+                {/* Toggle between Login and Sign Up */}
+                <div className="text-center pt-2">
+                  {authMode === "login" ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t.dontHaveAccount}{" "}
+                      <button
+                        type="button"
+                        onClick={() => switchMode("signup")}
+                        className="text-primary font-semibold hover:underline cursor-pointer"
+                      >
+                        {t.signUpTitle}
+                      </button>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {t.alreadyHaveAccount}{" "}
+                      <button
+                        type="button"
+                        onClick={() => switchMode("login")}
+                        className="text-primary font-semibold hover:underline cursor-pointer"
+                      >
+                        {t.authTitle}
+                      </button>
+                    </p>
+                  )}
+                </div>
               </form>
             </div>
           ) : (
@@ -478,7 +579,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                       className="px-2 py-0.5 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-bold cursor-pointer transition-colors inline-flex items-center gap-1"
                     >
                       {isCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-                      <span>{isCopied ? "Copied!" : t.clickToFill}</span>
+                      <span>{isCopied ? t.copiedText : t.clickToFill}</span>
                     </button>
                   </div>
                   <div className="flex items-center justify-between bg-card/80 p-2.5 rounded-xl border border-border">
@@ -486,7 +587,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                       {sentCode.slice(0, 3)} - {sentCode.slice(3)}
                     </div>
                     <span className="text-[10px] font-medium text-muted-foreground">
-                      Expires in 10 mins
+                      {t.expiresInMins}
                     </span>
                   </div>
                 </div>
@@ -555,7 +656,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                   ) : isVerifiedSuccess ? (
                     <>
                       <CheckCircle2 className="size-4" />
-                      <span>Verified! Signing in...</span>
+                      <span>{t.verifiedSigningIn}</span>
                     </>
                   ) : (
                     <>
