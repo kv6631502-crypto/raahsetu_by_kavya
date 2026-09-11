@@ -45,6 +45,7 @@ import { compareRoutes } from "./api";
 import type { Comparison, Network, Location as ApiLocation } from "./types";
 import { IntroPage } from "./IntroPage";
 import { AuthPage } from "./AuthPage";
+import { VehicleDetailsPage } from "./VehicleDetailsPage";
 import {
   detectPhoneNativeLanguage,
   getLocalizedNavInstruction,
@@ -331,6 +332,13 @@ export interface DriverProfile {
   trustedContactName: string;
   trustedContactMobile: string;
   isRegistered: boolean;
+  grossWeightTonnes?: number;
+  axleCount?: number;
+  heightMetres?: number;
+  widthMetres?: number;
+  fleetDepot?: string;
+  brakeCheckPassed?: boolean;
+  chainsEquipped?: boolean;
 }
 
 const DEFAULT_DRIVER_PROFILE: DriverProfile = {
@@ -559,8 +567,8 @@ export default function App() {
     } catch {}
   };
 
-  // Views: "intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system"
-  const [activeView, setActiveView] = useState<"intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system">("intro");
+  // Views: "intro" | "dispatcher" | "auth" | "vehicle_details" | "districts" | "advisories" | "system"
+  const [activeView, setActiveView] = useState<"intro" | "dispatcher" | "auth" | "vehicle_details" | "districts" | "advisories" | "system">("intro");
   const [districtFilterState, setDistrictFilterState] = useState<string>("ALL");
   const [districtSearchQuery, setDistrictSearchQuery] = useState<string>("");
 
@@ -1334,18 +1342,20 @@ export default function App() {
               )}
             </div>
 
-            {/* Driver Profile Button */}
+            {/* Driver & Vehicle Profile Button */}
             <button
               type="button"
-              onClick={() => setActiveView("auth")}
+              onClick={() => setActiveView(driverProfile.isRegistered ? "vehicle_details" : "auth")}
               className={`hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border text-xs font-medium cursor-pointer transition-colors ${
-                activeView === "auth"
+                activeView === "auth" || activeView === "vehicle_details"
                   ? "bg-primary text-primary-foreground font-semibold"
                   : "bg-card hover:bg-secondary text-foreground"
               }`}
             >
               <Truck className="size-3.5 text-primary" />
-              <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : t.navSignIn}</span>
+              <span className="font-semibold text-foreground">
+                {driverProfile.isRegistered ? `${driverProfile.vehicleNo} (Specs)` : t.navSignIn}
+              </span>
             </button>
 
             {/* Emergency SOS Button */}
@@ -1412,6 +1422,17 @@ export default function App() {
         >
           {t.tabSystem}
         </button>
+        {driverProfile.isRegistered && (
+          <button
+            type="button"
+            onClick={() => setActiveView("vehicle_details")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
+              activeView === "vehicle_details" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            🚚 {driverProfile.vehicleNo}
+          </button>
+        )}
       </div>
 
       {/* Active Road Closure Banner (Visible on Dispatcher, Districts, Advisories, System; hidden on Welcome/Intro) */}
@@ -1528,11 +1549,34 @@ export default function App() {
                   trustedContactName: "Fleet Dispatch Base",
                   isRegistered: true,
                 });
-                setActiveView("dispatcher");
+                setActiveView("vehicle_details");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               onBackToHome={() => {
                 setActiveView("intro");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          </div>
+        )}
+
+        {/* VIEW 1.5: VEHICLE & CARGO DETAILS PAGE (Appears immediately after login) */}
+        {activeView === "vehicle_details" && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+            <VehicleDetailsPage
+              lang={lang}
+              initialProfile={driverProfile}
+              onSave={(updated) => {
+                handleSaveDriverProfile(updated);
+                setActiveView("dispatcher");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onSkip={() => {
+                setActiveView("dispatcher");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              onBack={() => {
+                setActiveView("auth");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             />
