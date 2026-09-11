@@ -6,10 +6,14 @@ along the Guwahati ➔ Tawang strategic highway corridor into the RaahSetu API.
 
 from __future__ import annotations
 
+import sys
 import time
 from datetime import UTC, datetime
 
 import httpx
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 API_BASE = "http://127.0.0.1:8000"
 
@@ -24,7 +28,7 @@ WAYPOINTS = [
 
 def stream_ais140_telemetry():
     print("=" * 70)
-    print("RaahSetu — AIS-140 Commercial Freight Telematics Demonstration")
+    print("RaahSetu - AIS-140 Commercial Freight Telematics Demonstration")
     print("Vehicle: AS-01-GB-4821 (Tata Prima 2830.K Heavy Freight)")
     print("Standard: MoRTH AIS-140 Telematics Protocol")
     print("=" * 70)
@@ -50,20 +54,20 @@ def stream_ais140_telemetry():
         }
 
         try:
-            res = httpx.post(f"{API_BASE}/api/v1/fleet/telemetry/ais140", json=packet, timeout=5.0)
+            res = httpx.post(f"{API_BASE}/api/v1/fleet/telemetry/ais140", json=packet, timeout=10.0)
             if res.status_code == 200:
                 data = res.json()
-                status_badge = "⚠️ PROXIMITY ALERT" if data["status"] == "warning" else "✅ INGESTED"
+                status_badge = "[!] PROXIMITY ALERT" if data["status"] == "warning" else "[OK] INGESTED"
                 print(f"[{i}/5] {wp['name']:<42} {status_badge} ({wp['speed']} km/h)")
                 if data["proximity_hazards"]:
                     for h in data["proximity_hazards"]:
-                        print(f"      ↳ Nearby Hazard: {h['title']} ({h['distance_m']}m away)")
+                        print(f"      -> Nearby Hazard: {h['title']} ({h['distance_m']}m away)")
             else:
                 print(f"[{i}/5] Telematics response code: {res.status_code} ({res.text})")
-        except Exception as e:
+        except httpx.HTTPError as e:
             print(f"[{i}/5] Could not reach {API_BASE} ({e}). Ensure backend is running.")
 
-        time.sleep(0.5)
+        time.sleep(0.3)
 
     print("\nAIS-140 Telemetry demonstration complete.")
 
