@@ -1,6 +1,5 @@
 """Generate validated backend/data/osm-northeast.json from frontend/src/routeData.ts."""
 
-import json
 import re
 from datetime import UTC, datetime
 from pathlib import Path
