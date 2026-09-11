@@ -843,8 +843,8 @@ export default function App() {
   // Derive route path from live backend comparison when available
   const backendPath = useMemo(() => {
     if (!backendComparison) return null;
-    const route = backendComparison.routes.find((r) => r.id === "risk_aware" && r.status === "available");
-    if (!route || !route.edge_ids || route.edge_ids.length === 0) return null;
+    const route = backendComparison.routes.find((r) => r.id === "risk_aware");
+    if (!route || route.status !== "available" || !route.edge_ids || route.edge_ids.length === 0) return null;
     const path: string[] = [];
     for (const edgeId of route.edge_ids) {
       const parts = edgeId.split(":")[0].split(">");

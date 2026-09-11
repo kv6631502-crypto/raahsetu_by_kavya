@@ -15,6 +15,7 @@ import psycopg
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .alerts import AlertStore, PostgresAlertStore
@@ -759,4 +760,10 @@ def verify_verification_code(body: VerificationVerify):
         "email": email,
         "message": "Email address verified successfully",
     }
+
+
+# Serve built frontend static files so the entire system runs on one unified link
+dist_dir = ROOT.parent / "frontend" / "dist"
+if dist_dir.exists():
+    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="static")
 
