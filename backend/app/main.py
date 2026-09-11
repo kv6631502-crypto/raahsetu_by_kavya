@@ -100,6 +100,11 @@ async def lifespan(app: FastAPI):
         app.state.graphs["osm-guwahati-corridor-reviewed-v1"] = RoadGraph(
             Dataset.model_validate_json(reviewed.read_text(encoding="utf-8"))
         )
+    northeast = ROOT / "data" / "osm-northeast.json"
+    if northeast.exists():
+        app.state.graphs["osm-northeast"] = RoadGraph(
+            Dataset.model_validate_json(northeast.read_text(encoding="utf-8"))
+        )
     logger.info("Loaded dataset %s (%s)", app.state.graph.dataset.id, app.state.graph.version)
     yield
 

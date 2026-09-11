@@ -814,9 +814,9 @@ export default function App() {
     const startTime = performance.now();
     compareRoutes(
       {
-        dataset_id: "demo",
-        origin: { node_id: origin || "n2_0" },
-        destination: { node_id: destination || "n2_6" },
+        dataset_id: "osm-northeast",
+        origin: { node_id: origin },
+        destination: { node_id: destination },
         vehicle: vehicle === "light" ? "light" : "heavy",
         weather: weather === "monsoon" ? "heavy_rain" : "normal",
         risk_aversion: 0.5,
@@ -839,6 +839,22 @@ export default function App() {
 
     return () => controller.abort();
   }, [origin, destination, vehicle, weather]);
+
+  // Derive route path from live backend comparison when available
+  const backendPath = useMemo(() => {
+    if (!backendComparison) return null;
+    const route = backendComparison.routes.find((r) => r.id === "risk_aware" && r.status === "available");
+    if (!route || !route.edge_ids || route.edge_ids.length === 0) return null;
+    const path: string[] = [];
+    for (const edgeId of route.edge_ids) {
+      const parts = edgeId.split(":")[0].split(">");
+      if (parts.length === 2) {
+        if (path.length === 0) path.push(parts[0]);
+        path.push(parts[1]);
+      }
+    }
+    return path.length > 0 ? path : null;
+  }, [backendComparison]);
 
   // 3D Terrain Map Geometry Models
   const terrain3dNetwork = useMemo<Network>(() => {
@@ -893,15 +909,18 @@ export default function App() {
     return solvePath(origin, destination, (edge) => edge.dist);
   }, [origin, destination]);
 
-  // Safe / Risk-Aware route solver
+  // Safe / Risk-Aware route solver: uses live FastAPI backend solve when available, falls back to offline Dijkstra
   const safe = useMemo(() => {
+    if (backendPath && backendPath.length > 1) {
+      return backendPath;
+    }
     const cProf = COMMODITY_PROFILES[commodity];
     const riskMultiplier = cProf ? cProf.riskToleranceMult : 2.5;
     return solvePath(origin, destination, (edge) => {
       const adjRisk = getAdjustedEdgeRisk(edge, vehicle, weather);
       return edge.dist * (1 + adjRisk * riskMultiplier);
     });
-  }, [origin, destination, vehicle, weather, commodity]);
+  }, [backendPath, origin, destination, vehicle, weather, commodity]);
 
   const shortestStats = useMemo(() => (shortest ? computeStats(shortest, vehicle, weather) : null), [shortest, vehicle, weather]);
   const safeStats = useMemo(() => (safe ? computeStats(safe, vehicle, weather) : null), [safe, vehicle, weather]);
