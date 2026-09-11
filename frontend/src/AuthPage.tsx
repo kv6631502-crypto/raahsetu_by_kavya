@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { SupportedLanguage, TRANSLATIONS } from "./translations";
+import { AuthError, signIn, signUp } from "./api";
 
 interface AuthPageProps {
   onSuccess: (profile: {
@@ -41,13 +42,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authStep, setAuthStep] = useState<"credentials" | "verification">("credentials");
 
-  const [email, setEmail] = useState("driver@raahsetu.in");
-  const [password, setPassword] = useState("SafeTransit@2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [trustedPersonNo, setTrustedPersonNo] = useState("+91 94350 99881");
+  const [trustedPersonNo, setTrustedPersonNo] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Captcha State
   const [captchaCode, setCaptchaCode] = useState("");
@@ -178,27 +180,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
   const requestEmailCode = async (targetEmail: string) => {
     setIsRequestingCode(true);
     setVerificationError(null);
-    const localFallbackCode = `${Math.floor(100000 + Math.random() * 900000)}`;
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
-
-    try {
-      const resp = await fetch(`${apiBase}/api/v1/auth/request-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail }),
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        setSentCode(data.dev_code || localFallbackCode);
-      } else {
-        setSentCode(localFallbackCode);
-      }
-    } catch {
-      setSentCode(localFallbackCode);
-    } finally {
-      setIsRequestingCode(false);
-      setResendTimer(30);
-    }
+    void targetEmail;
+    setSentCode(null);
+    setVerificationError("Email verification is handled by Supabase Auth during sign-up.");
+    setIsRequestingCode(false);
   };
 
   // Step 1 Submission: Validate Captcha -> Request Email Code -> Move to Step 2
@@ -220,8 +205,33 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
       return;
     }
 
-    await requestEmailCode(email);
-    setAuthStep("verification");
+    setIsRequestingCode(true);
+    setAuthError(null);
+    try {
+      const session = authMode === "login"
+        ? await signIn(email.trim(), password)
+        : await signUp(email.trim(), password, email.split("@")[0] || "Field official");
+
+      if (!session.access_token) {
+        setAuthError("Account created. Confirm your email from Supabase, then sign in.");
+        return;
+      }
+
+      sessionStorage.setItem("raahsetu_token", session.access_token);
+      onSuccess({
+        driverName: email.split("@")[0] || "Field official",
+        driverMobile: email,
+        vehicleNo: "",
+        trustedContactMobile: trustedPersonNo,
+        vehicleType: "heavy",
+        commodity: "medical",
+      });
+    } catch (error) {
+      setAuthError(error instanceof AuthError || error instanceof Error ? error.message : "Unable to sign in. Check the Supabase configuration.");
+      refreshCaptcha();
+    } finally {
+      setIsRequestingCode(false);
+    }
   };
 
   // Step 2 Submission: Verify Code -> Complete Authentication
@@ -233,43 +243,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
     setIsVerifyingCode(true);
     setVerificationError(null);
 
-    let isVerified = false;
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
-    try {
-      const resp = await fetch(`${apiBase}/api/v1/auth/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: cleanInput }),
-      });
-      if (resp.ok) {
-        isVerified = true;
-      } else {
-        const err = await resp.json();
-        setVerificationError(err.detail || t.invalidCode);
-      }
-    } catch {
-      if (sentCode && cleanInput === sentCode) {
-        isVerified = true;
-      } else {
-        setVerificationError(t.invalidCode);
-      }
-    } finally {
-      setIsVerifyingCode(false);
-    }
-
-    if (isVerified) {
-      setIsVerifiedSuccess(true);
-      setTimeout(() => {
-        onSuccess({
-          driverName: email.split("@")[0] || "Fleet Driver",
-          driverMobile: email,
-          vehicleNo: "AS-01-GB-4821",
-          trustedContactMobile: trustedPersonNo || "+91 94350 99881",
-          vehicleType: "heavy",
-          commodity: "medical",
-        });
-      }, 700);
-    }
+    void cleanInput;
+    setIsVerifyingCode(false);
+    setVerificationError("Use the secure Supabase sign-in form to continue.");
   };
 
   return (
@@ -477,12 +453,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                       className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs font-mono uppercase tracking-wider"
                     />
                   </div>
-                  {captchaError && (
-                    <div className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 font-medium">
-                      <AlertCircle className="size-3.5" />
-                      <span>{captchaError}</span>
-                    </div>
-                  )}
+                {captchaError && (
+                  <div className="flex items-center gap-1.5 text-xs text-destructive mt-1.5 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    <span>{captchaError}</span>
+                  </div>
+                )}
+                {authError && (
+                  <div className="flex items-center gap-1.5 text-xs text-destructive mt-2 font-medium">
+                    <AlertCircle className="size-3.5" />
+                    <span>{authError}</span>
+                  </div>
+                )}
                 </div>
 
                 {/* 5. Submit Button */}

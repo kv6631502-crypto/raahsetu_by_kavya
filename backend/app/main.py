@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+import re
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -15,13 +16,11 @@ import psycopg
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
-from .alerts import AlertStore, PostgresAlertStore
+from .alerts import AlertStore, InMemoryAlertStore, PostgresAlertStore
 from .auth import AuthUser, require_reviewer, require_user
-from .field_reports import FieldReportStore, PostgresFieldReportStore
-from .fleet import FleetStore, PostgresFleetStore
+from .field_reports import FieldReportStore, InMemoryFieldReportStore, PostgresFieldReportStore
+from .fleet import FleetStore, InMemoryFleetStore, PostgresFleetStore
 from .models import (
     Alert,
     ConnectivitySummary,
@@ -41,6 +40,7 @@ from .models import (
     VehicleSummary,
 )
 from .routing import VEHICLES, RoadGraph
+from .weather import get_all_live_weather, get_station_weather
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT.parent / ".env")
@@ -77,6 +77,20 @@ def discover_dataset_paths() -> dict[str, Path]:
     return paths
 
 
+def read_dataset_header(path: Path) -> dict[str, object]:
+    """Read graph metadata without parsing potentially multi-gigabyte node arrays."""
+    with path.open("r", encoding="utf-8") as handle:
+        header = handle.read(65536)
+    values: dict[str, object] = {}
+    for key in ("id", "title", "is_synthetic"):
+        match = re.search(rf'"{key}"\s*:\s*("(?:[^"\\]|\\.)*"|true|false|null)', header)
+        if not match:
+            continue
+        raw = match.group(1)
+        values[key] = json.loads(raw)
+    return values
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.graph = load_graph()
@@ -101,11 +115,6 @@ async def lifespan(app: FastAPI):
         app.state.graphs["osm-guwahati-corridor-reviewed-v1"] = RoadGraph(
             Dataset.model_validate_json(reviewed.read_text(encoding="utf-8"))
         )
-    northeast = ROOT / "data" / "osm-northeast.json"
-    if northeast.exists():
-        app.state.graphs["osm-northeast"] = RoadGraph(
-            Dataset.model_validate_json(northeast.read_text(encoding="utf-8"))
-        )
     logger.info("Loaded dataset %s (%s)", app.state.graph.dataset.id, app.state.graph.version)
     yield
 
@@ -126,16 +135,36 @@ app.add_middleware(
 )
 
 
+_field_report_store: FieldReportStore | None = None
+_fleet_store: FleetStore | None = None
+_alert_store: AlertStore | None = None
+
+
 def get_field_report_store() -> FieldReportStore:
-    return PostgresFieldReportStore()
+    global _field_report_store
+    if os.getenv("DATABASE_URL"):
+        return PostgresFieldReportStore()
+    if _field_report_store is None:
+        _field_report_store = InMemoryFieldReportStore()
+    return _field_report_store
 
 
 def get_fleet_store() -> FleetStore:
-    return PostgresFleetStore()
+    global _fleet_store
+    if os.getenv("DATABASE_URL"):
+        return PostgresFleetStore()
+    if _fleet_store is None:
+        _fleet_store = InMemoryFleetStore()
+    return _fleet_store
 
 
 def get_alert_store() -> AlertStore:
-    return PostgresAlertStore()
+    global _alert_store
+    if os.getenv("DATABASE_URL"):
+        return PostgresAlertStore()
+    if _alert_store is None:
+        _alert_store = InMemoryAlertStore()
+    return _alert_store
 
 
 @app.get("/health")
@@ -169,6 +198,16 @@ def data_readiness() -> dict:
 @app.get("/api/v1/data-status")
 def data_status():
     return data_readiness()
+
+
+@app.get("/api/v1/weather/live")
+def live_weather(region_code: str | None = None):
+    if region_code:
+        w = dict(get_station_weather(region_code))
+        if hasattr(w["fetched_at"], "isoformat"):
+            w["fetched_at"] = w["fetched_at"].isoformat()
+        return w
+    return {"stations": get_all_live_weather()}
 
 
 @app.get("/api/v1/public-config")
@@ -401,8 +440,14 @@ def bootstrap(dataset: str = "demo"):
                 "id": key,
                 "label": app.state.graphs[key].dataset.title
                 if key in app.state.graphs
-                else dataset_label(key),
-                "is_synthetic": key == "demo",
+                else read_dataset_header(app.state.dataset_paths[key]).get(
+                    "title", dataset_label(key)
+                ),
+                "is_synthetic": (
+                    app.state.graphs[key].dataset.is_synthetic
+                    if key in app.state.graphs
+                    else bool(read_dataset_header(app.state.dataset_paths[key]).get("is_synthetic", True))
+                ),
             }
             for key in dict.fromkeys([*app.state.graphs, *app.state.dataset_paths])
         ],
@@ -589,14 +634,18 @@ def compare_routes(request: RouteRequest):
     # The graph is read-only; all scenario inputs remain local to this request.
     try:
         graph = get_graph(request.dataset_id)
-        if os.getenv("DATABASE_URL") and request.dataset_id != "demo":
-            try:
-                region = "assam" if request.dataset_id.startswith("osm-guwahati") else request.dataset_id.removeprefix("osm-")
-                events = PostgresFieldReportStore().active_events(region)
-                blocked = [event["edge_id"] for event in events if event["dataset_id"] == request.dataset_id and event["accessibility_status"] == "blocked" and event["edge_id"] in graph.edges]
-                request = request.model_copy(update={"closed_edge_ids": list(dict.fromkeys([*request.closed_edge_ids, *blocked]))})
-            except (psycopg.Error, OSError, Exception) as db_exc:  # noqa: BLE001
-                logger.warning("Failed to retrieve live accessibility closures from PostGIS, using graph defaults: %s", db_exc)
+        if request.dataset_id != "demo":
+            region = "assam" if request.dataset_id.startswith("osm-guwahati") else request.dataset_id.removeprefix("osm-")
+            events = get_field_report_store().active_events(region)
+            blocked = [
+                event["edge_id"]
+                for event in events
+                if event.get("dataset_id") == request.dataset_id
+                and event.get("accessibility_status") == "blocked"
+                and event.get("review_status", "authority_verified") in {"accepted", "authority_verified"}
+                and event["edge_id"] in graph.edges
+            ]
+            request = request.model_copy(update={"closed_edge_ids": list(dict.fromkeys([*request.closed_edge_ids, *blocked]))})
         return graph.compare(request)
     except ValueError as exc:
         raise HTTPException(422, detail=str(exc)) from exc
@@ -688,8 +737,6 @@ def upload_field_report_attachment(
     path = f"{user.id}/{report_id}/{digest}.{file.content_type.rsplit('/', 1)[1]}"
     base_url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_PUBLISHABLE_KEY")
-    if not base_url or not key:
-        raise HTTPException(503, detail="Evidence storage service is not configured")
     try:
         response = httpx.post(
             f"{base_url}/storage/v1/object/field-report-evidence/{path}",
@@ -707,63 +754,12 @@ def upload_field_report_attachment(
         raise HTTPException(404, detail=str(exc)) from exc
 
 
-class VerificationRequest(BaseModel):
-    email: str
+@app.post("/api/v1/auth/request-code", status_code=410)
+@app.post("/api/v1/auth/verify-code", status_code=410)
+def deprecated_demo_auth() -> None:
+    """Prevent accidental use of the former in-memory development OTP flow.
 
-
-class VerificationVerify(BaseModel):
-    email: str
-    code: str
-
-
-VERIFICATION_CODES: dict[str, tuple[str, float]] = {}
-
-
-@app.post("/api/v1/auth/request-code")
-def request_verification_code(body: VerificationRequest):
-    import secrets
-    import time
-
-    email = body.email.strip().lower()
-    if not email or "@" not in email:
-        raise HTTPException(400, detail="A valid email address is required")
-    code = f"{secrets.randbelow(900000) + 100000}"
-    expires_at = time.time() + 600.0  # 10 minutes
-    VERIFICATION_CODES[email] = (code, expires_at)
-    logger.info(f"[EMAIL VERIFICATION] Dispatched verification code {code} to {email}")
-    return {
-        "status": "sent",
-        "email": email,
-        "expires_in": 600,
-        "dev_code": code,
-        "message": f"Verification code sent to {email}",
-    }
-
-
-@app.post("/api/v1/auth/verify-code")
-def verify_verification_code(body: VerificationVerify):
-    import time
-
-    email = body.email.strip().lower()
-    code = body.code.strip()
-    if email not in VERIFICATION_CODES:
-        raise HTTPException(400, detail="No verification code found for this email. Please request a new code.")
-    stored_code, expires_at = VERIFICATION_CODES[email]
-    if time.time() > expires_at:
-        VERIFICATION_CODES.pop(email, None)
-        raise HTTPException(400, detail="Verification code has expired. Please request a new code.")
-    if stored_code != code:
-        raise HTTPException(400, detail="Invalid verification code. Please check your email and try again.")
-    VERIFICATION_CODES.pop(email, None)
-    return {
-        "status": "verified",
-        "email": email,
-        "message": "Email address verified successfully",
-    }
-
-
-# Serve built frontend static files so the entire system runs on one unified link
-dist_dir = ROOT.parent / "frontend" / "dist"
-if dist_dir.exists():
-    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="static")
-
+    Authentication is performed by Supabase Auth from the frontend. Returning a
+    one-time code in an API response is never safe for a deployable service.
+    """
+    raise HTTPException(410, detail="Demo OTP is retired. Use Supabase Auth.")

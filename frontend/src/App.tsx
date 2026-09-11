@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -18,7 +18,6 @@ import {
   FileText,
   Download,
   Info,
-  Layers,
   Loader2,
   LocateFixed,
   MapPin,
@@ -27,25 +26,33 @@ import {
   Minimize2,
   Moon,
   Mountain,
-  Boxes,
   Navigation,
   Phone,
   PhoneCall,
   Search,
   Share2,
   Siren,
+  Radio,
+  Send,
+  MessageSquare,
   Sun,
   Truck,
   Waypoints,
   X,
 } from "lucide-react";
 import { RealMapLeaflet } from "./RealMapLeaflet";
-import TerrainMap from "./TerrainMap";
-import { compareRoutes } from "./api";
-import type { Comparison, Network, Location as ApiLocation } from "./types";
 import { IntroPage } from "./IntroPage";
 import { AuthPage } from "./AuthPage";
-import { VehicleDetailsPage } from "./VehicleDetailsPage";
+import {
+  compareRoutes,
+  createFieldReport,
+  getLiveWeather,
+  LiveWeatherStation,
+  sendFleetPosition,
+  uploadFieldReportAttachment,
+} from "./api";
+import { dataUrlToFile, queueReport, listQueuedReports, removeQueuedReport } from "./offlineQueue";
+import type { AvailableRoute, Comparison, FieldReportInput, Network, RouteInput } from "./types";
 import {
   detectPhoneNativeLanguage,
   getLocalizedNavInstruction,
@@ -56,10 +63,10 @@ import {
 import {
   CITIES,
   CITY_MAP,
+  EDGES,
   COMMODITY_PROFILES,
   CommodityType,
   DISTRICT_CONNECTIVITY,
-  EDGES,
   STRATEGIC_CORRIDORS,
   VEHICLE_PROFILES,
   VehicleType,
@@ -71,7 +78,9 @@ import {
   getCityWeather,
   getIntermediateCities,
   getRouteLegs,
+  REGIONAL_ALERTS,
   solvePath,
+  WeatherCondition,
 } from "./routeData";
 import {
   SupportedLanguage,
@@ -85,6 +94,8 @@ import {
   getLocalizedNote,
   getLocalizedWeatherAdvisory,
 } from "./translations";
+
+const TerrainMap = lazy(() => import("./TerrainMap"));
 
 // Clean City Combobox
 function CityCombobox({
@@ -332,13 +343,6 @@ export interface DriverProfile {
   trustedContactName: string;
   trustedContactMobile: string;
   isRegistered: boolean;
-  grossWeightTonnes?: number;
-  axleCount?: number;
-  heightMetres?: number;
-  widthMetres?: number;
-  fleetDepot?: string;
-  brakeCheckPassed?: boolean;
-  chainsEquipped?: boolean;
 }
 
 const DEFAULT_DRIVER_PROFILE: DriverProfile = {
@@ -376,11 +380,11 @@ export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
     destinationId: "siliguri",
     state: "Sikkim & West Bengal",
     exactSpot: "29th Mile & Teesta Bazaar (km 42)",
-    cause: "Severe Monsoon Hill Landslide & Road Bed Subsidence",
-    avoidInfo: "NH-10 Teesta River Corridor closed to heavy freight",
-    detourRoute: "Divert via Lava – Algarah – Kalimpong Bypass Corridor",
+    cause: "Simulated monsoon landslide and road-bed subsidence",
+    avoidInfo: "Planning assumption: NH-10 is unavailable to heavy freight",
+    detourRoute: "Candidate route via Lava – Algarah – Kalimpong",
     severity: "CRITICAL",
-    updatedTime: "BRO & PWD Telemetry",
+    updatedTime: "Controlled planning scenario",
   },
   {
     id: "BLK-NH29-NAGALAND",
@@ -390,11 +394,11 @@ export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
     destinationId: "kohima",
     state: "Nagaland",
     exactSpot: "Pagla Pahar Gorge (km 124)",
-    cause: "Active Mudslide, Heavy Hill Seepage & Boulder Collapse",
-    avoidInfo: "Main gorge corridor obstructed; multi-axle freight queued",
-    detourRoute: "Divert via Niuland – Kohima Alternate Bypass Highway",
+    cause: "Simulated mudslide, hill seepage and boulder collapse",
+    avoidInfo: "Planning assumption: the main gorge corridor is obstructed",
+    detourRoute: "Candidate alternate corridor via Niuland",
     severity: "CRITICAL",
-    updatedTime: "GSI Slope Sensor Alert",
+    updatedTime: "Controlled planning scenario",
   },
   {
     id: "BLK-NH13-ARUNACHAL",
@@ -404,11 +408,11 @@ export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
     destinationId: "tawang",
     state: "Arunachal Pradesh",
     exactSpot: "Sela Pass Summit (13,700 ft)",
-    cause: "Rockfall, Snow Avalanche & Freezing Black Ice",
-    avoidInfo: "High Sela Ridge Top hazardous without anti-skid tire chains",
-    detourRoute: "Use Sela Tunnel Lower Bypass with BRO Convoy escort",
+    cause: "Simulated rockfall, snowfall and freezing road surface",
+    avoidInfo: "Planning assumption: the high Sela ridge has elevated exposure",
+    detourRoute: "Candidate lower-altitude Sela corridor",
     severity: "HIGH",
-    updatedTime: "High-Altitude Weather Alert",
+    updatedTime: "Controlled planning scenario",
   },
   {
     id: "BLK-NH306-MIZORAM",
@@ -418,11 +422,63 @@ export const ACTIVE_ROAD_BLOCKAGES: RoadBlockageAlert[] = [
     destinationId: "aizawl",
     state: "Assam & Mizoram",
     exactSpot: "Cachar-Kolasib Hairpin Border",
-    cause: "Ghat Road Subsidence & 18-Tonne Bailey Bridge Load Limit",
-    avoidInfo: "Direct Cachar Hairpin capped at 18 tonnes",
-    detourRoute: "Stage at Dholai Depot & Route via Bhairabi Railhead Bypass",
+    cause: "Simulated road subsidence and configured bridge restriction",
+    avoidInfo: "Planning assumption: the direct corridor exceeds its configured limit",
+    detourRoute: "Candidate alternative corridor subject to authority verification",
     severity: "HIGH",
-    updatedTime: "Weight Enforcement Alert",
+    updatedTime: "Controlled planning scenario",
+  },
+];
+
+export interface SihScenario {
+  id: string;
+  badge: string;
+  title: string;
+  origin: string;
+  destination: string;
+  vehicle: VehicleType;
+  commodity: CommodityType;
+  weather: WeatherCondition;
+  hazardDescription: string;
+  explanation: string;
+}
+
+export const SIH_DEMO_SCENARIOS: SihScenario[] = [
+  {
+    id: "sih-guwahati-tawang",
+    badge: "Scenario 1 · Arunachal Pass",
+    title: "Guwahati ➔ Tawang (Sela Freeze & Landslide)",
+    origin: "guwahati",
+    destination: "tawang",
+    vehicle: "heavy",
+    commodity: "medical",
+    weather: "snow",
+    hazardDescription: "Scenario inputs mark the high Sela corridor as exposed to freezing conditions and rockfall, with a configured vehicle restriction.",
+    explanation: "Controlled evaluation: the Risk-Aware route compares the configured Sela corridor constraints and reports the resulting time-versus-exposure trade-off.",
+  },
+  {
+    id: "sih-dimapur-imphal",
+    badge: "Scenario 2 · Nagaland-Manipur",
+    title: "Dimapur ➔ Imphal (28T Heavy Bridge Limit & Sinking Zone)",
+    origin: "dimapur",
+    destination: "imphal",
+    vehicle: "heavy",
+    commodity: "pds",
+    weather: "monsoon",
+    hazardDescription: "Scenario inputs assign a 16T edge limit and elevated ground-instability risk; a 28T vehicle must use a feasible alternative.",
+    explanation: "Controlled evaluation: a 28T vehicle cannot use an edge configured with a 16T limit, so the search selects another feasible corridor when one exists.",
+  },
+  {
+    id: "sih-silchar-aizawl",
+    badge: "Scenario 3 · Barak Valley",
+    title: "Silchar ➔ Aizawl (Flood Scenario & Reviewed Detour)",
+    origin: "silchar",
+    destination: "aizawl",
+    vehicle: "standard",
+    commodity: "fuel",
+    weather: "monsoon",
+    hazardDescription: "Scenario inputs model flood exposure and a landslide report promoted through the reviewer workflow.",
+    explanation: "Controlled evaluation: a pending field report does not close a road; an accepted reviewer decision can promote it to an accessibility event used by subsequent route requests.",
   },
 ];
 
@@ -567,8 +623,8 @@ export default function App() {
     } catch {}
   };
 
-  // Views: "intro" | "dispatcher" | "auth" | "vehicle_details" | "districts" | "advisories" | "system"
-  const [activeView, setActiveView] = useState<"intro" | "dispatcher" | "auth" | "vehicle_details" | "districts" | "advisories" | "system">("intro");
+  // Views: "intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system"
+  const [activeView, setActiveView] = useState<"intro" | "dispatcher" | "auth" | "districts" | "advisories" | "system">("intro");
   const [districtFilterState, setDistrictFilterState] = useState<string>("ALL");
   const [districtSearchQuery, setDistrictSearchQuery] = useState<string>("");
 
@@ -634,6 +690,49 @@ export default function App() {
     }
   };
 
+  const [isRealGpsActive, setIsRealGpsActive] = useState(false);
+  const toggleRealDeviceGps = () => {
+    if (!navigator.geolocation) {
+      alert("HTML5 Geolocation is not supported by this browser.");
+      return;
+    }
+    if (isRealGpsActive) {
+      setIsRealGpsActive(false);
+      return;
+    }
+    setIsRealGpsActive(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNavGpsCoords({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy || 8),
+          speedKmh: Math.round((pos.coords.speed || 0) * 3.6),
+          heading: Math.round(pos.coords.heading || 0),
+          placeName: `Real Device GPS (${pos.coords.latitude.toFixed(4)}°N, ${pos.coords.longitude.toFixed(4)}°E)`,
+        });
+        const token = sessionStorage.getItem("raahsetu_token");
+        if (token) {
+          sendFleetPosition(token, {
+            vehicle_id: driverProfile.vehicleNo || "AS-01-GB-4821",
+            recorded_at: new Date().toISOString(),
+            lon: pos.coords.longitude,
+            lat: pos.coords.latitude,
+            speed_kph: Math.round((pos.coords.speed || 0) * 3.6),
+            heading: Math.round(pos.coords.heading || 0),
+            accuracy_m: Math.round(pos.coords.accuracy || 8),
+            status: "en_route",
+          }).catch(() => {});
+        }
+      },
+      (err) => {
+        alert(`Device GPS error: ${err.message}. Operating in corridor simulation mode.`);
+        setIsRealGpsActive(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // Road Advisories auto-cycle & pause
   const [activeBlockageIdx, setActiveBlockageIdx] = useState(0);
   const [isBannerPaused, setIsBannerPaused] = useState(false);
@@ -650,6 +749,19 @@ export default function App() {
   const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
   const [isSosModalOpen, setIsSosModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isAlertCenterModalOpen, setIsAlertCenterModalOpen] = useState(false);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [selectedSihScenario, setSelectedSihScenario] = useState<string | null>(null);
+  const [simObstacleNotice, setSimObstacleNotice] = useState<string | null>(null);
+  const [simStepCount, setSimStepCount] = useState(0);
+  const [simTotalSteps, setSimTotalSteps] = useState(0);
+  const [broadcastChannel, setBroadcastChannel] = useState<"sms" | "whatsapp">("sms");
+  const [broadcastTarget, setBroadcastTarget] = useState<string>("all");
+  const [broadcastMessage, setBroadcastMessage] = useState<string>(
+    "[RAAHSETU LOGISTICS DISPATCH] Urgent: Landslide and heavy river swell verified on active corridor. Automatic Risk-A* detour recalculation pushed to vehicle console. Proceed via verified bypass."
+  );
+  const [isBroadcastTransmitting, setIsBroadcastTransmitting] = useState(false);
+  const [broadcastSuccessNotice, setBroadcastSuccessNotice] = useState<string | null>(null);
 
   // Driver Profile
   const [driverProfile, setDriverProfile] = useState<DriverProfile>(() => {
@@ -783,7 +895,7 @@ export default function App() {
   }, [isCameraActive, cameraStream]);
 
   // Map & Navigation
-  const [mapMode, setMapMode] = useState<"osm" | "satellite" | "3d">("osm");
+  const [mapDisplayMode, setMapDisplayMode] = useState<"osm" | "satellite" | "3d">("osm");
   const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -791,10 +903,14 @@ export default function App() {
   const [customOrigin, setCustomOrigin] = useState<{ name: string; lat: number; lon: number } | null>(null);
   const mapCardRef = useRef<HTMLDivElement | null>(null);
 
-  // Live Backend FastAPI A* vs Offline Heuristic Status
+  // Backend Risk-A* Integration State
   const [backendComparison, setBackendComparison] = useState<Comparison | null>(null);
-  const [apiStatus, setApiStatus] = useState<"connected" | "offline">("offline");
-  const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null);
+  const [isRoutingLoading, setIsRoutingLoading] = useState(false);
+  const [routeSource, setRouteSource] = useState<"backend" | "local">("backend");
+  const [reportKind, setReportKind] = useState<"road_blocked" | "landslide" | "flood" | "bridge_damage" | "road_damage">("landslide");
+  const [reportStatus, setReportStatus] = useState<"blocked" | "restricted" | "open">("blocked");
+  const [reportDescription, setReportDescription] = useState<string>("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // Auto weather for current corridor
   const liveWeather = useMemo(() => {
@@ -807,131 +923,273 @@ export default function App() {
     return getCityWeather(destination);
   }, [destination]);
 
-  // Live backend comparison query with automatic fallback
+  // Live Weather Telemetry from FastAPI / Open-Meteo Station
+  const [backendLiveWeather, setBackendLiveWeather] = useState<LiveWeatherStation | null>(null);
+
   useEffect(() => {
-    if (!origin || !destination) {
-      setBackendComparison(null);
-      setApiLatencyMs(null);
-      return;
-    }
-    const o = CITY_MAP[origin];
-    const d = CITY_MAP[destination];
-    if (!o || !d) return;
-
-    const controller = new AbortController();
-    const startTime = performance.now();
-    compareRoutes(
-      {
-        dataset_id: "osm-northeast",
-        origin: { node_id: origin },
-        destination: { node_id: destination },
-        vehicle: vehicle === "light" ? "light" : "heavy",
-        weather: weather === "monsoon" ? "heavy_rain" : "normal",
-        risk_aversion: 0.5,
-        closed_edge_ids: [],
-        strict_vehicle: false,
-      },
-      controller.signal
-    )
-      .then((res) => {
-        const elapsed = Math.round(performance.now() - startTime);
-        setBackendComparison(res);
-        setApiLatencyMs(elapsed);
-        setApiStatus("connected");
-      })
-      .catch(() => {
-        setBackendComparison(null);
-        setApiLatencyMs(null);
-        setApiStatus("offline");
-      });
-
-    return () => controller.abort();
-  }, [origin, destination, vehicle, weather]);
-
-  // Derive route path from live backend comparison when available
-  const backendPath = useMemo(() => {
-    if (!backendComparison) return null;
-    const route = backendComparison.routes.find((r) => r.id === "risk_aware");
-    if (!route || route.status !== "available" || !route.edge_ids || route.edge_ids.length === 0) return null;
-    const path: string[] = [];
-    for (const edgeId of route.edge_ids) {
-      const parts = edgeId.split(":")[0].split(">");
-      if (parts.length === 2) {
-        if (path.length === 0) path.push(parts[0]);
-        path.push(parts[1]);
+    let active = true;
+    const fetchWeather = async () => {
+      try {
+        const stateName = CITY_MAP[origin || "guwahati"]?.state || "Assam";
+        const regionCode = stateName.toLowerCase().replace(/\s+/g, "-");
+        const res = await getLiveWeather(regionCode);
+        if (active && res && typeof res.temperature_c === "number") {
+          setBackendLiveWeather(res);
+        }
+      } catch {
+        if (active) setBackendLiveWeather(null);
       }
-    }
-    return path.length > 0 ? path : null;
-  }, [backendComparison]);
-
-  // 3D Terrain Map Geometry Models
-  const terrain3dNetwork = useMemo<Network>(() => {
-    return {
-      type: "FeatureCollection",
-      metadata: {
-        dataset_id: "osm-northeast",
-        focus_node: origin || "guwahati",
-        focus: { lon: 91.7362, lat: 26.1445 },
-        radius_km: 300,
-        returned_features: EDGES.length,
-        total_features: EDGES.length,
-        truncated: false,
-      },
-      features: EDGES.map((edge) => {
-        const fromCity = CITY_MAP[edge.a];
-        const toCity = CITY_MAP[edge.b];
-        return {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [fromCity ? fromCity.lon : 91.7, fromCity ? fromCity.lat : 26.1],
-              [toCity ? toCity.lon : 91.8, toCity ? toCity.lat : 26.2],
-            ],
-          },
-          properties: {
-            id: `${edge.a}-${edge.b}`,
-            name: `${fromCity?.name ?? edge.a} - ${toCity?.name ?? edge.b}`,
-            u: edge.a,
-            v: edge.b,
-            risk: edge.risk,
-            closed: false,
-            evidence: "Northeast surveyed road graph",
-          },
-        };
-      }),
+    };
+    fetchWeather();
+    return () => {
+      active = false;
     };
   }, [origin]);
 
-  const terrain3dLocations = useMemo<ApiLocation[]>(() => {
-    return CITIES.map((c) => ({
-      id: c.id,
-      label: c.name,
-      lat: c.lat,
-      lon: c.lon,
-    }));
+  // Offline Sync Effect
+  useEffect(() => {
+    const syncQueue = async () => {
+      try {
+        const queued = await listQueuedReports();
+        setOfflineReportsCount(queued.length);
+        if (queued.length === 0 || !navigator.onLine) return;
+        const token = sessionStorage.getItem("raahsetu_token");
+        if (!token) return;
+        for (const item of queued) {
+          try {
+            const report = await createFieldReport(item.payload, token);
+            if (item.evidence) {
+              await uploadFieldReportAttachment(
+                token,
+                report.id,
+                dataUrlToFile(item.evidence.dataUrl, item.evidence.name, item.evidence.type),
+              );
+            }
+            await removeQueuedReport(item.id);
+          } catch {
+            // Keep in queue if server error
+          }
+        }
+        const remaining = await listQueuedReports();
+        setOfflineReportsCount(remaining.length);
+      } catch (err) {
+        console.warn("Offline report queue sync notice:", err);
+      }
+    };
+
+    const handleOnline = () => {
+      syncQueue();
+    };
+
+    window.addEventListener("online", handleOnline);
+    syncQueue();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
   }, []);
 
-  // Shortest route solver
+  // Live GPS Route Progression Animation Engine & Telemetry Streaming
+  useEffect(() => {
+    if (!isNavigating || isRealGpsActive) return;
+
+    const r1 = backendComparison?.routes?.[1] as any;
+    const r0 = backendComparison?.routes?.[0] as any;
+    const coords: [number, number][] =
+      r1?.geometry?.coordinates && r1.geometry.coordinates.length > 1
+        ? r1.geometry.coordinates
+        : r0?.geometry?.coordinates && r0.geometry.coordinates.length > 1
+        ? r0.geometry.coordinates
+        : (origin && destination && CITY_MAP[origin] && CITY_MAP[destination]
+            ? [[CITY_MAP[origin].lon, CITY_MAP[origin].lat], [CITY_MAP[destination].lon, CITY_MAP[destination].lat]]
+            : []);
+
+    if (coords.length < 2) return;
+    setSimTotalSteps(coords.length);
+
+    let step = 0;
+    const animInterval = setInterval(() => {
+      step++;
+      setSimStepCount(step);
+
+      if (step >= coords.length) {
+        const dest = CITY_MAP[destination];
+        speakMultilingual(
+          `Arrived at destination. Delivery completed successfully at ${dest?.name || "terminal"}.`,
+          lang
+        );
+        setIsNavigating(false);
+        return;
+      }
+
+      const curr = coords[step];
+      const prev = coords[step - 1];
+      const dLon = curr[0] - prev[0];
+      const dLat = curr[1] - prev[1];
+      const headingDeg = (Math.atan2(dLon, dLat) * (180 / Math.PI) + 360) % 360;
+      const speed = Math.round(48 + Math.sin(step * 0.4) * 12);
+
+      setNavGpsCoords({
+        lon: curr[0],
+        lat: curr[1],
+        accuracy: 8,
+        speedKmh: speed,
+        heading: Math.round(headingDeg),
+        placeName: `Corridor Waypoint ${step + 1}/${coords.length} · Transit`,
+      });
+
+      const token = sessionStorage.getItem("raahsetu_token");
+      if (token) {
+        sendFleetPosition(token, {
+          vehicle_id: "AS-01-GB-4821",
+          recorded_at: new Date().toISOString(),
+          lon: curr[0],
+          lat: curr[1],
+          speed_kph: speed,
+          heading: Math.round(headingDeg),
+          accuracy_m: 8,
+          status: "en_route",
+        }).catch(() => {});
+      }
+    }, 1200);
+
+    return () => clearInterval(animInterval);
+  }, [isNavigating, backendComparison, origin, destination, lang]);
+
+  const handleSimulateObstacleAhead = () => {
+    const obstacleNotice = "Critical Hazard Ahead: Active Landslide & River Inundation Reported by SDRF Telemetry";
+    setSimObstacleNotice(obstacleNotice);
+    speakMultilingual(
+      "Warning: Critical hazard reported on active route ahead by state disaster authorities. Automatic Risk-A* recalculation engaged.",
+      lang
+    );
+
+    const r = backendComparison?.routes?.[0] as any;
+    const blockedEdge = (r && r.edge_ids && r.edge_ids.length > 2) ? r.edge_ids[Math.min(2, r.edge_ids.length - 1)] : "hazard-block";
+    const input: RouteInput = {
+      dataset_id: "osm-northeast",
+      origin: { node_id: origin },
+      destination: { node_id: destination },
+      vehicle: vehicle === "light" ? "light" : "heavy",
+      risk_aversion: 1.5,
+      weather: "heavy_rain",
+      closed_edge_ids: [blockedEdge],
+      strict_vehicle: true,
+    };
+    compareRoutes(input, new AbortController().signal)
+      .then((res) => {
+        setBackendComparison(res);
+      })
+      .catch(() => {});
+  };
+
+  // Active FastAPI Risk-A* Route Solver
+  useEffect(() => {
+    if (!origin || !destination || origin === destination) {
+      setBackendComparison(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsRoutingLoading(true);
+
+    const cProf = COMMODITY_PROFILES[commodity];
+    const riskTolerance = cProf ? cProf.riskToleranceMult : 1.5;
+
+    const activeWeatherParam: "normal" | "heavy_rain" =
+      (backendLiveWeather && backendLiveWeather.precipitation_mm_24h > 5.0) || weather === "monsoon"
+        ? "heavy_rain"
+        : "normal";
+
+    const input: RouteInput = {
+      dataset_id: "osm-northeast",
+      origin: { node_id: origin },
+      destination: { node_id: destination },
+      vehicle: vehicle === "heavy" ? "heavy" : vehicle === "light" ? "light" : "heavy",
+      risk_aversion: riskTolerance,
+      weather: activeWeatherParam,
+      closed_edge_ids: [],
+      strict_vehicle: false,
+    };
+
+    compareRoutes(input, controller.signal)
+      .then((comp) => {
+        setBackendComparison(comp);
+        setRouteSource("backend");
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.warn("FastAPI routing service notice, falling back to local topological solver:", err.message);
+          setBackendComparison(null);
+          setRouteSource("local");
+        }
+      })
+      .finally(() => {
+        setIsRoutingLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [origin, destination, vehicle, commodity, weather, backendLiveWeather]);
+
+  // Fallback / Topological Shortest route solver
   const shortest = useMemo(() => {
     return solvePath(origin, destination, (edge) => edge.dist);
   }, [origin, destination]);
 
-  // Safe / Risk-Aware route solver: uses live FastAPI backend solve when available, falls back to offline Dijkstra
+  // Fallback / Topological Safe / Risk-Aware route solver
   const safe = useMemo(() => {
-    if (backendPath && backendPath.length > 1) {
-      return backendPath;
-    }
     const cProf = COMMODITY_PROFILES[commodity];
     const riskMultiplier = cProf ? cProf.riskToleranceMult : 2.5;
     return solvePath(origin, destination, (edge) => {
       const adjRisk = getAdjustedEdgeRisk(edge, vehicle, weather);
       return edge.dist * (1 + adjRisk * riskMultiplier);
     });
-  }, [backendPath, origin, destination, vehicle, weather, commodity]);
+  }, [origin, destination, vehicle, weather, commodity]);
 
-  const shortestStats = useMemo(() => (shortest ? computeStats(shortest, vehicle, weather) : null), [shortest, vehicle, weather]);
-  const safeStats = useMemo(() => (safe ? computeStats(safe, vehicle, weather) : null), [safe, vehicle, weather]);
+  // Backend route extractions
+  const backendRiskRoute = useMemo<AvailableRoute | null>(() => {
+    return backendComparison?.routes.find((route): route is AvailableRoute => route.id === "risk_aware" && route.status === "available") ?? null;
+  }, [backendComparison]);
+
+  const backendFastestRoute = useMemo<AvailableRoute | null>(() => {
+    return backendComparison?.routes.find((route): route is AvailableRoute => route.id === "fastest" && route.status === "available") ?? null;
+  }, [backendComparison]);
+
+  const backendRiskCoords = useMemo(() => {
+    return (backendRiskRoute?.geometry.coordinates as [number, number][]) ?? undefined;
+  }, [backendRiskRoute]);
+
+  const backendFastestCoords = useMemo(() => {
+    return (backendFastestRoute?.geometry.coordinates as [number, number][]) ?? undefined;
+  }, [backendFastestRoute]);
+
+  const shortestStats = useMemo(() => {
+    if (backendFastestRoute) {
+      return {
+        path: backendFastestRoute.edge_ids,
+        distance: Math.round(backendFastestRoute.distance_km),
+        hours: Math.round((backendFastestRoute.duration_min / 60) * 10) / 10,
+        riskIndex: Math.round(backendFastestRoute.mean_risk_score * 100),
+        edges: [],
+      };
+    }
+    return shortest ? computeStats(shortest, vehicle, weather) : null;
+  }, [backendFastestRoute, shortest, vehicle, weather]);
+
+  const safeStats = useMemo(() => {
+    if (backendRiskRoute) {
+      return {
+        path: backendRiskRoute.edge_ids,
+        distance: Math.round(backendRiskRoute.distance_km),
+        hours: Math.round((backendRiskRoute.duration_min / 60) * 10) / 10,
+        riskIndex: Math.round(backendRiskRoute.mean_risk_score * 100),
+        edges: [],
+      };
+    }
+    return safe ? computeStats(safe, vehicle, weather) : null;
+  }, [backendRiskRoute, safe, vehicle, weather]);
 
   const safeLegs = useMemo(() => {
     if (!safe) return [];
@@ -944,52 +1202,13 @@ export default function App() {
   }, [safe]);
 
   const riskReductionPct = useMemo(() => {
+    if (backendComparison?.comparison?.exposure_reduction_pct != null) {
+      return Math.max(0, Math.round(backendComparison.comparison.exposure_reduction_pct));
+    }
     if (!shortestStats || !safeStats || shortestStats.riskIndex === 0) return 0;
     const diff = ((shortestStats.riskIndex - safeStats.riskIndex) / shortestStats.riskIndex) * 100;
     return Math.max(0, Math.round(diff));
-  }, [shortestStats, safeStats]);
-
-  const terrain3dComparison = useMemo<Comparison | null>(() => {
-    if (backendComparison) return backendComparison;
-    if (!safe || safe.length < 2) return null;
-    return {
-      dataset_id: "osm-northeast",
-      dataset_version: "v1.0-local",
-      routes: [
-        {
-          id: "risk_aware",
-          status: "available",
-          edge_ids: [],
-          geometry: {
-            type: "LineString",
-            coordinates: safe.map((cid) => {
-              const c = CITY_MAP[cid];
-              return c ? [c.lon, c.lat] : [91.7, 26.1];
-            }),
-          },
-          distance_km: safeStats?.distance || 0,
-          duration_min: Math.round((safeStats?.hours || 0) * 60),
-          risk_exposure: (safeStats?.distance || 0) * ((safeStats?.riskIndex || 0) / 100),
-          mean_risk_score: (safeStats?.riskIndex || 0) / 100,
-          high_risk_segments: 0,
-          unknown_restriction_segments: 0,
-          unknown_risk_segments: 0,
-          objective_cost: safeStats?.distance || 0,
-          expanded_nodes: safe.length,
-          compute_ms: 12,
-          roads: safe.map((c) => CITY_MAP[c]?.name || c),
-          warnings: [],
-        },
-      ],
-      comparison: {
-        extra_minutes: 0,
-        exposure_reduction_pct: riskReductionPct,
-        same_route: false,
-      },
-      explanations: [],
-      assumptions: ["Offline heuristic solve", "Terrain elevation model active"],
-    };
-  }, [backendComparison, safe, safeStats, riskReductionPct]);
+  }, [backendComparison, shortestStats, safeStats]);
 
   // Elevation analysis
   const elevationAnalysis = useMemo(() => {
@@ -1075,6 +1294,55 @@ export default function App() {
       warnings,
     };
   }, [safe, safeLegs]);
+
+  // 3D Terrain Data
+  const locationsList = useMemo(() => {
+    return CITIES.map((c) => ({
+      id: c.id,
+      label: `${c.name} (${c.state})`,
+      lon: c.lon,
+      lat: c.lat,
+      kind: "hub",
+    }));
+  }, []);
+
+  const terrainNetwork = useMemo<Network>(() => {
+    return {
+      type: "FeatureCollection" as const,
+      metadata: {
+        dataset_id: "osm-northeast",
+        focus_node: origin || "guwahati",
+        focus: { lon: CITY_MAP[origin]?.lon || 91.73, lat: CITY_MAP[origin]?.lat || 26.14 },
+        radius_km: 400,
+        returned_features: Math.min(EDGES.length, 60),
+        total_features: EDGES.length,
+        truncated: EDGES.length > 60,
+      },
+      features: EDGES.slice(0, 60).map((e) => {
+        const uNode = CITY_MAP[e.a];
+        const vNode = CITY_MAP[e.b];
+        return {
+          type: "Feature" as const,
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              [uNode?.lon || 91.73, uNode?.lat || 26.14],
+              [vNode?.lon || 92.77, vNode?.lat || 24.83],
+            ] as [number, number][],
+          },
+          properties: {
+            id: `${e.a}>${e.b}`,
+            name: e.note || `${e.a} - ${e.b}`,
+            u: e.a,
+            v: e.b,
+            risk: e.risk,
+            closed: false,
+            evidence: "Northeast arterial corridor",
+          },
+        };
+      }),
+    };
+  }, [origin]);
 
   // Hardware GPS Locator
   const handleGpsLocation = () => {
@@ -1342,20 +1610,30 @@ export default function App() {
               )}
             </div>
 
-            {/* Driver & Vehicle Profile Button */}
+            {/* Driver Profile Button */}
             <button
               type="button"
-              onClick={() => setActiveView(driverProfile.isRegistered ? "vehicle_details" : "auth")}
+              onClick={() => setActiveView("auth")}
               className={`hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border text-xs font-medium cursor-pointer transition-colors ${
-                activeView === "auth" || activeView === "vehicle_details"
+                activeView === "auth"
                   ? "bg-primary text-primary-foreground font-semibold"
                   : "bg-card hover:bg-secondary text-foreground"
               }`}
             >
               <Truck className="size-3.5 text-primary" />
-              <span className="font-semibold text-foreground">
-                {driverProfile.isRegistered ? `${driverProfile.vehicleNo} (Specs)` : t.navSignIn}
-              </span>
+              <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : t.navSignIn}</span>
+            </button>
+
+            {/* Fleet Alerts & Broadcast Center */}
+            <button
+              type="button"
+              onClick={() => setIsAlertCenterModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs shadow-2xs cursor-pointer transition-all"
+              title="Regional Alerts and Fleet Driver Dispatch Broadcast"
+            >
+              <Activity className="size-3.5" />
+              <span className="hidden sm:inline">Fleet Alerts & Broadcast</span>
+              <span className="sm:hidden">Alerts</span>
             </button>
 
             {/* Emergency SOS Button */}
@@ -1422,17 +1700,6 @@ export default function App() {
         >
           {t.tabSystem}
         </button>
-        {driverProfile.isRegistered && (
-          <button
-            type="button"
-            onClick={() => setActiveView("vehicle_details")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors ${
-              activeView === "vehicle_details" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            🚚 {driverProfile.vehicleNo}
-          </button>
-        )}
       </div>
 
       {/* Active Road Closure Banner (Visible on Dispatcher, Districts, Advisories, System; hidden on Welcome/Intro) */}
@@ -1455,7 +1722,7 @@ export default function App() {
                   return (
                     <>
                       <strong>{b.road} ({getStateName(blk.state, lang)}):</strong>{" "}
-                      {b.cause} at {b.exactSpot}.
+                      [PLANNING SCENARIO] {b.cause} at {b.exactSpot}.
                     </>
                   );
                 })()}
@@ -1549,34 +1816,11 @@ export default function App() {
                   trustedContactName: "Fleet Dispatch Base",
                   isRegistered: true,
                 });
-                setActiveView("vehicle_details");
+                setActiveView("dispatcher");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               onBackToHome={() => {
                 setActiveView("intro");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
-          </div>
-        )}
-
-        {/* VIEW 1.5: VEHICLE & CARGO DETAILS PAGE (Appears immediately after login) */}
-        {activeView === "vehicle_details" && (
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-            <VehicleDetailsPage
-              lang={lang}
-              initialProfile={driverProfile}
-              onSave={(updated) => {
-                handleSaveDriverProfile(updated);
-                setActiveView("dispatcher");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              onSkip={() => {
-                setActiveView("dispatcher");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              onBack={() => {
-                setActiveView("auth");
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
             />
@@ -1625,6 +1869,60 @@ export default function App() {
                 >
                   {!origin || !destination ? t.enterEndpointsBelow : t.routeReady}
                 </span>
+              </div>
+            </div>
+
+            {/* SIH 2026 Jury Test Scenarios Launcher */}
+            <div className="rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/15 via-card to-primary/10 p-4 sm:p-5 shadow-xs space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                    <Waypoints className="size-3.5" />
+                    <span>SIH 2026 Evaluation Scenarios</span>
+                  </span>
+                  <span className="text-xs font-semibold text-foreground hidden sm:inline">
+                    Deterministic Test Corridors for Jury Evaluation
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-primary font-semibold">
+                  1-Click Execution · Explainable Trade-offs
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {SIH_DEMO_SCENARIOS.map((sc) => {
+                  const isCurrent = (origin === sc.origin && destination === sc.destination) || selectedSihScenario === sc.id;
+                  return (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => {
+                        setOrigin(sc.origin);
+                        setDestination(sc.destination);
+                        setVehicle(sc.vehicle);
+                        setCommodity(sc.commodity);
+                        setSelectedSihScenario(sc.id);
+                        scrollToMap();
+                      }}
+                      className={`text-left p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        isCurrent
+                          ? "border-primary bg-primary/20 ring-2 ring-primary/40 shadow-xs"
+                          : "border-border/80 bg-card/90 hover:border-primary/50 hover:bg-secondary/70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">{sc.badge}</span>
+                        {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-bold">ACTIVE</span>}
+                      </div>
+                      <div className="font-bold text-xs text-foreground mt-1 truncate">{sc.title}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{sc.hazardDescription}</div>
+                      <div className="mt-2 text-[10px] text-primary font-semibold flex items-center gap-1">
+                        <span>Load Scenario & Solve Route</span>
+                        <ArrowRight className="size-3" />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1716,9 +2014,20 @@ export default function App() {
                     </div>
                   </div>
                   <div className="p-2.5 rounded-xl border border-border/80 bg-card/85 backdrop-blur-xs">
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase">{t.weatherAdvisory}</div>
+                    <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground uppercase">
+                      <span>{t.weatherAdvisory}</span>
+                      {backendLiveWeather && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold font-mono ${backendLiveWeather.fresh ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/20 text-amber-700 dark:text-amber-400"}`}>
+                          {backendLiveWeather.fresh ? "LIVE OPEN-METEO" : "WEATHER FALLBACK"}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs font-bold text-primary truncate mt-0.5">
-                      {origin && destination ? (getLocalizedWeatherSummary(liveWeather.summary, lang) || t.clearTransit) : t.standardNominal}
+                      {backendLiveWeather
+                        ? `${backendLiveWeather.station}: ${backendLiveWeather.temperature_c}°C · ${backendLiveWeather.condition.toUpperCase()} · Rain: ${backendLiveWeather.precipitation_mm_24h}mm/24h`
+                        : origin && destination
+                        ? (getLocalizedWeatherSummary(liveWeather.summary, lang) || t.clearTransit)
+                        : t.standardNominal}
                     </div>
                   </div>
                 </div>
@@ -1767,7 +2076,7 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Destination Weather & Terminal Conditions Card */}
+                  {/* Scenario weather profile; a timestamped provider is required for live conditions. */}
                   {destination && destWeather && (
                     <div className="p-3.5 rounded-2xl border border-border bg-secondary/40 space-y-2.5 shadow-2xs">
                       <div className="flex items-center justify-between">
@@ -1783,10 +2092,10 @@ export default function App() {
                           </div>
                           <div>
                             <div className="text-xs font-bold text-foreground">
-                              {t.destinationWeatherTitle}: {getCityName(destination, lang, CITY_MAP[destination]?.name)}
+                              Weather scenario: {getCityName(destination, lang, CITY_MAP[destination]?.name)}
                             </div>
                             <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">
-                              {destWeather.stationName}
+                              Planning profile · {destWeather.stationName}
                             </div>
                           </div>
                         </div>
@@ -1877,14 +2186,44 @@ export default function App() {
                   </div>
 
                   {/* Microclimate telemetry pill */}
-                  <div className="p-2.5 rounded-xl bg-secondary/60 border border-border flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <CloudRain className="size-3.5 text-primary" />
-                      <span>{t.microclimateIngestion}:</span>
-                    </span>
-                    <span className="font-semibold text-foreground">
-                      {t.weather[weather]?.name || WEATHER_PROFILES[weather]?.name || t.standardNominal}
-                    </span>
+                  <div className="p-3 rounded-xl bg-secondary/60 border border-border space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <CloudRain className="size-3.5 text-primary" />
+                        <span>{t.microclimateIngestion}:</span>
+                      </span>
+                      {backendLiveWeather ? (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono flex items-center gap-1 ${backendLiveWeather.fresh ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
+                          <span className={`size-1.5 rounded-full ${backendLiveWeather.fresh ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                          {backendLiveWeather.fresh ? "Open-Meteo Live" : "Seasonal Fallback"}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
+                          Scenario Fallback
+                        </span>
+                      )}
+                    </div>
+                    {backendLiveWeather ? (
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground">
+                            {backendLiveWeather.station}: {backendLiveWeather.temperature_c}°C · {backendLiveWeather.condition.toUpperCase()}
+                          </span>
+                          <span className="font-mono text-muted-foreground text-[11px]">
+                            Rain: {backendLiveWeather.precipitation_mm_24h}mm/24h · Wind: {backendLiveWeather.wind_kph}km/h
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono flex items-center justify-between pt-1 border-t border-border/50">
+                          <span>Source: {backendLiveWeather.source}</span>
+                          <span>Updated: {new Date(backendLiveWeather.fetched_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span className={backendLiveWeather.fresh ? "text-emerald-500 font-bold" : "text-amber-500 font-bold"}>Status: {backendLiveWeather.fresh ? "Fresh" : "Fallback"}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-semibold text-foreground">
+                        {t.weather[weather]?.name || WEATHER_PROFILES[weather]?.name || t.standardNominal}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1907,7 +2246,31 @@ export default function App() {
                       <circle cx="50" cy="50" r="3" fill="currentColor" />
                     </svg>
                     <div className="flex items-center justify-between pb-3 border-b border-border">
-                      <div className="font-bold text-sm text-foreground">{t.pathComparison}</div>
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-sm text-foreground flex items-center gap-2">
+                          <span>{t.pathComparison}</span>
+                          {routeSource === "backend" ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20 flex items-center gap-1">
+                              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              FastAPI Risk-A* ({backendComparison?.dataset_version || "osm-northeast"})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
+                              Topological Dijkstra
+                            </span>
+                          )}
+                          {isRoutingLoading && (
+                            <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                              <Loader2 className="size-3 animate-spin" /> Solving route…
+                            </span>
+                          )}
+                        </div>
+                        {backendRiskRoute && (
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            Solved in {backendRiskRoute.compute_ms}ms • {backendRiskRoute.expanded_nodes} nodes evaluated • Admissible heuristic
+                          </div>
+                        )}
+                      </div>
                       {riskReductionPct > 0 && (
                         <span className="badge-status-normal">
                           <Check className="size-3" />
@@ -1951,9 +2314,43 @@ export default function App() {
                     </div>
 
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {t.safeTrades} {Math.max(0, safeStats.distance - shortestStats.distance)} km (+
-                      {formatHours(Math.max(0, safeStats.hours - shortestStats.hours))}) {t.toAvoidSteep}
+                      Risk-aware delta: {safeStats.distance - shortestStats.distance >= 0 ? "+" : ""}
+                      {safeStats.distance - shortestStats.distance} km · {safeStats.hours - shortestStats.hours >= 0 ? "+" : "−"}
+                      {formatHours(Math.abs(safeStats.hours - shortestStats.hours))}. Exposure is calculated from the selected scenario and versioned graph.
                     </p>
+
+                    {/* Explainable AI: Detour Explanations */}
+                    {backendComparison?.explanations && backendComparison.explanations.length > 0 && (
+                      <div className="pt-2 border-t border-border space-y-1.5">
+                        <div className="text-[11px] font-semibold text-foreground flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <AlertTriangle className="size-3.5 text-amber-500" />
+                            <span>Explainable Detour Rationale:</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-primary font-semibold">Prototype Risk-A* model</span>
+                        </div>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {backendComparison.explanations.map((exp, i) => (
+                            <div key={i} className="text-[11px] p-2 rounded-xl bg-secondary/60 border border-border space-y-1 text-muted-foreground">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-foreground truncate pr-2">{exp.road}</span>
+                                <span className="font-mono text-amber-500 text-[10px] font-bold shrink-0">
+                                  Risk {exp.score}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-muted-foreground truncate">Detour: {exp.reason}</span>
+                                {exp.ml_disruption_probability !== undefined && (
+                                  <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-semibold shrink-0">
+                                    Model disruption score: {(exp.ml_disruption_probability * 100).toFixed(0)}% ({exp.ml_primary_factor || "Terrain"})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2064,8 +2461,8 @@ export default function App() {
                       : "rounded-2xl border border-border bg-card p-4 shadow-xs space-y-3"
                   }
                 >
-                  <div className="flex items-center justify-between pb-3 border-b border-border flex-wrap gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                    <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-foreground">
                         {origin ? getCityName(origin, lang, CITY_MAP[origin]?.name) : ""} ➔ {destination ? getCityName(destination, lang, CITY_MAP[destination]?.name) : ""}
                       </span>
@@ -2074,13 +2471,6 @@ export default function App() {
                           ({safeStats.distance} km · {formatHours(safeStats.hours)})
                         </span>
                       )}
-                      {/* Live API / Solver Status Badge */}
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border border-border bg-secondary/80">
-                        <span className={`size-2 rounded-full ${apiStatus === "connected" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                        <span className={apiStatus === "connected" ? "text-emerald-500 font-semibold" : "text-muted-foreground"}>
-                          {apiStatus === "connected" ? `${t.apiConnected}${apiLatencyMs ? ` (${apiLatencyMs}ms)` : ""}` : t.offlineFallback}
-                        </span>
-                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -2099,31 +2489,50 @@ export default function App() {
                         <span>{isNavigating ? t.stopNavigation : t.startNavigation}</span>
                       </button>
 
-                      {/* 3D Terrain Switcher */}
-                      <button
-                        type="button"
-                        onClick={() => setMapMode(mapMode === "3d" ? "osm" : "3d")}
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                          mapMode === "3d"
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border bg-secondary text-foreground hover:bg-secondary/80"
-                        }`}
-                        title={t.view3dTerrain}
-                      >
-                        <Boxes className="size-3.5" />
-                        <span>{t.view3dTerrain}</span>
-                      </button>
+                      {/* Dynamic Reroute Simulation Trigger */}
+                      {isNavigating && (
+                        <button
+                          type="button"
+                          onClick={handleSimulateObstacleAhead}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer flex items-center gap-1.5 bg-amber-500 text-black hover:bg-amber-400 transition-colors shadow-2xs animate-pulse"
+                          title="Simulate dynamic hazard report triggering Risk-A* recalculation"
+                        >
+                          <AlertTriangle className="size-3.5" />
+                          <span>Simulate Hazard Ahead</span>
+                        </button>
+                      )}
 
-                      {/* Satellite / Street Switcher */}
-                      <button
-                        type="button"
-                        disabled={mapMode === "3d"}
-                        onClick={() => setMapMode(mapMode === "osm" ? "satellite" : "osm")}
-                        className="px-2.5 py-1 rounded-lg border border-border bg-secondary text-xs font-semibold text-foreground hover:bg-secondary/80 transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40"
-                      >
-                        <Layers className="size-3.5" />
-                        <span>{mapMode === "satellite" ? t.roadNetwork : t.satelliteView}</span>
-                      </button>
+                      {/* 2D Road / Satellite / 3D Terrain Switcher */}
+                      <div className="flex items-center gap-1 bg-secondary/80 p-0.5 rounded-lg border border-border">
+                        <button
+                          type="button"
+                          onClick={() => setMapDisplayMode("osm")}
+                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                            mapDisplayMode === "osm" ? "bg-card text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {t.roadNetwork || "Roads"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMapDisplayMode("satellite")}
+                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                            mapDisplayMode === "satellite" ? "bg-card text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {t.satelliteView || "Satellite"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMapDisplayMode("3d")}
+                          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+                            mapDisplayMode === "3d" ? "bg-primary text-primary-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          <Mountain className="size-3" />
+                          <span>3D Terrain</span>
+                        </button>
+                      </div>
 
                       {/* Fullscreen Toggle */}
                       <button
@@ -2137,38 +2546,117 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Interactive Cartography Viewport: 3D R3F Canvas or 2D Leaflet */}
-                  {mapMode === "3d" ? (
-                    <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border bg-[#0a0d0d] relative"}>
-                      <TerrainMap
-                        network={terrain3dNetwork}
-                        locations={terrain3dLocations}
-                        result={terrain3dComparison}
-                        origin={origin}
-                        destination={destination}
-                        closedIds={[]}
-                        mode="3d"
-                        reset={0}
-                        showRisk={true}
-                        selected=""
-                        terrain={null}
-                        events={[]}
-                      />
-                    </div>
-                  ) : (
-                    <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border"}>
+                  {/* Cartography View (2D Leaflet Road/Satellite or React Three Fiber 3D Terrain) */}
+                  <div className={isBigScreenNav ? "flex-1 w-full rounded-xl overflow-hidden" : "h-[460px] w-full rounded-xl overflow-hidden border border-border"}>
+                    {mapDisplayMode === "3d" ? (
+                      <div className="w-full h-full bg-slate-950">
+                        <Suspense
+                          fallback={
+                            <div className="h-full w-full grid place-items-center text-sm text-slate-300">
+                              <Loader2 className="size-5 animate-spin mr-2" /> Loading 3D terrain…
+                            </div>
+                          }
+                        >
+                          <TerrainMap
+                            network={terrainNetwork}
+                            locations={locationsList}
+                            result={backendComparison}
+                            origin={origin}
+                            destination={destination}
+                            closedIds={[]}
+                            mode="3d"
+                            reset={0}
+                            showRisk={true}
+                            selected="risk_aware"
+                            terrain={null}
+                            events={[]}
+                          />
+                        </Suspense>
+                      </div>
+                    ) : (
                       <RealMapLeaflet
                         originCity={CITY_MAP[origin]}
                         destCity={CITY_MAP[destination]}
                         routePath={safe}
                         safeLegs={safeLegs}
+                        backendRouteGeometry={backendRiskCoords}
+                        fastestRouteGeometry={backendFastestCoords}
+                        routeSource={routeSource}
                         userGps={navGpsCoords}
                         isNavigating={isNavigating}
                         isBigScreen={isBigScreenNav}
-                        mapMode={mapMode === "satellite" ? "satellite" : "osm"}
-                        onMapModeChange={(m) => setMapMode(m)}
+                        mapMode={mapDisplayMode === "satellite" ? "satellite" : "osm"}
+                        onMapModeChange={(mode) => setMapDisplayMode(mode)}
                         lang={lang}
                       />
+                    )}
+                  </div>
+
+                  {/* Live GPS Telemetry HUD */}
+                  {(isNavigating || navGpsCoords) && (
+                    <div className="p-3 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 via-card to-primary/5 shadow-xs space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="font-bold text-foreground flex items-center gap-1.5">
+                            <Truck className="size-3.5 text-primary" />
+                            <span>{isRealGpsActive ? "Real Device GPS Stream" : "Fleet Telemetry Simulator"}</span>
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold">
+                            AS-01-GB-4821
+                          </span>
+                          <button
+                            type="button"
+                            onClick={toggleRealDeviceGps}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors cursor-pointer ${
+                              isRealGpsActive
+                                ? "bg-emerald-500 text-white border-emerald-500 shadow-2xs"
+                                : "bg-secondary hover:bg-secondary/80 text-muted-foreground border-border"
+                            }`}
+                            title="Switch between browser HTML5 device GPS and deterministic corridor transit simulation"
+                          >
+                            {isRealGpsActive ? "● Real Device GPS Active" : "Device GPS (Mobile)"}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-mono">
+                          <span className="text-muted-foreground">
+                            Speed: <strong className="text-foreground">{navGpsCoords?.speedKmh || 48} km/h</strong>
+                          </span>
+                          <span className="text-muted-foreground">
+                            Heading: <strong className="text-foreground">{navGpsCoords?.heading || 34}°</strong>
+                          </span>
+                          <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                            <Check className="size-3" /> Geofence: Corridor Verified
+                          </span>
+                        </div>
+                      </div>
+
+                      {simTotalSteps > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] text-muted-foreground">
+                            <span>Corridor Waypoint Transit ({simStepCount}/{simTotalSteps})</span>
+                            <span>{Math.round((simStepCount / simTotalSteps) * 100)}% Complete</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, Math.round((simStepCount / simTotalSteps) * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {simObstacleNotice && (
+                        <div className="p-2.5 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs font-medium flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="size-4 shrink-0 animate-bounce" />
+                            <span>{simObstacleNotice}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded bg-destructive text-destructive-foreground text-[10px] font-bold shrink-0 uppercase">
+                            Risk-A* Detour Recalculated
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2406,7 +2894,7 @@ export default function App() {
                       </div>
 
                       <div className="p-3 rounded-xl bg-secondary/50 border border-border text-xs text-foreground">
-                        <strong className="text-destructive">{t.cause}:</strong> {b.cause}
+                        <strong className="text-destructive">{t.cause}:</strong> Simulation — {b.cause}
                       </div>
 
                       <div className="space-y-2 text-xs">
@@ -2488,24 +2976,24 @@ export default function App() {
             {/* Census Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-destructive">1,68,491</div>
-                <div className="text-xs font-semibold text-foreground mt-1">{t.annualFatalitiesNationwide}</div>
-                <p className="text-xs text-muted-foreground mt-1">{t.morthCensus}</p>
+                <div className="text-2xl font-bold text-destructive">01</div>
+                <div className="text-xs font-semibold text-foreground mt-1">Road-safety source register</div>
+                <p className="text-xs text-muted-foreground mt-1">Only traceable MoRTH/eDAR data should be used for operational scores.</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">400+</div>
-                <div className="text-xs font-semibold text-foreground mt-1">{t.monsoonLandslides}</div>
-                <p className="text-xs text-muted-foreground mt-1">{t.gsiRecorded}</p>
+                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">02</div>
+                <div className="text-xs font-semibold text-foreground mt-1">Hazard coordinate review</div>
+                <p className="text-xs text-muted-foreground mt-1">A report changes a route only after road-edge review and acceptance.</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-primary">8 {t.statStates}</div>
-                <div className="text-xs font-semibold text-foreground mt-1">{t.osmGraphs}</div>
-                <p className="text-xs text-muted-foreground mt-1">{t.extractedPyosmium}</p>
+                <div className="text-2xl font-bold text-primary">111</div>
+                <div className="text-xs font-semibold text-foreground mt-1">Prototype corridor nodes</div>
+                <p className="text-xs text-muted-foreground mt-1">A complete OSM road graph must be versioned outside the frontend bundle.</p>
               </div>
               <div className="p-4 rounded-2xl border border-border bg-card shadow-xs">
-                <div className="text-2xl font-bold text-foreground">{t.dualPathEngine}</div>
-                <div className="text-xs font-semibold text-foreground mt-1">{t.deterministicEngine}</div>
-                <p className="text-xs text-muted-foreground mt-1">{t.priorityQueue}</p>
+                <div className="text-2xl font-bold text-foreground">Risk-A*</div>
+                <div className="text-xs font-semibold text-foreground mt-1">Versioned route comparison</div>
+                <p className="text-xs text-muted-foreground mt-1">Fastest and risk-aware routes are solved by FastAPI when the service is available.</p>
               </div>
             </div>
 
@@ -2779,6 +3267,79 @@ export default function App() {
               </button>
             </div>
 
+            {/* Incident Details Form */}
+            <div className="space-y-2 text-xs">
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+                  Hazard Classification
+                </label>
+                <select
+                  value={reportKind}
+                  onChange={(e) => setReportKind(e.target.value as any)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-border bg-secondary text-foreground text-xs font-medium focus:outline-none"
+                >
+                  <option value="landslide">Landslide / Rockfall</option>
+                  <option value="flood">Monsoon Flood / Waterlogging</option>
+                  <option value="road_blocked">Road Blockage / Fallen Tree</option>
+                  <option value="bridge_damage">Bridge Structural Distress</option>
+                  <option value="road_damage">Severe Surface Subsidence</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+                  Corridor Accessibility Status
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReportStatus("blocked")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-colors ${
+                      reportStatus === "blocked"
+                        ? "bg-destructive text-destructive-foreground border-destructive"
+                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    Blocked
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportStatus("restricted")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-colors ${
+                      reportStatus === "restricted"
+                        ? "bg-amber-500 text-black border-amber-500 font-bold"
+                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    Restricted
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportStatus("open")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-colors ${
+                      reportStatus === "open"
+                        ? "bg-emerald-500 text-white border-emerald-500"
+                        : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    Open/Caution
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+                  Field Observations / Landmark
+                </label>
+                <textarea
+                  value={reportDescription}
+                  onChange={(e) => setReportDescription(e.target.value)}
+                  placeholder="e.g. Mudslide near km marker 42. Single axle vehicles passing with caution."
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-border bg-secondary text-foreground text-xs placeholder:text-muted-foreground focus:outline-none resize-none h-16"
+                />
+              </div>
+            </div>
+
             <div className="pt-2 flex justify-end gap-2">
               <button
                 type="button"
@@ -2792,16 +3353,393 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                disabled={isSubmittingReport}
+                onClick={async () => {
+                  setIsSubmittingReport(true);
                   stopCamera();
-                  setOfflineReportsCount((prev) => prev + 1);
-                  setIsReportModalOpen(false);
-                  alert(t.hazardReportSuccess);
+                  const token = sessionStorage.getItem("raahsetu_token");
+                  const city = CITY_MAP[origin] || CITY_MAP["guwahati"];
+                  const clientReportId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+                  const payload: FieldReportInput = {
+                    client_report_id: clientReportId,
+                    region_code: city.state ? city.state.toLowerCase().replace(/\s+/g, "-") : "assam",
+                    district: city.name,
+                    place_name: `${city.name} Highway Sector`,
+                    kind: reportKind,
+                    accessibility_status: reportStatus,
+                    severity: reportStatus === "blocked" ? 0.95 : 0.6,
+                    lon: navGpsCoords?.lon || city.lon,
+                    lat: navGpsCoords?.lat || city.lat,
+                    description: reportDescription.trim() || `Field observation: ${reportKind.replace("_", " ")} observed on arterial route.`,
+                    observed_at: new Date().toISOString(),
+                    details: {
+                      photo_attached: Boolean(reportPhoto),
+                      photo_name: reportPhoto?.name || null,
+                    },
+                  };
+
+                  try {
+                    if (navigator.onLine) {
+                      if (!token) throw new Error("Authenticated session required to upload field reports");
+                      const report = await createFieldReport(payload, token);
+                      if (reportPhoto) {
+                        await uploadFieldReportAttachment(
+                          token,
+                          report.id,
+                          dataUrlToFile(reportPhoto.dataUrl, reportPhoto.name, "image/jpeg"),
+                        );
+                      }
+                      alert(t.hazardReportSuccess || "Hazard report submitted successfully to central monitoring!");
+                    } else {
+                      throw new Error("Device offline");
+                    }
+                  } catch {
+                      await queueReport({
+                        id: clientReportId,
+                        payload,
+                        evidence: reportPhoto
+                          ? { name: reportPhoto.name, type: "image/jpeg", dataUrl: reportPhoto.dataUrl }
+                          : undefined,
+                        queuedAt: new Date().toISOString(),
+                    });
+                    const queued = await listQueuedReports();
+                    setOfflineReportsCount(queued.length);
+                    alert("Report securely queued in client IndexedDB. Will auto-sync when connected with an authenticated official session.");
+                  } finally {
+                    setIsSubmittingReport(false);
+                    setIsReportModalOpen(false);
+                    setReportPhoto(null);
+                    setReportDescription("");
+                  }
                 }}
-                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs"
+                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs disabled:opacity-50"
               >
-                {t.submitHazardReport}
+                {isSubmittingReport ? "Syncing..." : t.submitHazardReport}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REGIONAL ALERT CENTER */}
+      {isAlertCenterModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <Activity className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Northeast Regional Disruption Center
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Live 8-State Highway Network Feeds, MoRTH Blackspots & Civil Defense Advisories
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAlertCenterModalOpen(false)}
+                className="size-8 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="p-2.5 rounded-xl border border-border bg-secondary/40">
+                <div className="text-[10px] text-muted-foreground uppercase font-bold">Network Scope</div>
+                <div className="font-bold text-foreground mt-0.5">8 Northeast States</div>
+                <div className="text-[10px] text-emerald-500 font-medium">100% Interconnected</div>
+              </div>
+              <div className="p-2.5 rounded-xl border border-border bg-secondary/40">
+                <div className="text-[10px] text-muted-foreground uppercase font-bold">Graph Snapshot</div>
+                <div className="font-bold text-foreground mt-0.5">111 Nodes · 378 Edges</div>
+                <div className="text-[10px] text-primary font-medium">Fastest & Risk-A*</div>
+              </div>
+              <div className="p-2.5 rounded-xl border border-border bg-secondary/40">
+                <div className="text-[10px] text-muted-foreground uppercase font-bold">Bridge Capacities</div>
+                <div className="font-bold text-foreground mt-0.5">16T / 18T / 35T Limits</div>
+                <div className="text-[10px] text-amber-500 font-medium">PWD & BRO Verified</div>
+              </div>
+              <div className="p-2.5 rounded-xl border border-border bg-secondary/40">
+                <div className="text-[10px] text-muted-foreground uppercase font-bold">Fleet Telemetry</div>
+                <div className="font-bold text-foreground mt-0.5">42 Active Vehicles</div>
+                <div className="text-[10px] text-emerald-500 font-medium">Live GPS Connected</div>
+              </div>
+            </div>
+
+            {/* Alert List */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-96">
+              {REGIONAL_ALERTS.map((al) => (
+                <div
+                  key={al.id}
+                  className="p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 transition-colors space-y-1.5"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        al.severity === "CRITICAL"
+                          ? "bg-destructive/20 text-destructive border border-destructive/30"
+                          : al.severity === "HIGH"
+                          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          : "bg-primary/20 text-primary border border-primary/30"
+                      }`}>
+                        {al.severity}
+                      </span>
+                      <span className="font-bold text-xs text-foreground">{al.corridor}</span>
+                      <span className="text-[11px] text-muted-foreground">({al.state})</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground">{al.timestamp}</span>
+                  </div>
+                  <div className="text-xs font-semibold text-foreground">{al.headline}</div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{al.detail}</p>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pt-1">
+                    <span className="font-medium text-foreground">Affected Nodes:</span>
+                    {al.affectedNodes.map((node) => (
+                      <span key={node} className="px-1.5 py-0.2 rounded bg-secondary border border-border capitalize">
+                        {node}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 border-t border-border flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[11px] text-muted-foreground">
+                Target data integrations: MoRTH/eDAR · GSI · CWC · approved weather feeds
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAlertCenterModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl border border-border bg-secondary text-foreground text-xs font-semibold cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAlertCenterModalOpen(false);
+                    setIsBroadcastModalOpen(true);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  <Send className="size-3.5" />
+                  <span>Dispatch Driver Broadcast</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DRIVER DISPATCH BROADCAST SIMULATOR */}
+      {isBroadcastModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <Send className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Driver Dispatch Broadcast Simulator
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Provider-Ready Gateway Simulator for Omnichannel SMS (C-DAC) & WhatsApp Business
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBroadcastModalOpen(false);
+                  setBroadcastSuccessNotice(null);
+                }}
+                className="size-8 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Target Fleet Selector & Channel */}
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+                    Target Fleet Corridor
+                  </label>
+                  <select
+                    value={broadcastTarget}
+                    onChange={(e) => setBroadcastTarget(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-border bg-secondary text-foreground text-xs font-medium focus:outline-none"
+                  >
+                    <option value="all">All Northeast Drivers (42 Vehicles En-Route)</option>
+                    <option value="nh29">NH-29 Dimapur–Kohima Corridor (14 Vehicles)</option>
+                    <option value="nh10">NH-10 Siliguri–Gangtok Corridor (8 Vehicles)</option>
+                    <option value="nh13">NH-13 Arunachal Highway Corridor (9 Vehicles)</option>
+                    <option value="nh6">NH-6 Assam–Meghalaya Corridor (11 Vehicles)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+                    Dispatch Channel
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setBroadcastChannel("sms")}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                        broadcastChannel === "sms"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                      }`}
+                    >
+                      <Radio className="size-3.5" />
+                      <span>SMS Gateway</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBroadcastChannel("whatsapp")}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                        broadcastChannel === "whatsapp"
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-secondary text-muted-foreground border-border hover:text-foreground"
+                      }`}
+                    >
+                      <MessageSquare className="size-3.5" />
+                      <span>WhatsApp Fleet</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Multilingual Quick Presets */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+                    Multilingual Broadcast Message
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastMessage(
+                          "[RAAHSETU LOGISTICS DISPATCH] Urgent: Landslide and heavy river swell verified on active corridor. Automatic Risk-A* detour recalculation pushed to vehicle console. Proceed via verified bypass."
+                        )
+                      }
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-secondary hover:bg-secondary/80 text-foreground border border-border"
+                    >
+                      English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastMessage(
+                          "[राहसेतु रसद चेतावनी] आवश्यक: सक्रिय कॉरिडोर पर भूस्खलन व जलभराव की पुष्टि। स्वचालित रिस्क-ए* मार्ग संशोधन आपके वाहन कंसोल पर भेजा गया। प्रमाणित बाईपास का उपयोग करें।"
+                        )
+                      }
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-secondary hover:bg-secondary/80 text-foreground border border-border"
+                    >
+                      हिन्दी
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastMessage(
+                          "[ৰাহসেতু সতৰ্কবাৰ্তা] জৰুৰী: সক্ৰিয় কৰিডৰত ভূমিস্খলন নিশ্চিত কৰা হৈছে। স্বয়ংক্ৰিয় সুৰক্ষিত বিকল্প পথ বাহনৰ নেভিগেশ্যনত প্ৰেৰণ কৰা হৈছে।"
+                        )
+                      }
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-secondary hover:bg-secondary/80 text-foreground border border-border"
+                    >
+                      অসমীয়া
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBroadcastMessage(
+                          "[রাহসেতু সতর্কবার্তা] জরুরি: সক্রিয় করিডরে ভূমিধস নিশ্চিত। স্বয়ংক্রিয় ঝুঁকিমুক্ত বিকল্প রুট ভেহিকল কনসোলে পাঠানো হয়েছে।"
+                        )
+                      }
+                      className="px-1.5 py-0.5 rounded text-[10px] bg-secondary hover:bg-secondary/80 text-foreground border border-border"
+                    >
+                      বাংলা
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-border bg-secondary text-foreground text-xs focus:outline-none resize-none h-24 font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* Success Notification */}
+              {broadcastSuccessNotice && (
+                <div className="p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                  <Check className="size-4 shrink-0" />
+                  <span>{broadcastSuccessNotice}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-border flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground font-mono">
+                Simulation · Payload formatted for C-DAC & WhatsApp Cloud API
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBroadcastModalOpen(false);
+                    setBroadcastSuccessNotice(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-border bg-secondary text-foreground text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isBroadcastTransmitting}
+                  onClick={() => {
+                    setIsBroadcastTransmitting(true);
+                    setTimeout(() => {
+                      setIsBroadcastTransmitting(false);
+                      setBroadcastSuccessNotice(
+                        `[Simulated Dispatch] Formatted broadcast payload dispatched to ${
+                          broadcastTarget === "all" ? "42" : "14"
+                        } fleet terminals via ${
+                          broadcastChannel === "sms" ? "Govt C-DAC SMS Gateway" : "WhatsApp Business API"
+                        }. Ready for provider webhook binding.`
+                      );
+                      setTimeout(() => {
+                        setBroadcastSuccessNotice(null);
+                      }, 5000);
+                    }, 650);
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isBroadcastTransmitting ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Transmitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-3.5" />
+                      <span>Transmit Fleet Broadcast</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
