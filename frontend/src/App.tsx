@@ -343,6 +343,13 @@ export interface DriverProfile {
   trustedContactName: string;
   trustedContactMobile: string;
   isRegistered: boolean;
+  grossWeightTonnes?: number;
+  axleCount?: number;
+  heightMetres?: number;
+  widthMetres?: number;
+  fleetDepot?: string;
+  brakeCheckPassed?: boolean;
+  chainsEquipped?: boolean;
 }
 
 const DEFAULT_DRIVER_PROFILE: DriverProfile = {
