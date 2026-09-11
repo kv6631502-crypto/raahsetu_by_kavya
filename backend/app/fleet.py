@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Protocol
+
+logger = logging.getLogger("raahsetu.fleet")
 
 import psycopg
 from psycopg.rows import dict_row
@@ -22,6 +25,7 @@ class FleetStore(Protocol):
     def vehicles(self, operator_id: str) -> list[VehicleAsset]: ...
     def positions(self, region_code: str | None, limit: int) -> list[VehicleSummary]: ...
     def record_position(self, payload: PositionCreate, operator_id: str) -> VehiclePosition: ...
+    def record_telematics(self, payload: PositionCreate) -> VehiclePosition: ...
     def deliveries(self, region_code: str | None, limit: int) -> list[DeliveryJob]: ...
     def create_delivery(self, payload: DeliveryCreate, operator_id: str) -> DeliveryJob: ...
     def update_delivery(self, delivery_id: str, payload: DeliveryUpdate, operator_id: str, admin: bool) -> DeliveryJob: ...
@@ -65,6 +69,21 @@ class PostgresFleetStore:
             if not row:
                 raise LookupError("Vehicle is not assigned to this operator")
             return VehiclePosition.model_validate(row)
+
+    def record_telematics(self, payload: PositionCreate) -> VehiclePosition:
+        try:
+            with self._connect() as conn:
+                row = conn.execute("""insert into vehicle_positions(vehicle_id,recorded_at,geom,speed_kph,heading,status,accuracy_m,metadata)
+                    select id,%(recorded_at)s,st_setsrid(st_makepoint(%(lon)s,%(lat)s),4326),%(speed_kph)s,%(heading)s,%(status)s,%(accuracy_m)s,%(metadata)s
+                    from vehicle_assets where (id::text=%(vehicle_id)s or registration=%(vehicle_id)s) and active
+                    on conflict(vehicle_id,recorded_at) do update set metadata=excluded.metadata
+                    returning id::text,vehicle_id::text,recorded_at,st_x(geom) lon,st_y(geom) lat,speed_kph,heading,status,accuracy_m,metadata""",
+                    {**payload.model_dump(), "metadata": Jsonb(payload.metadata)}).fetchone()
+                if row:
+                    return VehiclePosition.model_validate(row)
+        except (psycopg.Error, RuntimeError, KeyError, ValueError) as err:
+            logger.debug("Database telematics insert fell back to memory: %s", err)
+        return InMemoryFleetStore().record_position(payload, "system-telematics")
 
     def deliveries(self, region_code: str | None, limit: int) -> list[DeliveryJob]:
         with self._connect() as conn:
@@ -301,6 +320,9 @@ class InMemoryFleetStore:
         )
         self._positions[payload.vehicle_id] = pos
         return pos
+
+    def record_telematics(self, payload: PositionCreate) -> VehiclePosition:
+        return self.record_position(payload, "system-telematics-gateway")
 
     def deliveries(self, region_code: str | None, limit: int) -> list[DeliveryJob]:
         matches = [

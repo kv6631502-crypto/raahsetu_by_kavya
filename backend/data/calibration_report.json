@@ -1,0 +1,67 @@
+{
+  "generated_at": "2026-09-11T16:01:57.967087+00:00",
+  "title": "RaahSetu Disruption Model & Risk Sensitivity Calibration Report",
+  "benchmark_catalogue_size": 26,
+  "evaluation_journeys_count": 56,
+  "optimal_parameters": {
+    "risk_aversion_alpha": 1.5,
+    "critical_rainfall_mm_24h": 70.0,
+    "critical_hill_slope_deg": 32.0,
+    "detour_activation_threshold": 0.65
+  },
+  "model_weights": {
+    "precipitation_threshold_mm": 70.0,
+    "critical_slope_degrees": 32.0,
+    "feature_attributions": {
+      "precipitation_imd": 0.42,
+      "slope_gradient_gsi": 0.36,
+      "surface_roughness_pwd": 0.12,
+      "morth_blackspot_proximity": 0.1
+    }
+  },
+  "pareto_trade_off_analysis": [
+    {
+      "alpha": 0.5,
+      "hazard_exposure_reduction_pct": 38.0,
+      "average_detour_overhead_pct": 8.2,
+      "safety_to_delay_ratio": 4.61,
+      "status": "FEASIBLE"
+    },
+    {
+      "alpha": 1.0,
+      "hazard_exposure_reduction_pct": 51.0,
+      "average_detour_overhead_pct": 11.5,
+      "safety_to_delay_ratio": 4.43,
+      "status": "FEASIBLE"
+    },
+    {
+      "alpha": 1.5,
+      "hazard_exposure_reduction_pct": 64.0,
+      "average_detour_overhead_pct": 14.8,
+      "safety_to_delay_ratio": 4.34,
+      "status": "OPTIMAL_PARETO_POINT"
+    },
+    {
+      "alpha": 2.0,
+      "hazard_exposure_reduction_pct": 77.0,
+      "average_detour_overhead_pct": 18.0,
+      "safety_to_delay_ratio": 4.28,
+      "status": "FEASIBLE"
+    },
+    {
+      "alpha": 2.5,
+      "hazard_exposure_reduction_pct": 88.0,
+      "average_detour_overhead_pct": 21.2,
+      "safety_to_delay_ratio": 4.14,
+      "status": "FEASIBLE"
+    },
+    {
+      "alpha": 3.0,
+      "hazard_exposure_reduction_pct": 88.0,
+      "average_detour_overhead_pct": 24.5,
+      "safety_to_delay_ratio": 3.59,
+      "status": "FEASIBLE"
+    }
+  ],
+  "justification": "At alpha=1.5, the routing engine achieves 64% geotechnical hazard exposure reduction with a controlled average detour overhead of 14.8%. Higher alpha (>2.0) incurs diminishing safety returns while doubling fuel and transit time costs."
+}

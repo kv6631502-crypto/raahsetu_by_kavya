@@ -21,6 +21,7 @@ from .alerts import AlertStore, InMemoryAlertStore, PostgresAlertStore
 from .auth import AuthUser, require_reviewer, require_user
 from .field_reports import FieldReportStore, InMemoryFieldReportStore, PostgresFieldReportStore
 from .fleet import FleetStore, InMemoryFleetStore, PostgresFleetStore
+from .live_ingestion import get_official_feeds_status, ingest_live_official_advisories
 from .models import (
     Alert,
     ConnectivitySummary,
@@ -39,7 +40,14 @@ from .models import (
     VehiclePosition,
     VehicleSummary,
 )
+from .notifications import BroadcastRequest, BroadcastResponse, send_broadcast
 from .routing import VEHICLES, RoadGraph
+from .telematics import (
+    AIS140TelemetryPacket,
+    TelematicsIngestResponse,
+    check_hazard_proximity,
+    packet_to_position_create,
+)
 from .weather import get_all_live_weather, get_station_weather
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -133,6 +141,15 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
     allow_credentials=False,
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 _field_report_store: FieldReportStore | None = None
@@ -763,3 +780,80 @@ def deprecated_demo_auth() -> None:
     one-time code in an API response is never safe for a deployable service.
     """
     raise HTTPException(410, detail="Demo OTP is retired. Use Supabase Auth.")
+
+
+@app.post("/api/v1/fleet/telemetry/ais140", response_model=TelematicsIngestResponse, status_code=200)
+def ingest_ais140_telemetry(
+    packet: AIS140TelemetryPacket,
+    store: Annotated[FleetStore, Depends(get_fleet_store)],
+):
+    """Ingest standard AIS-140 commercial freight vehicle telemetry packet."""
+    position_create = packet_to_position_create(packet)
+    try:
+        store.record_telematics(position_create)
+    except LookupError as exc:
+        raise HTTPException(404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, detail=str(exc)) from exc
+
+    # Proximity check against active hazards
+    hazards = [
+        {"id": "sela-pass", "title": "Sela Pass Summit Freeze", "lat": 27.50, "lon": 92.10, "severity": 0.92, "accessibility_status": "restricted"},
+        {"id": "phesama-sink", "title": "NH-29 Phesama Subsidence", "lat": 25.65, "lon": 94.10, "severity": 0.86, "accessibility_status": "blocked"},
+        {"id": "sonapur-tunnel", "title": "Sonapur Tunnel Mudflow", "lat": 25.12, "lon": 92.36, "severity": 0.88, "accessibility_status": "restricted"},
+    ]
+    if os.getenv("DATABASE_URL"):
+        try:
+            active_events = get_field_report_store().active_events(None)
+            if active_events:
+                hazards = [*hazards, *active_events]
+        except (RuntimeError, psycopg.Error, OSError) as err:
+            logger.debug("Active events load skipped: %s", err)
+
+    nearby = check_hazard_proximity(packet.latitude, packet.longitude, hazards, threshold_km=5.0)
+
+    return TelematicsIngestResponse(
+        status="warning" if nearby else "ingested",
+        vehicle_id=packet.vehicle_registration,
+        recorded_at=packet.timestamp,
+        coordinates=[packet.longitude, packet.latitude],
+        speed_kph=packet.speed_kph,
+        proximity_hazards=nearby,
+        message="Telemetry ingested successfully via AIS-140 standard" if not nearby else f"Proximity Alert: Vehicle within 5km of {len(nearby)} active hazards!",
+    )
+
+
+@app.post("/api/v1/alerts/broadcast", response_model=BroadcastResponse)
+async def broadcast_alert(payload: BroadcastRequest):
+    """Dispatch multilingual hazard or reroute broadcast to corridor freight drivers."""
+    return await send_broadcast(payload)
+
+
+@app.get("/api/v1/alerts/providers")
+def alert_providers():
+    """Return configured SMS and WhatsApp dispatch provider status."""
+    twilio_configured = bool(os.getenv("TWILIO_ACCOUNT_SID") and os.getenv("TWILIO_AUTH_TOKEN"))
+    whatsapp_configured = bool(os.getenv("WHATSAPP_API_TOKEN"))
+    cdac_configured = bool(os.getenv("CDAC_SMS_URL"))
+    active_provider = "twilio" if twilio_configured else ("whatsapp" if whatsapp_configured else ("cdac" if cdac_configured else "simulator"))
+    return {
+        "active_provider": active_provider,
+        "is_simulated": active_provider == "simulator",
+        "supported_languages": ["en", "hi", "as", "bn"],
+        "supported_templates": ["hazard_alert", "bridge_warning", "reroute_advisory"],
+        "gateways": {
+            "twilio_sms": {"status": "configured" if twilio_configured else "unconfigured"},
+            "whatsapp_cloud_api": {"status": "configured" if whatsapp_configured else "unconfigured"},
+            "govt_cdac_nic": {"status": "configured" if cdac_configured else "unconfigured"},
+            "provider_ready_simulator": {"status": "active"},
+        },
+    }
+
+
+@app.get("/api/v1/hazards/live-feeds")
+def hazards_live_feeds():
+    """Return status of official early-warning feeds and active advisories."""
+    return {
+        "sources": get_official_feeds_status(),
+        "active_advisories": ingest_live_official_advisories(),
+    }

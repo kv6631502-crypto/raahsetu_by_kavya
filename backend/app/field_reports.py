@@ -19,7 +19,7 @@ class FieldReportStore(Protocol):
 
     def review(self, report_id: str, review: FieldReportReview, reviewer_id: str) -> FieldReport: ...
 
-    def active_events(self, region_code: str | None) -> list[dict]: ...
+    def active_events(self, region_code: str | None = None) -> list[dict]: ...
 
     def road_candidates(self, report_id: str, dataset_id: str, region_code: str | None = None) -> list[dict]: ...
 
@@ -184,7 +184,7 @@ class PostgresFieldReportStore:
                 raise LookupError("Report not found or not owned by current user")
             return FieldReportAttachment.model_validate(row)
 
-    def active_events(self, region_code: str | None) -> list[dict]:
+    def active_events(self, region_code: str | None = None) -> list[dict]:
         where = "where (e.ends_at is null or e.ends_at >= now())"
         params: tuple = ()
         if region_code:
@@ -360,7 +360,7 @@ class InMemoryFieldReportStore:
         self._attachments.append(attachment)
         return attachment
 
-    def active_events(self, region_code: str | None) -> list[dict]:
+    def active_events(self, region_code: str | None = None) -> list[dict]:
         return [
             e for e in self._events
             if region_code is None or e["region_code"] == region_code

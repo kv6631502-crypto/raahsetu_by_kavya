@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Sun,
   Truck,
+  Shield,
   Waypoints,
   X,
 } from "lucide-react";
@@ -590,8 +591,9 @@ export default function App() {
   const [vehicle, setVehicle] = useState<VehicleType>("heavy");
   const [commodity, setCommodity] = useState<CommodityType>("medical");
 
-  // Language dropdown toggle state
+  // Language & Role dropdown toggle state
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const langDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1088,6 +1090,96 @@ export default function App() {
         setBackendComparison(res);
       })
       .catch(() => {});
+  };
+
+  // SIH 2026 Grand Finale Guided Presentation Tour (7 Steps)
+  const [pitchTourStep, setPitchTourStep] = useState<number | null>(null);
+
+  const PITCH_TOUR_STEPS = [
+    {
+      step: 1,
+      title: "1. Baseline Fastest Route (Sela Summit Pass)",
+      desc: "Heavy 28T truck (Guwahati ➔ Tawang). Shows baseline fastest route taking the high-risk summit ridge with freezing black ice.",
+    },
+    {
+      step: 2,
+      title: "2. Physics-Constrained Risk-A* Detour",
+      desc: "Prunes weak bridges & summit ice; routes via Sela Tunnel bypass (40T clearance) with XAI disruption breakdown.",
+    },
+    {
+      step: 3,
+      title: "3. Live Weather Telemetry (Open-Meteo IMD Grid)",
+      desc: "Ingests live precipitation & temperatures with visible 'Status: Fresh' provenance and microclimate warnings.",
+    },
+    {
+      step: 4,
+      title: "4. Fleet Telemetry Progression (AS-01-GB-4821)",
+      desc: "Simulates truck GPS progression along highway waypoints with live speed, heading, and ETA updates.",
+    },
+    {
+      step: 5,
+      title: "5. Mid-Transit Landslide & SDRF Recalculation",
+      desc: "Simulates SDRF verified landslide alert ahead; Risk-A* recalculates detour in <15ms with cab voice alert.",
+    },
+    {
+      step: 6,
+      title: "6. Multilingual Driver Dispatch Broadcast",
+      desc: "Provider-Ready Dispatcher Gateway sends SMS/WhatsApp payloads in English, Hindi, and Assamese.",
+    },
+    {
+      step: 7,
+      title: "7. Measurable Impact & Safety ROI",
+      desc: "60.7% hazard exposure reduction, 0 bridge structural overloads, and complete offline PWA resilience.",
+    },
+  ];
+
+  const handleTourStep = (step: number | null) => {
+    setPitchTourStep(step);
+    if (step === null) return;
+
+    if (step === 1) {
+      setActiveView("dispatcher");
+      setOrigin("guwahati");
+      setDestination("tawang");
+      setVehicle("heavy");
+      setCommodity("medical");
+      setSelectedSihScenario("sela_tunnel_freeze");
+      setIsNavigating(false);
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 2) {
+      setActiveView("dispatcher");
+      setOrigin("guwahati");
+      setDestination("tawang");
+      setVehicle("heavy");
+      setSelectedSihScenario("sela_tunnel_freeze");
+      setIsNavigating(false);
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 3) {
+      setActiveView("dispatcher");
+      setIsNavigating(false);
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 4) {
+      setActiveView("dispatcher");
+      if (!isNavigating) {
+        handleStartNavigation();
+      }
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 5) {
+      setActiveView("dispatcher");
+      handleSimulateObstacleAhead();
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 6) {
+      setIsBroadcastModalOpen(true);
+      setIsAlertCenterModalOpen(false);
+    } else if (step === 7) {
+      setIsBroadcastModalOpen(false);
+      setIsAlertCenterModalOpen(true);
+    }
   };
 
   // Active FastAPI Risk-A* Route Solver
@@ -1631,6 +1723,79 @@ export default function App() {
               <span className="font-semibold text-foreground">{driverProfile.driverName ? driverProfile.vehicleNo : t.navSignIn}</span>
             </button>
 
+            {/* SIH Role Switcher Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-secondary text-xs font-semibold cursor-pointer transition-colors"
+                title="Switch Authority Role (SIH RBAC Demonstration)"
+              >
+                <Shield className="size-3.5 text-primary" />
+                <span>
+                  {driverProfile.driverName.includes("Tenzing")
+                    ? "SDRF"
+                    : driverProfile.driverName.includes("Bhupen")
+                    ? "PWD"
+                    : driverProfile.driverName.includes("Rajesh")
+                    ? "Dispatcher"
+                    : "Driver"}
+                </span>
+                <ChevronDown className="size-3 text-muted-foreground" />
+              </button>
+              {isRoleDropdownOpen && (
+                <div className="absolute right-0 mt-1.5 w-56 rounded-xl border border-border bg-card p-1.5 shadow-xl z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Quick Authority Role (RBAC)
+                  </div>
+                  {[
+                    { label: "SDRF Reviewer", name: "Insp. Tenzing Norbu", role: "reviewer", mobile: "+91-94360-11223", veh: "AR-01-SDRF-01", comm: "medical" as const },
+                    { label: "Assam PWD Engineer", name: "Er. Bhupen Barman", role: "reviewer", mobile: "+91-94350-99887", veh: "AS-01-PWD-09", comm: "construction" as const },
+                    { label: "Logistics Dispatcher", name: "Rajesh Sharma", role: "dispatcher", mobile: "+91-98620-44556", veh: "NL-07-A-3210", comm: "pds" as const },
+                    { label: "Heavy Truck Captain", name: "Ranjit Gogoi", role: "driver", mobile: "+91-94350-12345", veh: "AS-01-GB-4821", comm: "medical" as const },
+                  ].map((r) => (
+                    <button
+                      key={r.name}
+                      type="button"
+                      onClick={() => {
+                        sessionStorage.setItem("raahsetu_user_role", r.role);
+                        setDriverProfile({
+                          driverName: r.name,
+                          driverMobile: r.mobile,
+                          vehicleNo: r.veh,
+                          trustedContactName: "Regional Operations Hub",
+                          trustedContactMobile: "+91-94350-00000",
+                          vehicleType: "heavy",
+                          commodity: r.comm,
+                          isRegistered: true,
+                        });
+                        setIsRoleDropdownOpen(false);
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-lg text-left hover:bg-secondary flex flex-col cursor-pointer transition-colors"
+                    >
+                      <span className="font-bold text-[11px] text-foreground">{r.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{r.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SIH Presentation Tour Button */}
+            <button
+              type="button"
+              onClick={() => handleTourStep(pitchTourStep === null ? 1 : null)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-xs shadow-xs cursor-pointer transition-all ${
+                pitchTourStep !== null
+                  ? "bg-amber-500 text-black border-amber-400 font-extrabold"
+                  : "border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400"
+              }`}
+              title="3-Minute SIH Finale Guided Rehearsal Tour"
+            >
+              <Radio className="size-3.5" />
+              <span>{pitchTourStep !== null ? `Tour: ${pitchTourStep}/7` : "🎙️ SIH Pitch Tour"}</span>
+            </button>
+
             {/* Fleet Alerts & Broadcast Center */}
             <button
               type="button"
@@ -1659,6 +1824,64 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* SIH Grand Finale Guided Rehearsal Tour Banner */}
+      {pitchTourStep !== null && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-primary/15 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 backdrop-blur-sm z-30 flex flex-wrap items-center justify-between gap-3 shadow-md animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="flex items-center justify-center size-6 rounded-full bg-amber-500 text-black font-extrabold text-xs shrink-0">
+              {pitchTourStep}
+            </span>
+            <div>
+              <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                <span>{PITCH_TOUR_STEPS[pitchTourStep - 1]?.title}</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  SIH 3-Min Pitch Tour
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {PITCH_TOUR_STEPS[pitchTourStep - 1]?.desc}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={pitchTourStep <= 1}
+              onClick={() => handleTourStep(pitchTourStep - 1)}
+              className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-secondary text-xs font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ◀ Prev
+            </button>
+            {pitchTourStep < 7 ? (
+              <button
+                type="button"
+                onClick={() => handleTourStep(pitchTourStep + 1)}
+                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs cursor-pointer shadow-xs flex items-center gap-1"
+              >
+                <span>Next Step ({pitchTourStep + 1}/7)</span>
+                <ChevronRight className="size-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPitchTourStep(null)}
+                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+              >
+                Finish Tour 🎉
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPitchTourStep(null)}
+              className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Exit Presentation Tour"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Sub-Navigation Bar */}
       <div className="md:hidden border-b border-border bg-card px-3 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none">

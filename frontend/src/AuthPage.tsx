@@ -312,6 +312,89 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onSuccess, onBackToHome, lan
                 </p>
               </div>
 
+              {/* SIH Jury Quick Sign-In Persona Selector */}
+              <div className="mt-4 p-3 rounded-2xl border border-primary/20 bg-primary/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                    <Shield className="size-3.5" />
+                    SIH Grand Finale 1-Click Authority Sign-In
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Pre-verified RBAC</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-left">
+                  {[
+                    {
+                      label: "SDRF Reviewer",
+                      name: "Insp. Tenzing Norbu",
+                      role: "reviewer",
+                      email: "sdrf.arunachal@raahsetu.in",
+                      mobile: "+91-94360-11223",
+                      vehicleNo: "AR-01-SDRF-01",
+                      commodity: "medical" as const,
+                      badge: "SDRF Arunachal",
+                      color: "border-amber-500/40 hover:bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                    },
+                    {
+                      label: "Assam PWD Engineer",
+                      name: "Er. Bhupen Barman",
+                      role: "reviewer",
+                      email: "pwd.assam@raahsetu.in",
+                      mobile: "+91-94350-99887",
+                      vehicleNo: "AS-01-PWD-09",
+                      commodity: "construction" as const,
+                      badge: "PWD Assam",
+                      color: "border-blue-500/40 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300",
+                    },
+                    {
+                      label: "Logistics Dispatcher",
+                      name: "Rajesh Sharma",
+                      role: "dispatcher",
+                      email: "dispatcher.ner@raahsetu.in",
+                      mobile: "+91-98620-44556",
+                      vehicleNo: "NL-07-A-3210",
+                      commodity: "pds" as const,
+                      badge: "NE Dispatcher",
+                      color: "border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                    },
+                    {
+                      label: "Freight Truck Captain",
+                      name: "Ranjit Gogoi",
+                      role: "driver",
+                      email: "driver.anup@raahsetu.in",
+                      mobile: "+91-94350-12345",
+                      vehicleNo: "AS-01-GB-4821",
+                      commodity: "medical" as const,
+                      badge: "Tata Prima 28T",
+                      color: "border-purple-500/40 hover:bg-purple-500/10 text-purple-700 dark:text-purple-300",
+                    },
+                  ].map((p) => (
+                    <button
+                      key={p.email}
+                      type="button"
+                      onClick={() => {
+                        sessionStorage.setItem("raahsetu_user_role", p.role);
+                        sessionStorage.setItem("raahsetu_user_email", p.email);
+                        onSuccess({
+                          driverName: p.name,
+                          driverMobile: p.mobile,
+                          vehicleNo: p.vehicleNo,
+                          trustedContactMobile: "+91-94350-00000",
+                          vehicleType: "heavy",
+                          commodity: p.commodity,
+                        });
+                      }}
+                      className={`p-2 rounded-xl border bg-card text-left transition-all cursor-pointer ${p.color}`}
+                    >
+                      <div className="font-bold text-[11px] truncate">{p.label}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{p.name}</div>
+                      <span className="inline-block mt-0.5 px-1 py-0.2 rounded text-[9px] font-semibold bg-secondary/80">
+                        {p.badge}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Form */}
               <form onSubmit={handleCredentialsSubmit} className="mt-6 space-y-4 text-xs">
                 {/* 1. Email ID */}
